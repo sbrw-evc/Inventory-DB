@@ -29,6 +29,8 @@ export interface BaseMember {
 }
 
 export interface SelectOption {
+  /** Stable id assigned by the server; send it back on update so renames also rename the data. */
+  id?: string;
   title: string;
   color: string;
 }
@@ -75,6 +77,17 @@ export interface Column {
   order: number;
   /** Physical column name (stored types) — server only detail but harmless to expose */
   system?: boolean;
+}
+
+/** Body of "create column" (and, partially, of "update column"). */
+export interface ColumnInput {
+  title: string;
+  type: FieldType;
+  options?: ColumnOptions;
+  required?: boolean;
+  defaultValue?: unknown;
+  description?: string | null;
+  primary?: boolean;
 }
 
 export interface Table {
