@@ -20,18 +20,18 @@ export function Modal({ title, onClose, children, footer, width = 520, className
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        // Let inner popovers/editors consume Escape first.
-        if (e.defaultPrevented) return;
-        const stack = document.querySelectorAll('.modal-backdrop');
-        if (stack[stack.length - 1] === panelRef.current?.parentElement) {
-          e.stopPropagation();
-          closeRef.current();
-        }
-      }
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const backdrop = panelRef.current?.parentElement;
+      if (!backdrop) return;
+      // Only the top-most layer closes; a popover or modal opened above this one handles Escape itself.
+      const layers = document.querySelectorAll('.modal-backdrop, .popover');
+      if (layers[layers.length - 1] !== backdrop) return;
+      e.preventDefault();
+      closeRef.current();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Capture phase: React handlers inside the modal stop propagation of bubbling key events.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   return createPortal(

@@ -25,9 +25,12 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="/base/:baseId/*" element={<BasePage />} />
           </Route>
-          {/* DCIM / IPAM mount points: replace NetboxPlaceholder with the netbox module's routes. */}
+          {/* NetBox mount points: swap the placeholders for DcimRoutes / IpamRoutes / TenancyRoutes / ExtrasRoutes
+              exported from web/src/netbox/NetboxRoutes.tsx. */}
           <Route path="/dcim/*" element={<NetboxPlaceholder section="DCIM" />} />
           <Route path="/ipam/*" element={<NetboxPlaceholder section="IPAM" />} />
+          <Route path="/tenancy/*" element={<NetboxPlaceholder section="Tenancy" />} />
+          <Route path="/extras/*" element={<NetboxPlaceholder section="Extras" />} />
           <Route path="/integrations/*" element={<NetboxPlaceholder section="Integrations" />} />
           <Route path="/admin/*" element={<AdminPage />} />
           <Route path="/account/tokens" element={<Navigate to="/admin/tokens" replace />} />

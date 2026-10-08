@@ -172,6 +172,7 @@ function displayOf(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'object') {
     const o = v as Record<string, unknown>;
+    if ('display' in o) return String(o.display ?? '');
     if ('title' in o) return String(o.title);
     return JSON.stringify(v);
   }

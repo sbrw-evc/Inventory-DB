@@ -142,9 +142,19 @@ export const dataApi = {
       })}`,
       { signal },
     ),
-  listLinks: (tableId: string, id: number, columnId: string, q: { offset?: number; limit?: number; search?: string }) =>
+  /** `notLinked: true` lists related records that are NOT linked yet (for the picker). */
+  listLinks: (
+    tableId: string,
+    id: number,
+    columnId: string,
+    q: { offset?: number; limit?: number; search?: string; notLinked?: boolean },
+  ) =>
     http.get<ListResult>(
-      `/tables/${enc(tableId)}/records/${id}/links/${enc(columnId)}${buildQuery({ ...q, search: q.search || undefined })}`,
+      `/tables/${enc(tableId)}/records/${id}/links/${enc(columnId)}${buildQuery({
+        ...q,
+        search: q.search || undefined,
+        notLinked: q.notLinked ? 'true' : undefined,
+      })}`,
     ),
   link: (tableId: string, id: number, columnId: string, ids: number[]) =>
     http.post<{ ok: true }>(`/tables/${enc(tableId)}/records/${id}/links/${enc(columnId)}`, { ids }),

@@ -53,7 +53,7 @@ function InlineInput({ column, value, initialText, onCommit, onCancel }: EditorP
     const el = ref.current;
     if (!el) return;
     el.focus();
-    if (initialText === undefined && el.type === 'text') el.select();
+    if (el.type === 'text') el.setSelectionRange(el.value.length, el.value.length);
   }, [initialText]);
 
   const finish = (move: Move) => {

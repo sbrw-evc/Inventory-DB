@@ -112,7 +112,7 @@ function GroupEditor({ group, root, columns, onChange, depth, disabled }: Props 
           );
         if (isFilterGroup(child)) {
           return (
-            <div key={child.id} className="filter-row filter-row-group">
+            <div key={child.id} className="fcond-row fcond-row-group">
               {logicCell}
               <GroupEditor group={child} root={root} columns={columns} onChange={onChange} depth={depth + 1} disabled={disabled} />
               <button className="icon-btn" disabled={disabled} onClick={() => onChange(removeNode(root, child.id!))} title={t('Remove group')}>
@@ -124,7 +124,7 @@ function GroupEditor({ group, root, columns, onChange, depth, disabled }: Props 
         const column = columns.find((c) => c.id === child.columnId);
         const ops = column ? opsForType(column.type) : [];
         return (
-          <div key={child.id} className="filter-row">
+          <div key={child.id} className="fcond-row">
             {logicCell}
             <select
               className="input input-sm"

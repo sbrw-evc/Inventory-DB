@@ -142,7 +142,7 @@ export function CellDisplay({ column, value, onQuickChange, readOnly, wrap }: Ce
         <span className="chips">
           {asArray(value).map((v, i) => (
             <span key={i} className="chip chip-link">
-              {typeof v === 'object' && v ? String((v as { title?: unknown }).title ?? JSON.stringify(v)) : String(v)}
+              {typeof v === 'object' && v ? String((v as { display?: unknown; title?: unknown }).display ?? (v as { title?: unknown }).title ?? JSON.stringify(v)) : String(v)}
             </span>
           ))}
         </span>

@@ -56,7 +56,7 @@ export function Popover({ anchor, onClose, children, align = 'start', className,
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.defaultPrevented) {
-        const all = document.querySelectorAll('.popover');
+        const all = document.querySelectorAll('.modal-backdrop, .popover');
         if (all[all.length - 1] === ref.current) {
           e.preventDefault();
           e.stopPropagation();

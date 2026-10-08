@@ -129,7 +129,7 @@ export function ViewToolbar(p: ToolbarProps) {
                 />
               )}
             </Dropdown>
-            <Dropdown label={<><Icon name="rowHeight" size={14} /> {t('Row height')}</>} className="menu">
+            <Dropdown label={<><Icon name="rowHeight" size={14} /> <span className="hide-mid">{t('Row height')}</span></>} title={t('Row height')} className="menu">
               {(close) => (
                 <RowHeightMenu
                   value={view.meta.rowHeight}

@@ -10,7 +10,7 @@ import { Icon, ViewIcon } from './Icon';
 import { Popover } from './Popover';
 
 interface Hit {
-  kind: 'base' | 'table' | 'view';
+  kind: 'base' | 'table' | 'view' | 'dcim';
   label: string;
   sub?: string;
   to: string;
@@ -41,7 +41,10 @@ function GlobalSearch() {
         }
       }
     }
-    return out.slice(0, 30);
+    out.splice(30);
+    // DCIM / IPAM objects are searched by the NetBox section's own search page.
+    out.push({ kind: 'dcim', label: t('Search DCIM / IPAM for “{q}”', { q: q.trim() }), to: `/dcim/search?q=${encodeURIComponent(q.trim())}`, icon: <Icon name="search" size={14} /> });
+    return out;
   }, [q, bases.data, qc]);
 
   const go = (h: Hit) => {

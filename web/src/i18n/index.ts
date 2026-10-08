@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { en } from './en';
 import { ru } from './ru';
 
 /**
@@ -11,8 +12,9 @@ export const LANGS: Array<{ code: Lang; label: string }> = [
   { code: 'ru', label: 'Русский' },
 ];
 
-const DICTS: Record<Lang, Record<string, string>> = { en: {}, ru };
-const KEY = 'inventorydb.lang';
+const DICTS: Record<Lang, Record<string, string>> = { en, ru };
+// Shared with the NetBox pages, which read the same key.
+const KEY = 'lang';
 
 function initialLang(): Lang {
   try {

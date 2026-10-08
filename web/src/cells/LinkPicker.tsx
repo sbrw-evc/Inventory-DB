@@ -35,9 +35,9 @@ export function LinkPicker({ table, column, recordId, onClose, readOnly }: Props
     placeholderData: keepPreviousData,
   });
   const candidates = useQuery({
-    queryKey: ['linkCandidates', related?.id, debounced],
-    queryFn: () => dataApi.list(related!.id, { limit: 50, search: debounced }),
-    enabled: !!related && tab === 'add',
+    queryKey: [...qk.links(table.id, recordId, column.id), 'notLinked', debounced],
+    queryFn: () => dataApi.listLinks(table.id, recordId, column.id, { limit: 50, search: debounced, notLinked: true }),
+    enabled: tab === 'add',
     placeholderData: keepPreviousData,
   });
 

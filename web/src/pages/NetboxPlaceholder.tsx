@@ -6,7 +6,7 @@ import { t } from '../i18n';
  * The DCIM/IPAM pages are built separately (web/src/netbox/); the lead swaps this placeholder for
  * that module's routes component at /dcim/* and /ipam/*.
  */
-export function NetboxPlaceholder({ section }: { section: 'DCIM' | 'IPAM' | 'Integrations' }) {
+export function NetboxPlaceholder({ section }: { section: 'DCIM' | 'IPAM' | 'Tenancy' | 'Extras' | 'Integrations' }) {
   return (
     <div className="page">
       <div className="empty-state">

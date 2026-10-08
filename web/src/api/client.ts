@@ -1,5 +1,6 @@
 export const API_BASE = '/api/v1';
-const TOKEN_KEY = 'inventorydb.token';
+// Shared with the NetBox pages (web/src/netbox/api.ts reads the same key).
+const TOKEN_KEY = 'token';
 
 export class ApiRequestError extends Error {
   status: number;

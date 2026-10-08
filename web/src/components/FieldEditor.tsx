@@ -140,7 +140,11 @@ export function FieldEditor({ table, column, onClose, onSaved }: Props) {
     switch (type) {
       case 'SingleSelect':
       case 'MultiSelect':
-        o.choices = (options.choices ?? []).map((c) => ({ title: c.title.trim(), color: c.color }));
+        // Keep server-assigned ids so renamed choices also rename stored values.
+        o.choices = (options.choices ?? []).map((c) => {
+          const id = (c as SelectOption & { id?: string }).id;
+          return { ...(id ? { id } : {}), title: c.title.trim(), color: c.color };
+        });
         break;
       case 'Decimal':
       case 'Percent':
