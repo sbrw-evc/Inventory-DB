@@ -16,7 +16,12 @@ export interface AppOptions {
 }
 
 export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 50 * 1024 * 1024 });
+  const app = Fastify({
+    logger: opts.logger ?? false,
+    bodyLimit: 50 * 1024 * 1024,
+    // NetBox-style clients call list endpoints with a trailing slash.
+    routerOptions: { ignoreTrailingSlash: true },
+  });
 
   await app.register(cors, { origin: true });
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
