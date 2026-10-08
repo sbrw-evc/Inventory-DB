@@ -56,7 +56,16 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
     their filters, sorts and hidden fields. Uses NocoDB's v2 REST API (`/api/v2/meta/...`,
     `/api/v2/tables/{id}/records`, links endpoints). Runs as a background job with progress and a
     report of anything skipped. NocoDB CSV exports also import through the regular CSV importer.
-14. **Inventory template**: one-click base with Products, Suppliers, Warehouses, Stock movements,
+14. **NetBox core (DCIM/IPAM)**: a dedicated module with typed models and REST endpoints under
+    `/api/v1/dcim` and `/api/v1/ipam`: regions, sites, locations, racks (with rack elevation), manufacturers,
+    device types, device roles, platforms, devices, interfaces, cables (with path trace), tenants, VRFs,
+    prefixes (hierarchy, utilisation, next available prefix/IP), IP addresses, IP ranges, VLAN groups and VLANs,
+    tags, custom fields, change log, and CSV bulk import. UI pages for lists, detail panels, rack elevation,
+    prefix tree, and cable trace.
+15. **Design**: UI follows Umbrella's design language and application guidelines (`docs/design.md`):
+    navy header, toolbar/filter rows, status chips, right-side detail panel, English/Russian UI,
+    `/metrics` endpoint.
+16. **Inventory template**: one-click base with Products, Suppliers, Warehouses, Stock movements,
     linked together with rollups (on-hand quantity) and formulas (stock value, low-stock flag).
 
 ### Deferred (and why)
@@ -66,6 +75,10 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
   the storage layer is isolated so Postgres can be added later.
 - Workflows, scripts, dashboards, interfaces, extensions, AI, docs, sync integrations, MCP server.
 - RichText, Barcode/QRCode, User, Duration, GeoData, Button field types.
+- Backend language/database: Umbrella's guidelines prefer Go and PostgreSQL; this app stays on
+  Node/TypeScript with SQLite for now, with storage isolated so PostgreSQL can be added later.
+- NetBox extras: circuits, power, virtualization, wireless, VPN, journaling, config contexts, scripts/reports.
+- Integrations between Inventory DB and Umbrella are built in the separate "Umbrella and Inventory integration" thread.
 - Real-time collaboration (multi-cursor/websocket updates).
 
 ## 4. Architecture
@@ -99,6 +112,7 @@ and sorted like stored fields.
 | 1a | Worker A: data engine | Field types, records CRUD, query compiler, links/lookup/rollup/formula, tests |
 | 1b | Worker B: platform | Auth/roles/tokens, import/export, webhooks, audit, comments, sharing, OpenAPI, template |
 | 1d | Worker D: NocoDB migration | NocoDB API client, schema/type mapping, record + link + view copy, job progress, tests with a mocked NocoDB |
+| 1e | Worker E: NetBox core | DCIM/IPAM schema, services, REST API, UI pages under web/src/netbox |
 | 1c | Worker C: web UI | Sidebar, grid, toolbar, expanded record, form/gallery/kanban/calendar, auth pages, sharing pages |
 | 2 | Thread lead | Integration, end-to-end smoke test, CI workflow, README, draft PR |
 
