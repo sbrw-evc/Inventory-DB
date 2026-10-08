@@ -1,0 +1,22 @@
+[
+  {
+    "Id": 1,
+    "Name": "Acme",
+    "Products": 2,
+    "Product Count": 2,
+    "Since": "2023-05-01",
+    "Owner": [{ "id": "usr1", "email": "alice@example.com", "display_name": "Alice" }],
+    "CreatedAt": "2024-01-10 09:30:00+00:00",
+    "UpdatedAt": "2024-01-10 09:30:00+00:00"
+  },
+  {
+    "Id": 2,
+    "Name": "Globex",
+    "Products": 0,
+    "Product Count": 0,
+    "Since": null,
+    "Owner": null,
+    "CreatedAt": "2024-01-10 09:31:00+00:00",
+    "UpdatedAt": "2024-01-10 09:31:00+00:00"
+  }
+]

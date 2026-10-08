@@ -112,4 +112,16 @@ Data notes:
 |---|---|---|
 | POST | /migrate/nocodb/bases | `{url, token}` → list NocoDB bases `{id,title}[]` (validates the connection) |
 | POST | /migrate/nocodb | `{url, token, nocoBaseId, targetTitle?}` → `Job` (runs in background, creator becomes owner) |
-| GET | /jobs/:jobId | `Job` (progress, log, result `{baseId, skipped[]}`) |
+| GET | /jobs/:jobId | `Job` (progress, log, result `{baseId, tables, records, links, views, skipped[], converted[]}`) |
+
+Any signed-in user may call these. `url` is the NocoDB instance (cloud or self-hosted; `https://` is added when
+missing, and a pasted dashboard URL is trimmed to its origin); `token` is a NocoDB API token, sent only as NocoDB's
+`xc-token` header and never stored (not in the job, its log or result). NocoDB failures (bad token, unreachable
+host, unknown base) return `400 {error:'NOCODB_ERROR', message}` from `/bases`, and end the job with
+`status:'failed'` and the message for `/migrate/nocodb` (the partially created base is removed).
+
+NocoDB endpoints used: `GET /api/v2/meta/workspaces`, `/meta/workspaces/{id}/bases` (cloud) or `/meta/bases`
+(self-hosted), `/meta/bases/{baseId}`, `/meta/bases/{baseId}/tables`, `/meta/tables/{tableId}`,
+`/meta/tables/{tableId}/views`, `/meta/views/{viewId}/filters|sorts|columns`, `/meta/filters/{groupId}/children`,
+`/meta/kanbans|galleries|forms|calendars/{viewId}`, `/tables/{tableId}/records?offset&limit`,
+`/tables/{tableId}/links/{linkFieldId}/records/{recordId}`.

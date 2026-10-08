@@ -1,0 +1,59 @@
+{
+  "list": [
+    {
+      "id": "mdprod01",
+      "source_id": "bsrc0001",
+      "base_id": "pinv0001",
+      "table_name": "nc_inv___Products",
+      "title": "Products",
+      "type": "table",
+      "meta": null,
+      "schema": null,
+      "enabled": true,
+      "mm": false,
+      "tags": null,
+      "pinned": null,
+      "deleted": null,
+      "order": 1,
+      "created_at": "2024-01-10 09:00:00+00:00",
+      "updated_at": "2024-01-10 09:00:00+00:00"
+    },
+    {
+      "id": "mdsupp02",
+      "source_id": "bsrc0001",
+      "base_id": "pinv0001",
+      "table_name": "nc_inv___Suppliers",
+      "title": "Suppliers",
+      "type": "table",
+      "meta": null,
+      "enabled": true,
+      "mm": false,
+      "order": 2,
+      "created_at": "2024-01-10 09:00:00+00:00",
+      "updated_at": "2024-01-10 09:00:00+00:00"
+    },
+    {
+      "id": "mdm2m003",
+      "source_id": "bsrc0001",
+      "base_id": "pinv0001",
+      "table_name": "nc_inv___nc_m2m_tags_products",
+      "title": "nc_m2m_tags_products",
+      "type": "table",
+      "enabled": true,
+      "mm": true,
+      "order": 3
+    },
+    {
+      "id": "mdview04",
+      "source_id": "bsrc0001",
+      "base_id": "pinv0001",
+      "table_name": "low_stock_sql_view",
+      "title": "low_stock_sql_view",
+      "type": "view",
+      "enabled": true,
+      "mm": false,
+      "order": 4
+    }
+  ],
+  "pageInfo": { "totalRows": 4, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}

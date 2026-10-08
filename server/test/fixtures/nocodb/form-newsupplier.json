@@ -1,0 +1,18 @@
+{
+  "fk_view_id": "vwsfrm02",
+  "heading": "Add a supplier",
+  "subheading": "We will get back to you",
+  "success_msg": "Thanks for submitting!",
+  "redirect_url": null,
+  "redirect_after_secs": null,
+  "email": null,
+  "submit_another_form": false,
+  "show_blank_form": false,
+  "lock_type": "collaborative",
+  "meta": {},
+  "columns": [
+    { "id": "fcl01", "fk_view_id": "vwsfrm02", "fk_column_id": "clsnam02", "label": "Company name", "help": null, "description": "Legal name of the company", "required": true, "show": true, "order": 1 },
+    { "id": "fcl02", "fk_view_id": "vwsfrm02", "fk_column_id": "clssin05", "label": null, "description": null, "required": false, "show": true, "order": 2 },
+    { "id": "fcl03", "fk_view_id": "vwsfrm02", "fk_column_id": "clsown06", "label": null, "description": null, "required": false, "show": false, "order": 3 }
+  ]
+}

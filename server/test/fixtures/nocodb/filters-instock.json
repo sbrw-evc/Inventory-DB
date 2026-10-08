@@ -1,0 +1,7 @@
+{
+  "list": [
+    { "id": "fltchk01", "fk_view_id": "vwpstk02", "fk_column_id": "clpstk06", "fk_parent_id": null, "logical_op": "and", "comparison_op": "checked", "comparison_sub_op": null, "value": null, "is_group": false, "order": 1 },
+    { "id": "fltgrp02", "fk_view_id": "vwpstk02", "fk_column_id": null, "fk_parent_id": null, "logical_op": "and", "comparison_op": null, "comparison_sub_op": null, "value": null, "is_group": true, "order": 2 },
+    { "id": "fltdat03", "fk_view_id": "vwpstk02", "fk_column_id": "clpcrt14", "fk_parent_id": null, "logical_op": "and", "comparison_op": "eq", "comparison_sub_op": "today", "value": null, "is_group": false, "order": 3 }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "list": [
+    {
+      "id": "pinv0001",
+      "title": "Inventory",
+      "prefix": "nc_inv_",
+      "status": null,
+      "description": "Products and suppliers",
+      "meta": "{\"iconColor\":\"#36BFFF\"}",
+      "color": "#36BFFF",
+      "order": 1,
+      "is_meta": false,
+      "type": "database",
+      "deleted": false,
+      "created_at": "2024-01-10 09:00:00+00:00",
+      "updated_at": "2024-01-10 09:00:00+00:00",
+      "sources": [{ "id": "bsrc0001", "base_id": "pinv0001", "alias": null, "type": "pg", "is_meta": true, "enabled": true }]
+    },
+    {
+      "id": "pcrm0002",
+      "title": "CRM",
+      "prefix": "nc_crm_",
+      "description": null,
+      "color": "#FA8231",
+      "order": 2,
+      "type": "database",
+      "deleted": false,
+      "created_at": "2024-02-01 09:00:00+00:00",
+      "updated_at": "2024-02-01 09:00:00+00:00"
+    }
+  ],
+  "pageInfo": { "totalRows": 2, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}

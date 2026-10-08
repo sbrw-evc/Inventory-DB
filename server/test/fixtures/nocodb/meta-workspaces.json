@@ -1,0 +1,6 @@
+{
+  "list": [
+    { "id": "wsk1abcd", "title": "Acme Workspace", "fk_org_id": "org1", "meta": { "color": "#36BFFF" }, "order": 1, "roles": "workspace-level-owner" }
+  ],
+  "pageInfo": { "totalRows": 1, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}

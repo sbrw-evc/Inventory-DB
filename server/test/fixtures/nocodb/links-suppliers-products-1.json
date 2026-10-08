@@ -1,0 +1,7 @@
+{
+  "list": [
+    { "Id": 1, "Title": "Widget" },
+    { "Id": 2, "Title": "Gadget" }
+  ],
+  "pageInfo": { "totalRows": 2, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}
