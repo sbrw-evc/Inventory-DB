@@ -235,7 +235,7 @@ function compileCondition(ctx: QueryContext, cond: FilterCondition, tableId: str
   if (op === 'blank' || op === 'notblank') {
     let blank: Frag;
     if (t === 'Links') blank = sql`${e} = 0`;
-    else if (t === 'Lookup') blank = sql`NOT EXISTS (SELECT 1 FROM json_each(${e}) WHERE value IS NOT NULL AND value != '')`;
+    else if (t === 'Lookup') blank = sql`NOT EXISTS (SELECT 1 FROM json_tree(${e}) WHERE type NOT IN ('array', 'object', 'null') AND value != '')`;
     else if (t === 'Checkbox') blank = sql`COALESCE(${e}, 0) = 0`;
     else blank = BLANK(e);
     return op === 'blank' ? blank : sql`NOT ${blank}`;
@@ -254,7 +254,9 @@ function compileCondition(ctx: QueryContext, cond: FilterCondition, tableId: str
 
   // "Any element matches" semantics for multi-valued fields.
   if (t === 'Lookup' || t === 'MultiSelect') {
-    const each = (pred: (x: Frag) => Frag) => sql`EXISTS (SELECT 1 FROM json_each(${e}) WHERE ${pred(raw('value'))})`;
+    // Lookups can nest arrays (lookup of a multi-select / lookup): match on leaf values at any depth.
+    const src = t === 'Lookup' ? sql`json_tree(${e}) WHERE type NOT IN ('array', 'object') AND` : sql`json_each(${e}) WHERE`;
+    const each = (pred: (x: Frag) => Frag) => sql`EXISTS (SELECT 1 FROM ${src} ${pred(raw('value'))})`;
     const opts = listValue(v);
     switch (op) {
       case 'anyof':

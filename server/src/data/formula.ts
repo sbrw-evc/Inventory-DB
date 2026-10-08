@@ -317,6 +317,9 @@ export function compileFormula(node: FNode, ref: (name: string) => Frag): Frag {
   const c = (n: FNode): Frag => compileFormula(n, ref);
   switch (node.k) {
     case 'num':
+      // Numeric literals come from the tokenizer's digit pattern, so their canonical text is safe to inline
+      // (and keeps integers as INTEGER, which bound JS numbers would not).
+      return raw(Number.isFinite(node.v) ? String(node.v) : "NULL");
     case 'str':
       return val(node.v);
     case 'bool':

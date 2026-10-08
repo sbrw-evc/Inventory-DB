@@ -33,6 +33,24 @@ Owners in brackets are the module that implements the endpoint.
 | POST | /tables/:tableId/views | editor | `{title, type, copyFromViewId?}` | `View` |
 | PATCH | /views/:viewId | editor (viewer can't; locked views need owner) | partial `{title, order, locked, filter, sorts, columns, meta}` | `View` |
 | DELETE | /views/:viewId | editor | | `{ok:true}` (the last view of a table cannot be deleted) |
+| GET | /columns/:columnId | viewer | | `Column` |
+| GET | /views/:viewId | viewer | | `View` |
+
+Meta notes:
+- Table creation: an `ID` field, `CreatedAt` (CreatedTime) and `UpdatedAt` (LastModifiedTime) system fields (hidden in
+  new views) are always added. The primary field is the column flagged `primary`, else the first stored, eligible
+  column given, else a new SingleLineText "Title".
+- Field and view titles are unique per table, table titles per base (case-insensitive) → 400.
+- Select choices get a server-assigned `id`; send it back on PATCH so a renamed choice also renames stored values.
+- Links `options: {relatedTableId, relation?: 'mm'|'hm'|'bt'}` creates the symmetric Links field on the related table
+  (`symmetricColumnId` on both). `bt` = at most one link per record; `hm` = each linked record has one parent.
+  Deleting either side deletes both, plus Lookup/Rollup fields that depend on them. Deleting a table deletes Links
+  fields pointing at it.
+- Formula `options.formula` is returned with current field titles; it is stored by column id, so renames are safe.
+  Unknown fields/functions, syntax errors and circular references → 400 with a message.
+- Type changes convert data best-effort (invalid → empty). Virtual → stored materialises the computed values.
+- PATCH `columns` on a view may be the full list or a subset (others keep their settings).
+- Locked views: editors may lock a view; changing, unlocking or deleting a locked view requires owner.
 
 ## Data [data engine]
 Record keys are **column ids**; `id` is the row id. Select values are option titles (MultiSelect = string[]),
@@ -47,9 +65,20 @@ Attachment = `Attachment[]`, Checkbox = boolean, Links = number of linked record
 | DELETE | /tables/:tableId/records | editor | `{ids:number[]}` | `{deleted:n}` |
 | DELETE | /tables/:tableId/records/:id | editor | | `{deleted:1}` |
 | GET | /tables/:tableId/groups | viewer | query: `viewId, columnId, filter, search` | `GroupResult[]` |
-| GET | /tables/:tableId/records/:id/links/:columnId | viewer | query: `offset, limit, search` | `ListResult` of the related table |
+| GET | /tables/:tableId/records/:id/links/:columnId | viewer | query: `offset, limit, search, notLinked?` (`notLinked=true` lists related records NOT linked, for a picker) | `ListResult` of the related table |
 | POST | /tables/:tableId/records/:id/links/:columnId | editor | `{ids:number[]}` | `{ok:true}` |
 | DELETE | /tables/:tableId/records/:id/links/:columnId | editor | `{ids:number[]}` | `{ok:true}` |
+
+Data notes:
+- Write bodies may key fields by column id **or title** (ids win on conflict); unknown keys are ignored.
+  An explicit positive integer `id` on insert is honoured (409 if taken) — useful for importers.
+- Links values on insert/update are arrays of record ids (or `{id}` objects); on update they replace the link set.
+- Single-record responses (GET by id, insert, update) return Links as `[{id, display}]` (max 25); lists return counts.
+  Lookup = array of values, Rollup = number, Formula = computed value.
+- Unknown SingleSelect/MultiSelect values are added to the field's choices. Required fields → 400 when empty.
+- Filter conditions with an empty value are ignored; unknown fields/ops in a request filter → 400.
+  Date filters accept `YYYY-MM-DD`, ISO date-times, or `today`/`tomorrow`/`yesterday`.
+- `viewId` applies the view's filter and sorts (query `sorts` override them); it does not hide fields — use `fields`.
 
 ## Platform [platform]
 | Method | Path | Min role | Notes |

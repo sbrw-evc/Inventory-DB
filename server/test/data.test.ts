@@ -431,6 +431,50 @@ describe('links, lookups and rollups', () => {
     expect(getDb().prepare(`SELECT COUNT(*) AS n FROM l_${link.id} WHERE b_id = 3`).get()).toEqual({ n: 0 });
   });
 
+  it('lookup of multi-select flattens, rollup over a formula, cross-table cycles are rejected', async () => {
+    const tagCol = await api<Column>('POST', `/tables/${moves.id}/columns`, { title: 'Tags', type: 'MultiSelect' });
+    const dbl = await api<Column>('POST', `/tables/${moves.id}/columns`, { title: 'Double', type: 'Formula', options: { formula: '{Qty} * 2' } });
+    await api('PATCH', `/tables/${moves.id}/records`, [
+      { id: 1, Tags: ['red', 'blue'] },
+      { id: 2, Tags: ['green'] },
+    ]);
+    const tags = await api<Column>('POST', `/tables/${products.id}/columns`, {
+      title: 'All tags',
+      type: 'Lookup',
+      options: { linkColumnId: link.id, targetColumnId: tagCol.id },
+    });
+    const maxDbl = await api<Column>('POST', `/tables/${products.id}/columns`, {
+      title: 'Max double',
+      type: 'Rollup',
+      options: { linkColumnId: link.id, targetColumnId: dbl.id, rollupFunction: 'max' },
+    });
+    const bolt = await api<RecordData>('GET', `/tables/${products.id}/records/1`);
+    expect(bolt[tags.id]).toEqual(['red', 'blue']);
+    expect(bolt[maxDbl.id]).toBe(20);
+    const r = await api<ListResult>(
+      'GET',
+      `/tables/${products.id}/records?filter=${enc({ logic: 'and', children: [{ columnId: tags.id, op: 'anyof', value: ['green'] }] })}`,
+    );
+    expect(r.list.map((x) => x.id)).toEqual([2]);
+
+    // products.Loop = rollup over moves.Back; moves.Back = lookup of products.Loop -> cycle
+    const loop = await api<Column>('POST', `/tables/${products.id}/columns`, { title: 'Loop', type: 'Formula', options: { formula: '1' } });
+    const backLookup = await api<Column>('POST', `/tables/${moves.id}/columns`, {
+      title: 'Back loop',
+      type: 'Rollup',
+      options: { linkColumnId: back.id, targetColumnId: loop.id, rollupFunction: 'sum' },
+    });
+    const viaMoves = await api<Column>('POST', `/tables/${products.id}/columns`, {
+      title: 'Via moves',
+      type: 'Rollup',
+      options: { linkColumnId: link.id, targetColumnId: backLookup.id, rollupFunction: 'sum' },
+    });
+    const res = await app.inject({ method: 'PATCH', url: `/api/v1/columns/${loop.id}`, headers, payload: { options: { formula: '{Via moves} + 1' } } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/Circular reference/);
+    await api('DELETE', `/columns/${viaMoves.id}`);
+  });
+
   it('bt/hm relations allow one parent', async () => {
     const parents = await api<Table>('POST', `/bases/${baseId}/tables`, { title: 'Parents' });
     const kids = await api<Table>('POST', `/bases/${baseId}/tables`, { title: 'Kids' });
