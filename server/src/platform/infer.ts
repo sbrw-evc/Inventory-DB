@@ -15,7 +15,8 @@ const MAX_OPTION_LENGTH = 50;
 
 const RE = {
   int: /^-?(0|[1-9]\d{0,14})$/,
-  dec: /^-?(\d+\.\d*|\.\d+|\d+)(e[+-]?\d+)?$/i,
+  // no leading zeros on the integer part ("007" is a code, not a number)
+  dec: /^-?((0|[1-9]\d*)(\.\d+)?|\.\d+)(e[+-]?\d+)?$/i,
   currency: /^-?[$€£¥]\s?-?\d{1,3}(,?\d{3})*(\.\d+)?$/,
   bool: /^(true|false|yes|no|y|n|checked|unchecked)$/i,
   date: /^\d{4}-\d{2}-\d{2}$/,
