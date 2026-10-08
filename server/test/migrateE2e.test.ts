@@ -1,6 +1,5 @@
 /**
- * End-to-end: mock NocoDB → runMigration → our real data engine. Enabled with WITH_DATA_ENGINE=1 once the data
- * engine and jobs modules are merged (they're stubs in the migration worktree).
+ * End-to-end: mock NocoDB → runMigration → our real data engine.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Column, Table } from '../../shared/src/index.js';
@@ -11,7 +10,7 @@ import { createJob, getJob } from '../src/platform/jobs.js';
 import { createTestApp, signUpUser } from './helpers.js';
 import { MOCK_TOKEN, startMockNocoDB, type MockNocoDB } from './migrateNocodbMock.js';
 
-describe.skipIf(!process.env.WITH_DATA_ENGINE)('NocoDB migration end-to-end (real data engine)', () => {
+describe('NocoDB migration end-to-end (real data engine)', () => {
   let mock: MockNocoDB;
   beforeAll(async () => {
     mock = await startMockNocoDB();

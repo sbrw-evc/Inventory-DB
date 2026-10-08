@@ -1,6 +1,5 @@
 /**
  * Platform features that need the real data engine (meta/service.ts + data/records.ts).
- * Skipped until the engine is merged: run with WITH_DATA_ENGINE=1.
  */
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
@@ -30,7 +29,7 @@ async function setup() {
   return { app, owner, base, table, grid };
 }
 
-describe.skipIf(!process.env.WITH_DATA_ENGINE)('platform with data engine', () => {
+describe('platform with data engine', () => {
   it('imports CSV into a new table and into an existing one', async () => {
     const { app, owner, base, table } = await setup();
     const csv = 'Name,Qty,Kind\n' + Array.from({ length: 1200 }, (_, i) => `Item ${i},${i},${i % 2 ? 'A' : 'B'}`).join('\n');

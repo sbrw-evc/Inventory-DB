@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { ZodError } from 'zod';
 import { authPlugin } from './auth/plugin.js';
 import { HttpError } from './errors.js';
+import { registerDocs } from './platform/docs.js';
 import { registerRoutes } from './routes/index.js';
 
 export interface AppOptions {
@@ -40,6 +41,8 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     return reply.status(status).send({ error: status >= 500 ? 'INTERNAL' : 'BAD_REQUEST', message: (err as Error).message });
   });
 
+  // Swagger must be registered before the routes it documents.
+  await registerDocs(app);
   await registerRoutes(app);
 
   app.get('/api/v1/health', async () => ({ ok: true }));

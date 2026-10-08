@@ -1,24 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { getJob } from '../src/platform/jobs.js';
 import type { Job } from '../../shared/src/index.js';
 import { MOCK_TOKEN, startMockNocoDB, type MockNocoDB } from './migrateNocodbMock.js';
-
-// In-memory jobs store so this test doesn't depend on the platform module.
-const jobs = vi.hoisted(() => new Map<string, Job>());
-vi.mock('../src/platform/jobs.js', () => ({
-  createJob: (_userId: string, kind: Job['kind']): Job => {
-    const job: Job = { id: `job${jobs.size + 1}`, kind, status: 'queued', progress: 0, message: '', log: [], createdAt: new Date().toISOString() };
-    jobs.set(job.id, job);
-    return job;
-  },
-  updateJob: (id: string, patch: Partial<Job> & { appendLog?: string }) => {
-    const job = jobs.get(id)!;
-    const { appendLog, ...rest } = patch;
-    Object.assign(job, rest);
-    if (appendLog) job.log.push(appendLog);
-    return job;
-  },
-  getJob: (id: string) => jobs.get(id)!,
-}));
 
 const { createTestApp, signUpUser } = await import('./helpers.js');
 
@@ -65,8 +48,8 @@ describe('NocoDB migration routes', () => {
     expect(job.kind).toBe('nocodb-migration');
 
     // Wait for the background run to finish (it fails here unless the real data engine is present).
-    for (let i = 0; i < 200 && !['done', 'failed'].includes(jobs.get(job.id)!.status); i++) await new Promise((r) => setTimeout(r, 10));
-    const final = jobs.get(job.id)!;
+    for (let i = 0; i < 200 && !['done', 'failed'].includes(getJob(job.id).status); i++) await new Promise((r) => setTimeout(r, 10));
+    const final = getJob(job.id);
     expect(['done', 'failed']).toContain(final.status);
     expect(JSON.stringify(final)).not.toContain(MOCK_TOKEN);
 
