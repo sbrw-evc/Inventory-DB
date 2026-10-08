@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { DialogHost } from './components/dialogs';
 import { useLang } from './i18n';
@@ -9,6 +10,13 @@ import { BasePage } from './pages/BasePage';
 import { HomePage } from './pages/HomePage';
 import { NetboxPlaceholder } from './pages/NetboxPlaceholder';
 import { SharedFormPage, SharedViewPage } from './pages/SharedPages';
+
+// DCIM/IPAM pages load on demand to keep the spreadsheet bundle small.
+const DcimRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.DcimRoutes })));
+const IpamRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.IpamRoutes })));
+const TenancyRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.TenancyRoutes })));
+const ExtrasRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.ExtrasRoutes })));
+const lazyPage = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
 export function App() {
   // Re-mount on language change so every string re-renders in the new language.
@@ -25,12 +33,10 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="/base/:baseId/*" element={<BasePage />} />
           </Route>
-          {/* NetBox mount points: swap the placeholders for DcimRoutes / IpamRoutes / TenancyRoutes / ExtrasRoutes
-              exported from web/src/netbox/NetboxRoutes.tsx. */}
-          <Route path="/dcim/*" element={<NetboxPlaceholder section="DCIM" />} />
-          <Route path="/ipam/*" element={<NetboxPlaceholder section="IPAM" />} />
-          <Route path="/tenancy/*" element={<NetboxPlaceholder section="Tenancy" />} />
-          <Route path="/extras/*" element={<NetboxPlaceholder section="Extras" />} />
+          <Route path="/dcim/*" element={lazyPage(<DcimRoutes />)} />
+          <Route path="/ipam/*" element={lazyPage(<IpamRoutes />)} />
+          <Route path="/tenancy/*" element={lazyPage(<TenancyRoutes />)} />
+          <Route path="/extras/*" element={lazyPage(<ExtrasRoutes />)} />
           <Route path="/integrations/*" element={<NetboxPlaceholder section="Integrations" />} />
           <Route path="/admin/*" element={<AdminPage />} />
           <Route path="/account/tokens" element={<Navigate to="/admin/tokens" replace />} />
