@@ -2,7 +2,8 @@ node_modules/
 dist/
 *.db
 *.db-*
-data/
+/data/
+server/data/
 .env
 coverage/
 .claude/worktrees/
