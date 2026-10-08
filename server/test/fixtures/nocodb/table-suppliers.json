@@ -1,0 +1,49 @@
+{
+  "id": "mdsupp02",
+  "source_id": "bsrc0001",
+  "base_id": "pinv0001",
+  "table_name": "nc_inv___Suppliers",
+  "title": "Suppliers",
+  "type": "table",
+  "enabled": true,
+  "mm": false,
+  "order": 2,
+  "columns": [
+    { "id": "clsid001", "fk_model_id": "mdsupp02", "title": "Id", "column_name": "id", "uidt": "ID", "dt": "int4", "pk": true, "ai": true, "rqd": true, "system": false, "order": 1 },
+    { "id": "clsnam02", "fk_model_id": "mdsupp02", "title": "Name", "column_name": "name", "uidt": "SingleLineText", "dt": "text", "pv": true, "system": false, "order": 2 },
+    {
+      "id": "clsprd03",
+      "fk_model_id": "mdsupp02",
+      "title": "Products",
+      "column_name": "Products",
+      "uidt": "Links",
+      "system": false,
+      "order": 3,
+      "meta": { "singular": "Product", "plural": "Products" },
+      "colOptions": {
+        "id": "ln_hm_1",
+        "type": "hm",
+        "virtual": false,
+        "fk_column_id": "clsprd03",
+        "fk_child_column_id": "clpsfk10",
+        "fk_parent_column_id": "clsid001",
+        "fk_related_model_id": "mdprod01"
+      }
+    },
+    {
+      "id": "clscnt04",
+      "fk_model_id": "mdsupp02",
+      "title": "Product Count",
+      "column_name": "Product Count",
+      "uidt": "Rollup",
+      "system": false,
+      "order": 4,
+      "colOptions": { "id": "ru_1", "fk_column_id": "clscnt04", "fk_relation_column_id": "clsprd03", "fk_rollup_column_id": "clptit02", "rollup_function": "count" }
+    },
+    { "id": "clssin05", "fk_model_id": "mdsupp02", "title": "Since", "column_name": "since", "uidt": "Date", "dt": "date", "system": false, "order": 5, "meta": { "date_format": "YYYY-MM-DD" } },
+    { "id": "clsown06", "fk_model_id": "mdsupp02", "title": "Owner", "column_name": "owner", "uidt": "User", "dt": "text", "system": false, "order": 6, "meta": { "is_multi": false, "notify": false } },
+    { "id": "clscrt07", "fk_model_id": "mdsupp02", "title": "CreatedAt", "column_name": "created_at", "uidt": "CreatedTime", "system": true, "order": 7 },
+    { "id": "clsupd08", "fk_model_id": "mdsupp02", "title": "UpdatedAt", "column_name": "updated_at", "uidt": "LastModifiedTime", "system": true, "order": 8 }
+  ],
+  "views": []
+}

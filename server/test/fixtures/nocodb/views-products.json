@@ -1,0 +1,9 @@
+{
+  "list": [
+    { "id": "vwpgrid1", "source_id": "bsrc0001", "base_id": "pinv0001", "fk_model_id": "mdprod01", "title": "Products", "type": 3, "is_default": true, "show_system_fields": false, "lock_type": "collaborative", "order": 1, "meta": {}, "created_at": "2024-01-10 09:00:00+00:00" },
+    { "id": "vwpstk02", "source_id": "bsrc0001", "base_id": "pinv0001", "fk_model_id": "mdprod01", "title": "In stock", "type": 3, "is_default": false, "lock_type": "locked", "order": 2, "meta": {} },
+    { "id": "vwpkan03", "source_id": "bsrc0001", "base_id": "pinv0001", "fk_model_id": "mdprod01", "title": "By category", "type": 4, "is_default": false, "lock_type": "collaborative", "order": 3, "meta": {} },
+    { "id": "vwpmap04", "source_id": "bsrc0001", "base_id": "pinv0001", "fk_model_id": "mdprod01", "title": "Warehouses map", "type": 5, "is_default": false, "lock_type": "collaborative", "order": 4, "meta": {} }
+  ],
+  "pageInfo": { "totalRows": 4, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}

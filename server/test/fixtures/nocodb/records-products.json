@@ -1,0 +1,48 @@
+[
+  {
+    "Id": 1,
+    "Title": "Widget",
+    "Price": 9.5,
+    "Category": "Hardware",
+    "Tags": "new,sale",
+    "InStock": true,
+    "Photo": [{ "url": "https://cdn.example.com/nc/uploads/widget.png", "title": "widget.png", "mimetype": "image/png", "size": 1234, "signedUrl": "https://cdn.example.com/nc/uploads/widget.png?sig=abc" }],
+    "Quantity": 10,
+    "Supplier": { "Id": 1, "Name": "Acme" },
+    "Total": 95,
+    "Supplier Name": "Acme",
+    "Barcode": "Widget",
+    "CreatedAt": "2024-01-11 10:00:00+00:00",
+    "UpdatedAt": "2024-01-12 10:00:00+00:00"
+  },
+  {
+    "Id": 2,
+    "Title": "Gadget",
+    "Price": 4.25,
+    "Category": "Software",
+    "Tags": "eco",
+    "InStock": false,
+    "Photo": null,
+    "Quantity": 3,
+    "Supplier": { "Id": 1, "Name": "Acme" },
+    "Total": 12.75,
+    "Supplier Name": "Acme",
+    "CreatedAt": "2024-01-11 11:00:00+00:00",
+    "UpdatedAt": "2024-01-11 11:00:00+00:00"
+  },
+  {
+    "Id": 3,
+    "Title": "Gizmo",
+    "Price": 20,
+    "Category": null,
+    "Tags": null,
+    "InStock": true,
+    "Photo": [{ "path": "download/noco/inventory/Products/Photo/gizmo.jpg", "title": "gizmo.jpg", "mimetype": "image/jpeg", "size": 2048, "signedPath": "dltemp/abc/gizmo.jpg" }],
+    "Quantity": 0,
+    "Supplier": null,
+    "Total": 0,
+    "Supplier Name": null,
+    "CreatedAt": "2024-01-11 12:00:00+00:00",
+    "UpdatedAt": "2024-01-11 12:00:00+00:00"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "list": [
+    { "id": "gcl01", "fk_view_id": "vwpstk02", "fk_column_id": "clptit02", "show": true, "order": 1, "width": "240px", "group_by": false },
+    { "id": "gcl02", "fk_view_id": "vwpstk02", "fk_column_id": "clppri03", "show": true, "order": 2, "width": "120px", "group_by": false },
+    { "id": "gcl03", "fk_view_id": "vwpstk02", "fk_column_id": "clpcat04", "show": true, "order": 3, "width": "180px", "group_by": true, "group_by_order": 1, "group_by_sort": "desc" },
+    { "id": "gcl04", "fk_view_id": "vwpstk02", "fk_column_id": "clptag05", "show": true, "order": 4, "width": "200px" },
+    { "id": "gcl05", "fk_view_id": "vwpstk02", "fk_column_id": "clpstk06", "show": false, "order": 5, "width": "120px" },
+    { "id": "gcl06", "fk_view_id": "vwpstk02", "fk_column_id": "clppho07", "show": false, "order": 6, "width": "200px" },
+    { "id": "gcl07", "fk_view_id": "vwpstk02", "fk_column_id": "clpqty08", "show": true, "order": 7, "width": "120px" },
+    { "id": "gcl08", "fk_view_id": "vwpstk02", "fk_column_id": "clpsup09", "show": true, "order": 8, "width": "200px" },
+    { "id": "gcl09", "fk_view_id": "vwpstk02", "fk_column_id": "clptot11", "show": true, "order": 9, "width": "120px" },
+    { "id": "gcl10", "fk_view_id": "vwpstk02", "fk_column_id": "clpcrt14", "show": false, "order": 14, "width": "200px" }
+  ]
+}

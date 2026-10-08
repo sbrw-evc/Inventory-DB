@@ -1,0 +1,11 @@
+{
+  "fk_view_id": "vwpkan03",
+  "base_id": "pinv0001",
+  "source_id": "bsrc0001",
+  "fk_grp_col_id": "clpcat04",
+  "fk_cover_image_col_id": "clppho07",
+  "show": true,
+  "order": null,
+  "title": "By category",
+  "meta": "{\"clpcat04\":[{\"id\":\"uncategorized\",\"title\":\"Uncategorized\",\"order\":0,\"color\":\"#c2f5e9\",\"collapsed\":false},{\"id\":\"sl_sw\",\"title\":\"Software\",\"order\":1,\"color\":\"#d0f1fd\",\"collapsed\":false},{\"id\":\"sl_hw\",\"title\":\"Hardware\",\"order\":2,\"color\":\"#cfdffe\",\"collapsed\":false}]}"
+}

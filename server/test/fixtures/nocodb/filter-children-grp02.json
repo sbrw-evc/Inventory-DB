@@ -1,0 +1,6 @@
+{
+  "list": [
+    { "id": "fltpri04", "fk_view_id": "vwpstk02", "fk_column_id": "clppri03", "fk_parent_id": "fltgrp02", "logical_op": "or", "comparison_op": "gt", "comparison_sub_op": null, "value": "5", "is_group": false, "order": 1 },
+    { "id": "flttag05", "fk_view_id": "vwpstk02", "fk_column_id": "clptag05", "fk_parent_id": "fltgrp02", "logical_op": "or", "comparison_op": "anyof", "comparison_sub_op": null, "value": "sale,eco", "is_group": false, "order": 2 }
+  ]
+}
