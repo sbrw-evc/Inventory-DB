@@ -28,4 +28,4 @@ npm run build && npm start   # serves the built web app from the API server
 ```
 
 Environment: `PORT` (8080), `DB_PATH` (`data/inventory.db`), `JWT_SECRET` (set in production),
-`UPLOAD_DIR` (`data/uploads`).
+`UPLOAD_DIR` (`data/uploads`), `WEBHOOK_ALLOW_PRIVATE=1` (let webhooks call private/internal addresses; off by default).

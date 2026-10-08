@@ -183,6 +183,23 @@ describe('sharing (no data engine needed)', () => {
     const gone = await app.inject({ method: 'GET', url: `/api/v1/public/views/${shareUuid}` });
     expect(gone.statusCode).toBe(404);
   });
+  it('locks out a client after repeated wrong share passwords', async () => {
+    const app = await createTestApp();
+    const owner = await signUpUser(app);
+    const s = seedBase(owner.userId);
+    const shared = await app.inject({ method: 'POST', url: `/api/v1/views/${s.viewId}/share`, headers: owner.headers, payload: { password: 'secret1' } });
+    const meta = `/api/v1/public/views/${shared.json().shareUuid}`;
+
+    const ok = await app.inject({ method: 'GET', url: meta, headers: { 'xc-password': 'secret1' } });
+    expect(ok.statusCode).toBe(200);
+    for (let i = 0; i < 10; i++) {
+      const bad = await app.inject({ method: 'GET', url: meta, headers: { 'xc-password': `wrong${i}` } });
+      expect(bad.statusCode).toBe(401);
+    }
+    const locked = await app.inject({ method: 'GET', url: meta, headers: { 'xc-password': 'secret1' } });
+    expect(locked.statusCode).toBe(429);
+    expect(locked.json().error).toBe('TOO_MANY_ATTEMPTS');
+  });
 });
 
 describe('openapi docs', () => {

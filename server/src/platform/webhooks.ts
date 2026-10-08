@@ -8,6 +8,7 @@ import { bus, type RecordEventContext } from '../events.js';
 import { notFound } from '../errors.js';
 import { doc } from './docs.js';
 import { matchesFilter } from './filterEval.js';
+import { assertPublicUrl } from './netguard.js';
 
 export const WEBHOOK_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_CHARS = 2000;
@@ -131,6 +132,7 @@ export async function deliver(hook: Webhook, event: WebhookEvent, payload: unkno
   let error: string | null = null;
   let response: string | null = null;
   try {
+    await assertPublicUrl(hook.url);
     const res = await fetch(hook.url, {
       method: hook.method || 'POST',
       headers: { 'content-type': 'application/json', 'user-agent': 'Inventory-DB-Webhook/1.0', ...hook.headers },

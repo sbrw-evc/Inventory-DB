@@ -19,15 +19,39 @@ interface SharedRow {
   share_password_hash: string | null;
 }
 
+/** Wrong share passwords per (share, client IP) within a sliding window; in memory, per process. */
+const MAX_PASSWORD_FAILURES = 10;
+const FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const failures = new Map<string, number[]>();
+
+function recentFailures(key: string): number[] {
+  const cutoff = Date.now() - FAILURE_WINDOW_MS;
+  const list = (failures.get(key) ?? []).filter((t) => t > cutoff);
+  if (list.length) failures.set(key, list);
+  else failures.delete(key);
+  return list;
+}
+
+const tooManyFailures = (key: string) => recentFailures(key).length >= MAX_PASSWORD_FAILURES;
+
+function recordFailure(key: string) {
+  failures.set(key, [...recentFailures(key), Date.now()]);
+}
+
 /** Resolve a share uuid and check the optional password (`xc-password` header). */
 async function resolveShare(req: FastifyRequest, uuid: string): Promise<SharedRow> {
   const row = getDb().prepare('SELECT id, table_id, type, share_password_hash FROM nc_views WHERE share_uuid = ?').get(uuid) as SharedRow | undefined;
   if (!row) throw notFound('Shared view');
   if (row.share_password_hash) {
     const given = req.headers['xc-password'];
-    if (typeof given !== 'string' || !given || !(await bcrypt.compare(given, row.share_password_hash))) {
+    if (typeof given !== 'string' || !given) throw new HttpError(401, 'PASSWORD_REQUIRED', 'This shared view is password protected');
+    const key = `${uuid}|${req.ip}`;
+    if (tooManyFailures(key)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many wrong passwords, try again later');
+    if (!(await bcrypt.compare(given, row.share_password_hash))) {
+      recordFailure(key);
       throw new HttpError(401, 'PASSWORD_REQUIRED', 'This shared view is password protected');
     }
+    failures.delete(key);
   }
   return row;
 }
