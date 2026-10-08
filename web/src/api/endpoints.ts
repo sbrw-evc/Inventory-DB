@@ -181,8 +181,11 @@ export const platformApi = {
     http.post<Comment>(`/tables/${enc(tableId)}/records/${id}/comments`, { body }),
   deleteComment: (commentId: string) => http.del<{ ok: true }>(`/comments/${enc(commentId)}`),
   recordAudit: (tableId: string, id: number) => http.get<AuditEntry[]>(`/tables/${enc(tableId)}/records/${id}/audit`),
+  /** The contract doesn't pin the shape; accept a plain array or a `{ list }` page. */
   baseAudit: (baseId: string, q: { offset?: number; limit?: number }) =>
-    http.get<AuditEntry[]>(`/bases/${enc(baseId)}/audit${buildQuery(q)}`),
+    http
+      .get<AuditEntry[] | { list: AuditEntry[] }>(`/bases/${enc(baseId)}/audit${buildQuery(q)}`)
+      .then((r) => (Array.isArray(r) ? r : (r?.list ?? []))),
 
   importPreview: (baseId: string, file: File) => {
     const form = new FormData();

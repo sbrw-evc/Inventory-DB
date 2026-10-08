@@ -1,4 +1,5 @@
-import type { QueryKey } from '@tanstack/react-query';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Base, Column, Table, View } from '@shared';
 import { toastError } from '../lib/toast';
@@ -56,6 +57,10 @@ export function useApiMutation<TVars, TResult>(
 /** Cache helpers for the `GET /bases/:id` payload (tables → columns + views). */
 export function useBaseCache() {
   const qc = useQueryClient();
+  return useMemo(() => baseCache(qc), [qc]);
+}
+
+function baseCache(qc: QueryClient) {
   const patch = (baseId: string, fn: (b: BaseWithTables) => BaseWithTables) =>
     qc.setQueryData<BaseWithTables>(qk.base(baseId), (old) => (old ? fn(old) : old));
   return {
