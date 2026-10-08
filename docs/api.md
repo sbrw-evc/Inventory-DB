@@ -125,3 +125,17 @@ NocoDB endpoints used: `GET /api/v2/meta/workspaces`, `/meta/workspaces/{id}/bas
 `/meta/tables/{tableId}/views`, `/meta/views/{viewId}/filters|sorts|columns`, `/meta/filters/{groupId}/children`,
 `/meta/kanbans|galleries|forms|calendars/{viewId}`, `/tables/{tableId}/records?offset&limit`,
 `/tables/{tableId}/links/{linkFieldId}/records/{recordId}`.
+
+## Integrations [integrations]
+Details and the Umbrella-side setup: [integrations.md](integrations.md).
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | /integrations | user | the caller's integrations |
+| POST | /integrations | user | `{kind:'umbrella', title, active?, umbrellaUrl?, inventoryUrl?}` → `{integration, secret}` (secret shown once) |
+| GET/PATCH/DELETE | /integrations/:id | creator | |
+| POST | /integrations/:id/rotate-secret | creator | → `{secret}` |
+| GET | /integrations/:id/umbrella/ci | user | CMDB feed: `query offset, limit (≤5000)` → `UmbrellaCiFeed` built from the DCIM/IPAM API as the caller |
+| POST | /integrations/:id/umbrella/alerts | HMAC | `UmbrellaAlertEvent` or an array (≤500); headers `x-umbrella-timestamp`, `x-umbrella-signature` → 202 `{results:[{alert_id, matched}]}` |
+| GET | /integrations/:id/umbrella/unmatched | creator | alerts whose CI matched no device |
+| GET | /integrations/umbrella/status | user | `query object_type (dcim.device), ids?` → `MonitoringStatus[]` (each also carries `object_id, status, open_alerts, incident_url` for the DCIM chips) |
+| GET | /integrations/umbrella/status/:objectType/:objectId | user | `MonitoringStatus & {history}` |

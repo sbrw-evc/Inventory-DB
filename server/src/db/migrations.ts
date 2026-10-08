@@ -143,4 +143,44 @@ export const migrations: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  // Integrations (Umbrella monitoring): connection settings and alert state pushed by Umbrella.
+  `
+  CREATE TABLE nc_integrations (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    config TEXT NOT NULL DEFAULT '{}',
+    secret_enc TEXT NOT NULL,
+    created_by TEXT NOT NULL REFERENCES nc_users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE nc_monitoring_alerts (
+    integration_id TEXT NOT NULL REFERENCES nc_integrations(id) ON DELETE CASCADE,
+    alert_id TEXT NOT NULL,
+    object_type TEXT NOT NULL,
+    object_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    signal TEXT,
+    incident_url TEXT,
+    grafana_url TEXT,
+    first_seen TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (integration_id, alert_id, object_type, object_id)
+  );
+  CREATE INDEX nc_monitoring_alerts_object ON nc_monitoring_alerts(object_type, object_id, status);
+
+  -- Alerts whose CI matched no inventory object; shown to the integration owner to fix identities.
+  CREATE TABLE nc_monitoring_unmatched (
+    integration_id TEXT NOT NULL REFERENCES nc_integrations(id) ON DELETE CASCADE,
+    alert_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    ci TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    PRIMARY KEY (integration_id, alert_id)
+  );
+  `,
 ];
