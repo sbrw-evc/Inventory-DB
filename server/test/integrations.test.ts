@@ -175,6 +175,10 @@ describe('integrations: alerts from Umbrella', () => {
     expect(s100.alerts.map((a: any) => a.alertId)).toEqual(['a2', 'a1']);
     expect(s100.alerts[1]).toMatchObject({ incidentUrl: 'https://umbrella.example/incidents/a1', signal: 'use.cpu.utilization' });
     expect(s101).toMatchObject({ objectId: 101, state: 'ok', alerts: [] });
+    // The DCIM device chips read object_id / status / open_alerts / incident_url.
+    expect(s100).toMatchObject({ object_id: 100, status: 'critical', open_alerts: 2 });
+    expect(s100.incident_url).toMatch(/^https:\/\/umbrella\.example\/incidents\//);
+    expect(s101).toMatchObject({ object_id: 101, status: 'ok', open_alerts: 0, incident_url: null });
 
     // Resolve a2; an older, out-of-order "open" for a2 must not reopen it.
     await app.inject({ method: 'POST', url, ...signed(secret, alert({ alert_id: 'a2', status: 'resolved', severity: 'critical', updated_at: '2026-10-08T10:05:00Z' })) });

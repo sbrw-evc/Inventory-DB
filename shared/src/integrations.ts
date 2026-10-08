@@ -94,4 +94,9 @@ export interface MonitoringStatus {
   state: MonitoringState;
   /** Active (open or acknowledged) alerts, worst first. */
   alerts: MonitoringAlert[];
+  /** The same state in the shape the DCIM status chips read (see docs/netbox.md). */
+  object_id: number;
+  status: MonitoringState;
+  open_alerts: number;
+  incident_url: string | null;
 }

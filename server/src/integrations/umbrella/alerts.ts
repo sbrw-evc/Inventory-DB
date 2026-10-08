@@ -165,7 +165,16 @@ export function monitoringStatus(type: InventoryObjectType, ids?: number[]): Mon
   return [...byObject].map(([objectId, alerts]) => {
     alerts.sort(worstFirst);
     const state: MonitoringState = alerts[0]?.severity ?? 'ok';
-    return { objectType: type, objectId, state, alerts };
+    return {
+      objectType: type,
+      objectId,
+      state,
+      alerts,
+      object_id: objectId,
+      status: state,
+      open_alerts: alerts.length,
+      incident_url: alerts.find((a) => a.incidentUrl)?.incidentUrl ?? null,
+    };
   });
 }
 
