@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { AuditEntry, FieldType, RecordData } from '../../../shared/src/index.js';
 import { isReadOnlyType } from '../../../shared/src/index.js';
-import { requireBaseRole, requireTableRole } from '../auth/plugin.js';
+import { requireBaseRole, requireTableAccess } from '../auth/plugin.js';
+import { hiddenColumnIds, stripHidden } from '../data/access.js';
 import { getDb, json, newId, now } from '../db/index.js';
 import { bus, type RecordEventContext } from '../events.js';
 import { notFound } from '../errors.js';
@@ -176,10 +177,16 @@ export async function auditRoutes(app: FastifyInstance) {
     '/api/v1/tables/:tableId/records/:id/audit',
     { schema: doc('Audit', 'History of one record, newest first') },
     async (req) => {
-      requireTableRole(req, req.params.tableId, 'viewer');
+      const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
       const id = Number(req.params.id);
       if (!Number.isInteger(id)) throw notFound('Record');
-      return recordAudit(req.params.tableId, id);
+      const entries = recordAudit(req.params.tableId, id);
+      const hidden = hiddenColumnIds(req.params.tableId, { role });
+      if (!hidden.size) return entries;
+      // Field permissions: drop values of fields the caller can't see.
+      return entries
+        .filter((e) => !(e.action === 'link' || e.action === 'unlink') || !hidden.has((e.details as { columnId?: string })?.columnId ?? ''))
+        .map((e) => (e.details && typeof e.details === 'object' && !Array.isArray(e.details) && e.action !== 'link' && e.action !== 'unlink' ? { ...e, details: stripHidden(e.details as Record<string, unknown>, hidden) } : e));
     },
   );
 

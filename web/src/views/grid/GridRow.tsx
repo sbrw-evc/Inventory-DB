@@ -1,6 +1,6 @@
 import { memo, useRef, type CSSProperties } from 'react';
 import type { RecordData } from '@shared';
-import { isReadOnlyType } from '@shared';
+import { isFieldLocked, isFieldReadOnlyFor } from '@shared';
 import { CellDisplay } from '../../cells/CellDisplay';
 import { Icon } from '../../components/Icon';
 import { t } from '../../i18n';
@@ -26,14 +26,16 @@ function GridCell({ section, rowIndex, colIndex, rc, row, left, sticky, isActive
   const ref = useRef<HTMLDivElement>(null);
   const { column } = rc;
   const value = row[column.id];
-  const canEdit = g.perms.canEdit && !isReadOnlyType(column.type);
+  const canEdit = g.perms.canEdit && !isFieldLocked(column, g.perms.role);
+  const lockedByPermission = g.perms.canEdit && isFieldReadOnlyFor(column, g.perms.role);
   const here = { section, row: rowIndex, col: colIndex };
   const inline = isEditing && INLINE_TYPES.has(column.type);
   const style: CSSProperties = { width: rc.width, ...(sticky ? { left } : {}) };
   return (
     <div
       ref={ref}
-      className={`grid-cell ${sticky ? 'sticky-col primary-col' : ''} ${isActive ? 'active' : ''} ${isEditing ? 'editing' : ''}`}
+      className={`grid-cell ${sticky ? 'sticky-col primary-col' : ''} ${isActive ? 'active' : ''} ${isEditing ? 'editing' : ''} ${lockedByPermission ? 'cell-readonly' : ''}`}
+      title={lockedByPermission && isActive ? t('Read-only field') : undefined}
       style={style}
       data-cell={`${section}:${rowIndex}:${colIndex}`}
       onMouseDown={(e) => {

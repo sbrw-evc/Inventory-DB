@@ -3,7 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import Papa from 'papaparse';
 import { PassThrough, Readable } from 'node:stream';
 import type { RecordData } from '../../../shared/src/index.js';
-import { requireViewRole } from '../auth/plugin.js';
+import { requireUser, requireViewRole } from '../auth/plugin.js';
+import { getBaseRole } from '../auth/service.js';
 import { listRecords } from '../data/records.js';
 import { badRequest } from '../errors.js';
 import { getTable, getView } from '../meta/service.js';
@@ -63,12 +64,13 @@ export async function exportRoutes(app: FastifyInstance) {
     '/api/v1/views/:viewId/export',
     { schema: doc('Export', 'Download all rows of a view as CSV or XLSX (respects filters, sorts and hidden fields)') },
     async (req, reply) => {
-      const { tableId } = requireViewRole(req, req.params.viewId, 'viewer');
+      const { tableId, baseId } = requireViewRole(req, req.params.viewId, 'viewer');
+      const role = getBaseRole(baseId, requireUser(req).id) ?? 'viewer';
       const format = (req.query.format ?? 'csv').toLowerCase();
       if (format !== 'csv' && format !== 'xlsx') throw badRequest('format must be csv or xlsx');
       const view = getView(req.params.viewId);
       const table = getTable(tableId);
-      const cols = shownColumns(table, view);
+      const cols = shownColumns(table, view, { role });
       const filename = `${table.title} - ${view.title}.${format}`;
       reply.header('Content-Disposition', contentDisposition(filename));
       if (format === 'csv') {

@@ -2,6 +2,7 @@
  * Value conversion between the API shape and the SQLite storage shape, per field type.
  */
 import type { Attachment, FieldType, SelectOption } from '../../../shared/src/index.js';
+import { formatGeo, parseGeo } from '../../../shared/src/index.js';
 import { newId } from '../db/index.js';
 import { badRequest } from '../errors.js';
 import type { ColumnMeta } from '../meta/store.js';
@@ -205,6 +206,12 @@ export function toStored(col: ColumnMeta, v: unknown, opts: CoerceOpts): string 
         } else return invalid(col, v, opts, 'attachments must be URLs or {url, title}');
       }
       return out.length ? JSON.stringify(out) : null;
+    }
+    case 'GeoData': {
+      if (v === '') return null;
+      const p = parseGeo(v);
+      if (!p) return invalid(col, v, opts, 'expected "latitude;longitude" (−90..90; −180..180)');
+      return formatGeo(p);
     }
     case 'JSON': {
       if (typeof v === 'string') {

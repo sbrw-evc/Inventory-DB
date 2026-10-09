@@ -978,11 +978,15 @@ body.side-resizing .app-body { transition: none; }
 .view-icon-gallery { color: #d97706; }
 .view-icon-kanban { color: #16a34a; }
 .view-icon-calendar { color: #dc2626; }
+.view-icon-timeline { color: #0891b2; }
+.view-icon-map { color: #0d9488; }
 :root[data-theme='dark'] .view-icon-grid { color: #7ea3ff; }
 :root[data-theme='dark'] .view-icon-form { color: #c084fc; }
 :root[data-theme='dark'] .view-icon-gallery { color: #fbbf24; }
 :root[data-theme='dark'] .view-icon-kanban { color: #4ade80; }
 :root[data-theme='dark'] .view-icon-calendar { color: #f87171; }
+:root[data-theme='dark'] .view-icon-timeline { color: #22d3ee; }
+:root[data-theme='dark'] .view-icon-map { color: #2dd4bf; }
 
 /* Layout wrappers kept for feature pages */
 .bases-layout,

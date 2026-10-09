@@ -1,0 +1,16 @@
+/* Calendar: multi-day records (end date field) repeat on each day with squared joining edges. */
+.calendar-item.calendar-span-start {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.calendar-item.calendar-span-middle {
+  border-radius: 0;
+}
+.calendar-item.calendar-span-end {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.calendar-item.calendar-span-middle,
+.calendar-item.calendar-span-end {
+  opacity: 0.85;
+}

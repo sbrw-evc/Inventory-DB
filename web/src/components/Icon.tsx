@@ -82,7 +82,9 @@ const ICONS: Record<string, LucideIcon> = {
   plug: L.Plug,
   info: L.Info,
   alert: L.TriangleAlert,
-  map: L.MapPin,
+  map: L.Map,
+  mapPin: L.MapPin,
+  timeline: L.ChartGantt,
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {
@@ -124,6 +126,7 @@ const FIELD_ICONS: Record<FieldType, string> = {
   Lookup: 'lookup',
   Rollup: 'sigma',
   Formula: 'function',
+  GeoData: 'mapPin',
 };
 
 export const FIELD_LABELS: Record<FieldType, string> = {
@@ -151,6 +154,7 @@ export const FIELD_LABELS: Record<FieldType, string> = {
   Lookup: 'Lookup',
   Rollup: 'Rollup',
   Formula: 'Formula',
+  GeoData: 'Geo data',
 };
 
 export function FieldIcon({ type, size = 14 }: { type: FieldType; size?: number }) {
@@ -163,6 +167,8 @@ export const VIEW_ICONS: Record<ViewType, string> = {
   gallery: 'gallery',
   kanban: 'kanban',
   calendar: 'calendar',
+  timeline: 'timeline',
+  map: 'map',
 };
 
 export const VIEW_LABELS: Record<ViewType, string> = {
@@ -171,6 +177,8 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   gallery: 'Gallery',
   kanban: 'Kanban',
   calendar: 'Calendar',
+  timeline: 'Timeline',
+  map: 'Map',
 };
 
 export function ViewIcon({ type, size = 15 }: { type: ViewType; size?: number }) {

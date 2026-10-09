@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useRouteIds } from '../lib/useRouteIds';
 import type { Base, Table, View, ViewType } from '@shared';
+import { VIEW_TYPES } from '@shared';
 import { metaApi } from '../api/endpoints';
 import { qk, useBase, useBases } from '../api/hooks';
 import { t } from '../i18n';
@@ -16,7 +17,6 @@ import { MigrateDialog } from './MigrateDialog';
 import { Dropdown, MenuDivider, MenuItem } from './Popover';
 
 const EXPANDED_KEY = 'inventorydb.sidebar.expanded';
-const VIEW_TYPES: ViewType[] = ['grid', 'form', 'gallery', 'kanban', 'calendar'];
 
 function loadExpanded(): string[] {
   try {
