@@ -20,35 +20,42 @@ See [docs/plan.md](docs/plan.md) for the feature plan and [docs/api.md](docs/api
 
 ## Development
 
+The app stores everything in PostgreSQL (14 or newer). For development, start one with the default credentials:
+
 ```bash
+docker run -d --name inventory-pg -p 5432:5432 \
+  -e POSTGRES_USER=inventory -e POSTGRES_PASSWORD=inventory -e POSTGRES_DB=inventory postgres:16-alpine
 npm install
 npm run dev        # API on :8080, web on :5173 (proxies /api)
-npm test
+npm test           # each test file runs in its own temporary schema
 npm run build && npm start   # serves the built web app from the API server
 ```
 
-Environment: `PORT` (8080), `DB_PATH` (`data/inventory.db`), `JWT_SECRET` (set in production),
-`UPLOAD_DIR` (`data/uploads`), `WEBHOOK_ALLOW_PRIVATE=1` (let webhooks call private/internal addresses; off by default).
+Environment: `DATABASE_URL` (`postgres://inventory:inventory@localhost:5432/inventory`), `TEST_DATABASE_URL`
+(tests; defaults to `DATABASE_URL`), `PORT` (8080), `JWT_SECRET` (set in production), `UPLOAD_DIR` (`data/uploads`),
+`WEBHOOK_ALLOW_PRIVATE=1` (let webhooks call private/internal addresses; off by default).
+
+The schema is created and migrated on startup.
 
 ## Deployment (Docker Compose)
 
 ```bash
-cp .env.example .env               # set JWT_SECRET (openssl rand -hex 32)
+cp .env.example .env               # set JWT_SECRET and POSTGRES_PASSWORD
 docker compose up -d --build       # app on http://localhost:8080 (INVENTORY_PORT to change)
 docker compose logs -f inventory-db
 ```
 
-The image builds the server and the web app and serves both from one container. The SQLite database
-(`/data/inventory.db` plus its WAL files) and uploaded attachments (`/data/uploads`) live in the named volume
-`inventory-data`, so they survive `docker compose down`, rebuilds and upgrades; only `docker compose down -v`
-deletes them.
+Compose runs two containers: `postgres` (PostgreSQL 16, not published outside the Compose network) and
+`inventory-db`, which builds the server and the web app and serves both. The database lives in the named volume
+`postgres-data` and uploaded attachments (`/data/uploads`) in `inventory-data`, so both survive
+`docker compose down`, rebuilds and upgrades; only `docker compose down -v` deletes them.
 
 Upgrade: `git pull && docker compose up -d --build`.
 
-Backup (consistent copy while the app runs):
+Backup and restore:
 
 ```bash
-docker compose exec inventory-db node -e "new (require('better-sqlite3'))('/data/inventory.db').backup('/data/backup.db').then(()=>console.log('ok'))"
-docker compose cp inventory-db:/data/backup.db ./inventory-backup.db
+docker compose exec -T postgres pg_dump -U inventory -Fc inventory > inventory.dump
+docker compose exec -T postgres pg_restore -U inventory -d inventory --clean --if-exists < inventory.dump
 ```
 

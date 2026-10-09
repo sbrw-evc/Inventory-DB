@@ -166,7 +166,7 @@ const SELECT = 'SELECT a.*, u.name AS user_name FROM nc_audit a LEFT JOIN nc_use
 
 export function recordAudit(tableId: string, recordId: number): AuditEntry[] {
   return (
-    getDb().prepare(`${SELECT} WHERE a.table_id = ? AND a.record_id = ? ORDER BY a.created_at DESC, a.rowid DESC LIMIT 500`).all(tableId, recordId) as AuditRow[]
+    getDb().prepare(`${SELECT} WHERE a.table_id = ? AND a.record_id = ? ORDER BY a.created_at DESC, a.seq DESC LIMIT 500`).all(tableId, recordId) as AuditRow[]
   ).map(toEntry);
 }
 
@@ -201,7 +201,7 @@ export async function auditRoutes(app: FastifyInstance) {
       const db = getDb();
       const total = (db.prepare('SELECT COUNT(*) AS n FROM nc_audit WHERE base_id = ?').get(baseId) as { n: number }).n;
       const list = (
-        db.prepare(`${SELECT} WHERE a.base_id = ? ORDER BY a.created_at DESC, a.rowid DESC LIMIT ? OFFSET ?`).all(baseId, limit, offset) as AuditRow[]
+        db.prepare(`${SELECT} WHERE a.base_id = ? ORDER BY a.created_at DESC, a.seq DESC LIMIT ? OFFSET ?`).all(baseId, limit, offset) as AuditRow[]
       ).map(toEntry);
       return { list, pageInfo: { totalRows: total, offset, limit, isLastPage: offset + list.length >= total } };
     },

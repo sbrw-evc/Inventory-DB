@@ -1,16 +1,18 @@
 /**
- * Metadata schema. Append new migrations; never edit applied ones.
+ * Metadata schema (PostgreSQL). Append new migrations; never edit applied ones.
  * User data lives in generated tables: t_<tableId> (records), l_<columnId> (link junctions).
+ * Timestamps are ISO-8601 text and JSON documents are text, as the API exchanges them.
  */
 export const migrations: string[] = [
   `
   CREATE TABLE nc_users (
     id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    email TEXT NOT NULL,
     name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+  CREATE UNIQUE INDEX nc_users_email ON nc_users (lower(email));
 
   CREATE TABLE nc_api_tokens (
     id TEXT PRIMARY KEY,
@@ -25,7 +27,7 @@ export const migrations: string[] = [
     title TEXT NOT NULL,
     description TEXT,
     color TEXT,
-    "order" REAL NOT NULL DEFAULT 0,
+    "order" DOUBLE PRECISION NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
 
@@ -41,7 +43,7 @@ export const migrations: string[] = [
     base_id TEXT NOT NULL REFERENCES nc_bases(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
-    "order" REAL NOT NULL DEFAULT 0,
+    "order" DOUBLE PRECISION NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
 
@@ -55,7 +57,7 @@ export const migrations: string[] = [
     default_value TEXT,
     description TEXT,
     options TEXT NOT NULL DEFAULT '{}',
-    "order" REAL NOT NULL DEFAULT 0,
+    "order" DOUBLE PRECISION NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
 
@@ -64,7 +66,7 @@ export const migrations: string[] = [
     table_id TEXT NOT NULL REFERENCES nc_tables(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
-    "order" REAL NOT NULL DEFAULT 0,
+    "order" DOUBLE PRECISION NOT NULL DEFAULT 0,
     locked INTEGER NOT NULL DEFAULT 0,
     filter TEXT,
     sorts TEXT NOT NULL DEFAULT '[]',
@@ -81,7 +83,8 @@ export const migrations: string[] = [
     record_id INTEGER NOT NULL,
     user_id TEXT NOT NULL REFERENCES nc_users(id) ON DELETE CASCADE,
     body TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    seq BIGINT GENERATED ALWAYS AS IDENTITY
   );
   CREATE INDEX nc_comments_record ON nc_comments(table_id, record_id);
 
@@ -93,7 +96,8 @@ export const migrations: string[] = [
     user_id TEXT,
     action TEXT NOT NULL,
     details TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    seq BIGINT GENERATED ALWAYS AS IDENTITY
   );
   CREATE INDEX nc_audit_record ON nc_audit(table_id, record_id);
   CREATE INDEX nc_audit_base ON nc_audit(base_id, created_at);
@@ -119,7 +123,8 @@ export const migrations: string[] = [
     error TEXT,
     payload TEXT,
     response TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    seq BIGINT GENERATED ALWAYS AS IDENTITY
   );
 
   CREATE TABLE nc_jobs (
@@ -127,7 +132,7 @@ export const migrations: string[] = [
     user_id TEXT,
     kind TEXT NOT NULL,
     status TEXT NOT NULL,
-    progress REAL NOT NULL DEFAULT 0,
+    progress DOUBLE PRECISION NOT NULL DEFAULT 0,
     message TEXT NOT NULL DEFAULT '',
     log TEXT NOT NULL DEFAULT '[]',
     result TEXT,
@@ -138,7 +143,7 @@ export const migrations: string[] = [
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     mimetype TEXT,
-    size INTEGER,
+    size BIGINT,
     path TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
@@ -182,5 +187,49 @@ export const migrations: string[] = [
     received_at TEXT NOT NULL,
     PRIMARY KEY (integration_id, alert_id)
   );
+  `,
+  // Helpers used by the query and formula compilers. Values in user tables are loosely typed text (dates, JSON),
+  // so conversions return NULL instead of failing the whole query on one bad value.
+  `
+  CREATE FUNCTION nc_num(v text) RETURNS double precision LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $f$
+    SELECT CAST(substring(v FROM '^\\s*([-+]?(\\d+\\.?\\d*|\\.\\d+)([eE][-+]?\\d+)?)') AS double precision)
+  $f$;
+
+  CREATE FUNCTION nc_json(v text) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $f$
+  BEGIN
+    RETURN v::jsonb;
+  EXCEPTION WHEN others THEN
+    RETURN NULL;
+  END
+  $f$;
+
+  CREATE FUNCTION nc_ts(v text) RETURNS timestamptz LANGUAGE plpgsql STABLE PARALLEL SAFE AS $f$
+  BEGIN
+    IF v IS NULL OR v !~ '^\\s*\\d{4}-\\d{1,2}-\\d{1,2}' THEN RETURN NULL; END IF;
+    RETURN v::timestamptz;
+  EXCEPTION WHEN others THEN
+    RETURN NULL;
+  END
+  $f$;
+
+  CREATE FUNCTION nc_date(v text) RETURNS date LANGUAGE sql STABLE PARALLEL SAFE AS $f$
+    SELECT CAST(nc_ts(v) AS date)
+  $f$;
+
+  -- ISO-8601 UTC text, the format DateTime values are stored in.
+  CREATE FUNCTION nc_iso(v timestamptz) RETURNS text LANGUAGE sql STABLE PARALLEL SAFE AS $f$
+    SELECT to_char(v AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+  $f$;
+
+  -- Elements of a JSON array as text (empty for anything else).
+  CREATE FUNCTION nc_json_items(v text) RETURNS TABLE (value text) LANGUAGE sql STABLE PARALLEL SAFE AS $f$
+    SELECT e #>> '{}' FROM jsonb_array_elements(CASE WHEN jsonb_typeof(nc_json(v)) = 'array' THEN nc_json(v) ELSE '[]'::jsonb END) e
+  $f$;
+
+  -- Scalar values at any depth of a JSON document, with their JSON type.
+  CREATE FUNCTION nc_json_leaves(v text) RETURNS TABLE (value text, type text) LANGUAGE sql STABLE PARALLEL SAFE AS $f$
+    SELECT e #>> '{}', jsonb_typeof(e) FROM jsonb_path_query(COALESCE(nc_json(v), '[]'::jsonb), 'strict $.**') e
+    WHERE jsonb_typeof(e) NOT IN ('array', 'object')
+  $f$;
   `,
 ];

@@ -1,17 +1,38 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: inventory
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    volumes:
+      # PostgreSQL data directory: all inventory data.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory -d inventory"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   inventory-db:
     build: .
     image: inventory-db:latest
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "${INVENTORY_PORT:-8080}:8080"
     environment:
+      DATABASE_URL: postgres://inventory:${POSTGRES_PASSWORD}@postgres:5432/inventory
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
       INTEGRATION_KEY: ${INTEGRATION_KEY:-}
       WEBHOOK_ALLOW_PRIVATE: ${WEBHOOK_ALLOW_PRIVATE:-0}
     volumes:
-      # SQLite database (inventory.db + WAL files) and uploaded attachments.
+      # Uploaded attachments.
       - inventory-data:/data
 
 volumes:
+  postgres-data:
   inventory-data:

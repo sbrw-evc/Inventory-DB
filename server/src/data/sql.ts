@@ -6,16 +6,24 @@
 export interface Frag {
   sql: string;
   params: unknown[];
+  /** Result type, where the compiler knows it (column expressions, formulas). */
+  type?: SqlType;
 }
 
-export const raw = (sql: string): Frag => ({ sql, params: [] });
+/** Coarse SQL result types the compilers track to insert the casts PostgreSQL needs. */
+export type SqlType = 'num' | 'text' | 'bool';
 
-/** Bind a value. Booleans become 1/0 and objects become JSON since SQLite can't bind them. */
+export const raw = (sql: string, type?: SqlType): Frag => ({ sql, params: [], type });
+
+export const typed = (f: Frag, type: SqlType | undefined): Frag => ({ sql: f.sql, params: f.params, type });
+
+/** Bind a value. Booleans become 1/0 (the stored checkbox form) and objects become JSON text. */
 export function val(v: unknown): Frag {
-  if (typeof v === 'boolean') return { sql: '?', params: [v ? 1 : 0] };
-  if (v === undefined) return { sql: 'NULL', params: [] };
-  if (v !== null && typeof v === 'object') return { sql: '?', params: [JSON.stringify(v)] };
-  return { sql: '?', params: [v] };
+  if (typeof v === 'boolean') return { sql: '?', params: [v ? 1 : 0], type: 'num' };
+  if (v === undefined || v === null) return { sql: 'NULL', params: [] };
+  if (typeof v === 'object') return { sql: '?', params: [JSON.stringify(v)], type: 'text' };
+  if (typeof v === 'number') return { sql: Number.isInteger(v) ? '?' : 'CAST(? AS DOUBLE PRECISION)', params: [v], type: 'num' };
+  return { sql: '?', params: [v], type: typeof v === 'string' ? 'text' : undefined };
 }
 
 /** Tagged template: every interpolation must be a Frag. */

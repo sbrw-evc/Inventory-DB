@@ -4,8 +4,7 @@
  */
 import type { FilterGroup, GroupResult, ListQuery, ListResult, RecordData, Sort, View } from '../../../shared/src/index.js';
 import { SQL_TYPE } from '../../../shared/src/index.js';
-import type Database from 'better-sqlite3';
-import { dataColumnName, dataTableName, getDb, now, q } from '../db/index.js';
+import { type Statement, dataColumnName, dataTableName, getDb, now, q, syncIdSequence } from '../db/index.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { bus } from '../events.js';
 import { type ColumnMeta, findView, linkInfo, loadColumn, saveColumnOptions, tableRow } from '../meta/store.js';
@@ -67,7 +66,7 @@ function buildWhere(qc: QueryContext, tableId: string, w: WhereInput): Frag {
     if (s) parts.push(s);
   }
   if (w.extra) parts.push(sql`(${w.extra})`);
-  return parts.length ? join(parts, ' AND ') : raw('1');
+  return parts.length ? join(parts, ' AND ') : raw('TRUE');
 }
 
 function pickColumns(cols: ColumnMeta[], fields: string[] | undefined): ColumnMeta[] {
@@ -221,7 +220,7 @@ function writeLinks(col: ColumnMeta, recordId: number, ids: number[], mode: Link
   }
   const db = getDb();
   const clear = relation === 'hm' ? db.prepare(`DELETE FROM ${J} WHERE ${li.other} = ? AND ${li.self} != ?`) : null;
-  const ins = db.prepare(`INSERT OR IGNORE INTO ${J} (${li.self}, ${li.other}) VALUES (?, ?)`);
+  const ins = db.prepare(`INSERT INTO ${J} (${li.self}, ${li.other}) VALUES (?, ?) ON CONFLICT DO NOTHING`);
   for (const id of unique) {
     clear?.run(id, recordId);
     ins.run(recordId, id);
@@ -244,7 +243,8 @@ export function insertRecords(tableId: string, rows: Record<string, unknown>[], 
   const ts = now();
   const ids = db.transaction(() => {
     const out: number[] = [];
-    const stmts = new Map<string, Database.Statement<unknown[]>>();
+    const stmts = new Map<string, Statement>();
+    let explicitIds = false;
     for (const row of rows) {
       const values = normalizeRow(row, cols);
       for (const colId of values.keys()) assertWritable(cols.find((x) => x.id === colId)!, ctx.access, hidden);
@@ -255,6 +255,7 @@ export function insertRecords(tableId: string, rows: Record<string, unknown>[], 
         if (db.prepare(`SELECT 1 FROM ${q(dataTableName(tableId))} WHERE id = ?`).get(id)) throw conflict(`Record ${id} already exists`);
         names.unshift('id');
         params.unshift(id);
+        explicitIds = true;
       }
       const links: [ColumnMeta, number[]][] = [];
       for (const c of cols) {
@@ -275,13 +276,15 @@ export function insertRecords(tableId: string, rows: Record<string, unknown>[], 
       const key = names.join(',');
       let stmt = stmts.get(key);
       if (!stmt) {
-        stmt = db.prepare(`INSERT INTO ${q(dataTableName(tableId))} (${names.map(q).join(', ')}) VALUES (${names.map(() => '?').join(', ')})`);
+        stmt = db.prepare(`INSERT INTO ${q(dataTableName(tableId))} (${names.map(q).join(', ')}) VALUES (${names.map(() => '?').join(', ')}) RETURNING id`);
         stmts.set(key, stmt);
       }
-      const id = Number(stmt.run(...params).lastInsertRowid);
+      const id = Number((stmt.get(...params) as { id: number }).id);
       for (const [c, linkIds] of links) writeLinks(c, id, linkIds, 'add');
       out.push(id);
     }
+    // Keep the id sequence ahead of ids given explicitly (imports, migrations).
+    if (explicitIds) syncIdSequence(dataTableName(tableId));
     for (const c of dirty) saveColumnOptions(c.id, c.options);
     return out;
   })();
@@ -424,7 +427,7 @@ export function groupRecords(
   const view = viewFor(tableId, opts.viewId);
   const where = buildWhere(qc, tableId, { view, filter: opts.filter, search: opts.search, hidden });
   const rows = all<{ v: unknown; n: number }>(
-    sql`SELECT ${colExpr(qc, col, T)} AS v, COUNT(*) AS n FROM ${raw(`${q(dataTableName(tableId))} ${T}`)} WHERE ${where} GROUP BY 1 ORDER BY 1`,
+    sql`SELECT ${colExpr(qc, col, T)} AS v, COUNT(*) AS n FROM ${raw(`${q(dataTableName(tableId))} ${T}`)} WHERE ${where} GROUP BY 1 ORDER BY 1 NULLS FIRST`,
   );
   const resolve = (id: string) => qc.column(id);
   const out = rows.map((r) => ({ value: fromStored(col, r.v, resolve), count: r.n }));

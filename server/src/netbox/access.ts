@@ -41,7 +41,7 @@ export function listRoles() {
 export function setRole(userIdOrEmail: string, role: string) {
   if (!NETBOX_ROLES.includes(role as NetboxRole)) throw badRequest('Invalid role', { role: [`Must be one of ${NETBOX_ROLES.join(', ')}.`] });
   const db = getDb();
-  const user = db.prepare('SELECT id, email, name FROM nc_users WHERE id = ? OR email = ?').get(userIdOrEmail, userIdOrEmail) as
+  const user = db.prepare('SELECT id, email, name FROM nc_users WHERE id = ? OR lower(email) = lower(?)').get(userIdOrEmail, userIdOrEmail) as
     | { id: string; email: string; name: string }
     | undefined;
   if (!user) throw notFound('User');

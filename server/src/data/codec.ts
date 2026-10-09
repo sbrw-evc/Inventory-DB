@@ -1,5 +1,5 @@
 /**
- * Value conversion between the API shape and the SQLite storage shape, per field type.
+ * Value conversion between the API shape and the stored (PostgreSQL column) shape, per field type.
  */
 import type { Attachment, FieldType, SelectOption } from '../../../shared/src/index.js';
 import { formatGeo, parseGeo } from '../../../shared/src/index.js';
@@ -125,7 +125,7 @@ function toList(v: unknown): unknown[] {
 }
 
 /**
- * API value -> stored SQLite value for a stored (non-virtual) column. Returns null for empty input.
+ * API value -> stored value for a stored (non-virtual) column. Returns null for empty input.
  */
 export function toStored(col: ColumnMeta, v: unknown, opts: CoerceOpts): string | number | null {
   if (v === undefined || v === null) return col.type === 'Checkbox' ? 0 : null;

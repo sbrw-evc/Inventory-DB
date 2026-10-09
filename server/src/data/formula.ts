@@ -1,10 +1,10 @@
 /**
- * Formula language: tokenizer, parser, reference normalisation and a compiler to SQLite SQL.
+ * Formula language: tokenizer, parser, reference normalisation and a compiler to PostgreSQL.
  *
  * Users write `{Field Title}` references; the stored form uses `{columnId}` so renames never break a formula.
  * Literals are always bound as parameters (see sql.ts).
  */
-import { type Frag, join, raw, sql, val } from './sql.js';
+import { type Frag, type SqlType, join, raw, sql, typed, val } from './sql.js';
 
 export class FormulaError extends Error {}
 
@@ -291,16 +291,14 @@ export function displayFormula(normalized: string, titleById: (id: string) => st
   }
 }
 
-const isoNow = raw(`strftime('%Y-%m-%dT%H:%M:%fZ','now')`);
-
 const DATE_UNITS: Record<string, [string, number]> = {
-  second: ['seconds', 1],
-  minute: ['minutes', 1],
-  hour: ['hours', 1],
-  day: ['days', 1],
-  week: ['days', 7],
-  month: ['months', 1],
-  year: ['years', 1],
+  second: ['second', 1],
+  minute: ['minute', 1],
+  hour: ['hour', 1],
+  day: ['day', 1],
+  week: ['day', 7],
+  month: ['month', 1],
+  year: ['year', 1],
 };
 function dateUnit(node: FNode, fn: string): string {
   if (node.k !== 'str') throw new FormulaError(`${fn}: the unit must be a quoted text such as 'day'`);
@@ -309,45 +307,121 @@ function dateUnit(node: FNode, fn: string): string {
   return u;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Type coercion. Formulas are dynamically typed (like spreadsheet cells); PostgreSQL is not, so every operand is
+// converted to the type its operator needs. Text that isn't a number becomes NULL in arithmetic.
+
+const NULL_FRAG = raw('NULL');
+const isNull = (f: Frag) => f.sql === 'NULL';
+/** A bare bound parameter has no type PostgreSQL could infer from an operator. */
+const isParam = (f: Frag) => f.sql === '?' || f.sql === 'CAST(? AS DOUBLE PRECISION)';
+
+export function asNum(f: Frag): Frag {
+  if (isNull(f)) return raw('CAST(NULL AS DOUBLE PRECISION)', 'num');
+  switch (f.type) {
+    case 'num':
+      return f.sql === '?' ? typed(sql`CAST(${f} AS DOUBLE PRECISION)`, 'num') : f;
+    case 'bool':
+      return typed(sql`CAST(${f} AS INTEGER)`, 'num');
+    default:
+      return typed(sql`nc_num(${asText(f)})`, 'num');
+  }
+}
+
+export function asText(f: Frag): Frag {
+  if (isNull(f)) return raw('CAST(NULL AS TEXT)', 'text');
+  switch (f.type) {
+    case 'text':
+      return isParam(f) ? typed(sql`CAST(${f} AS TEXT)`, 'text') : f;
+    case 'bool':
+      return typed(sql`CAST(CAST(${f} AS INTEGER) AS TEXT)`, 'text');
+    default:
+      return typed(sql`CAST(${f} AS TEXT)`, 'text');
+  }
+}
+
+export function asBool(f: Frag): Frag {
+  if (isNull(f)) return raw('CAST(NULL AS BOOLEAN)', 'bool');
+  switch (f.type) {
+    case 'bool':
+      return f;
+    case 'num':
+      return typed(sql`(${asNum(f)} <> 0)`, 'bool');
+    default:
+      return typed(sql`(nc_num(${asText(f)}) <> 0)`, 'bool');
+  }
+}
+
+/** Common type of several values (CASE branches, LEAST/GREATEST args); mixed numbers and text become text. */
+function unify(frags: Frag[]): { type: SqlType; frags: Frag[] } {
+  const types = new Set(frags.filter((f) => !isNull(f)).map((f) => f.type ?? 'text'));
+  const type: SqlType = types.size === 0 ? 'text' : types.has('text') ? 'text' : types.has('num') ? 'num' : 'bool';
+  const conv = type === 'text' ? asText : type === 'num' ? asNum : asBool;
+  return { type, frags: frags.map(conv) };
+}
+
+/** Operands of a comparison: text with text compares as text, anything involving a number compares numerically. */
+function comparable(l: Frag, r: Frag): [Frag, Frag] {
+  const lt = isNull(l) ? r.type : l.type;
+  const rt = isNull(r) ? l.type : r.type;
+  if ((lt ?? 'text') === 'text' && (rt ?? 'text') === 'text') return [asText(l), asText(r)];
+  if (lt === 'bool' && rt === 'bool') return [l, r];
+  return [asNum(l), asNum(r)];
+}
+
+const int = (f: Frag) => sql`CAST(trunc(${asNum(f)}) AS INTEGER)`;
+const float = (f: Frag) => sql`CAST(${asNum(f)} AS DOUBLE PRECISION)`;
+const numeric = (f: Frag) => sql`CAST(${asNum(f)} AS NUMERIC)`;
+const ts = (f: Frag) => sql`nc_ts(${asText(f)})`;
+const num = (f: Frag) => typed(f, 'num');
+const text = (f: Frag) => typed(f, 'text');
+const bool = (f: Frag) => typed(f, 'bool');
+
 /**
- * Compile a parsed formula to an SQLite expression. `ref` resolves a (normalized) reference to the SQL
- * expression of that column; it is responsible for circular-reference detection.
+ * Compile a parsed formula to a PostgreSQL expression. `ref` resolves a (normalized) reference to the SQL
+ * expression of that column (with its `type`); it is responsible for circular-reference detection.
+ * The result is typed; boolean results are left as booleans (callers that store/display them convert to 0/1).
  */
 export function compileFormula(node: FNode, ref: (name: string) => Frag): Frag {
   const c = (n: FNode): Frag => compileFormula(n, ref);
   switch (node.k) {
     case 'num':
-      // Numeric literals come from the tokenizer's digit pattern, so their canonical text is safe to inline
-      // (and keeps integers as INTEGER, which bound JS numbers would not).
-      return raw(Number.isFinite(node.v) ? String(node.v) : "NULL");
+      // Numeric literals come from the tokenizer's digit pattern, so their canonical text is safe to inline.
+      return Number.isFinite(node.v) ? raw(Number.isInteger(node.v) ? String(node.v) : `CAST(${node.v} AS DOUBLE PRECISION)`, 'num') : NULL_FRAG;
     case 'str':
       return val(node.v);
     case 'bool':
-      return raw(node.v ? '1' : '0');
-    case 'ref':
-      return sql`(${ref(node.name)})`;
+      return raw(node.v ? 'TRUE' : 'FALSE', 'bool');
+    case 'ref': {
+      const r = ref(node.name);
+      if (isParam(r)) return r.type === 'num' ? asNum(r) : asText(r);
+      return typed(sql`(${r})`, r.type);
+    }
     case 'neg':
-      return sql`(-${c(node.e)})`;
+      return num(sql`(-${asNum(c(node.e))})`);
     case 'bin': {
       const l = c(node.l);
       const r = c(node.r);
       switch (node.op) {
+        case '+':
+        case '-':
+        case '*':
+          return num(sql`(${asNum(l)} ${raw(node.op)} ${asNum(r)})`);
         case '/':
-          return sql`(${l} * 1.0 / NULLIF(${r}, 0))`;
+          return num(sql`(${float(l)} / NULLIF(${float(r)}, 0))`);
         case '%':
-          return sql`(${l} % NULLIF(${r}, 0))`;
+          return num(sql`CAST(mod(${numeric(l)}, NULLIF(${numeric(r)}, 0)) AS DOUBLE PRECISION)`);
         case '&':
-          return sql`(COALESCE(${l}, '') || COALESCE(${r}, ''))`;
-        case '==':
-          return sql`(${l} = ${r})`;
-        case '<>':
-          return sql`(${l} != ${r})`;
+          return text(sql`(COALESCE(${asText(l)}, '') || COALESCE(${asText(r)}, ''))`);
         case '&&':
-          return sql`(${l} AND ${r})`;
+          return bool(sql`(${asBool(l)} AND ${asBool(r)})`);
         case '||':
-          return sql`(${l} OR ${r})`;
-        default:
-          return sql`(${l} ${raw(node.op)} ${r})`;
+          return bool(sql`(${asBool(l)} OR ${asBool(r)})`);
+        default: {
+          const op = node.op === '==' ? '=' : node.op === '!=' ? '<>' : node.op;
+          const [a, b] = comparable(l, r);
+          return bool(sql`(${a} ${raw(op)} ${b})`);
+        }
       }
     }
     case 'call':
@@ -360,121 +434,134 @@ function compileCall(fn: string, nodes: FNode[], c: (n: FNode) => Frag): Frag {
   switch (fn) {
     case 'IF': {
       const [cond, t, f] = a();
-      return sql`(CASE WHEN ${cond} THEN ${t} ELSE ${f ?? raw('NULL')} END)`;
+      const u = unify([t, f ?? NULL_FRAG]);
+      return typed(sql`(CASE WHEN ${asBool(cond)} THEN ${u.frags[0]} ELSE ${u.frags[1]} END)`, u.type);
     }
     case 'AND':
-      return sql`(${join(a(), ' AND ')})`;
+      return bool(sql`(${join(a().map(asBool), ' AND ')})`);
     case 'OR':
-      return sql`(${join(a(), ' OR ')})`;
+      return bool(sql`(${join(a().map(asBool), ' OR ')})`);
     case 'NOT':
-      return sql`(NOT ${a()[0]})`;
+      return bool(sql`(NOT ${asBool(a()[0])})`);
     case 'SWITCH': {
       const [subject, ...rest] = a();
+      const pairs = Math.floor(rest.length / 2);
+      const keys = unify([subject, ...Array.from({ length: pairs }, (_, i) => rest[i * 2])]).frags;
+      const results = unify([...Array.from({ length: pairs }, (_, i) => rest[i * 2 + 1]), rest.length % 2 === 1 ? rest[rest.length - 1] : NULL_FRAG]);
       const parts: Frag[] = [];
-      for (let i = 0; i + 1 < rest.length; i += 2) parts.push(sql`WHEN ${rest[i]} THEN ${rest[i + 1]}`);
-      const dflt = rest.length % 2 === 1 ? sql` ELSE ${rest[rest.length - 1]}` : raw('');
-      return sql`(CASE ${subject} ${join(parts, ' ')}${dflt} END)`;
+      for (let i = 0; i < pairs; i++) parts.push(sql`WHEN ${keys[i + 1]} THEN ${results.frags[i]}`);
+      return typed(sql`(CASE ${keys[0]} ${join(parts, ' ')} ELSE ${results.frags[pairs]} END)`, results.type);
     }
     case 'CONCAT':
-      return sql`(${join(
-        a().map((x) => sql`COALESCE(${x}, '')`),
-        ' || ',
-      )})`;
+      return text(
+        sql`(${join(
+          a().map((x) => sql`COALESCE(${asText(x)}, '')`),
+          ' || ',
+        )})`,
+      );
     case 'UPPER':
-      return sql`upper(${a()[0]})`;
+      return text(sql`upper(${asText(a()[0])})`);
     case 'LOWER':
-      return sql`lower(${a()[0]})`;
+      return text(sql`lower(${asText(a()[0])})`);
     case 'TRIM':
-      return sql`trim(${a()[0]})`;
+      return text(sql`trim(${asText(a()[0])})`);
     case 'LEN':
-      return sql`length(${a()[0]})`;
+      return num(sql`length(${asText(a()[0])})`);
     case 'LEFT': {
       const [s, n] = a();
-      return sql`substr(${s}, 1, ${n})`;
+      return text(sql`left(${asText(s)}, GREATEST(${int(n)}, 0))`);
     }
     case 'RIGHT': {
       const [s, n] = a();
-      return sql`(CASE WHEN ${n} <= 0 THEN '' ELSE substr(${s}, -(${n})) END)`;
+      return text(sql`right(${asText(s)}, GREATEST(${int(n)}, 0))`);
     }
     case 'MID': {
       const [s, start, n] = a();
-      return sql`substr(${s}, ${start}, ${n})`;
+      return text(sql`substr(${asText(s)}, ${int(start)}, GREATEST(${int(n)}, 0))`);
     }
     case 'SUBSTITUTE':
     case 'REPLACE': {
       const [s, from, to] = a();
-      return sql`replace(${s}, ${from}, ${to})`;
+      return text(sql`replace(${asText(s)}, ${asText(from)}, ${asText(to)})`);
     }
     case 'ROUND': {
       const [x, p] = a();
-      return sql`round(${x}, ${p ?? raw('0')})`;
+      return num(sql`CAST(round(${numeric(x)}, ${p ? int(p) : raw('0')}) AS DOUBLE PRECISION)`);
     }
     case 'FLOOR':
-      return sql`floor(${a()[0]})`;
+      return num(sql`floor(${asNum(a()[0])})`);
     case 'CEILING':
-      return sql`ceil(${a()[0]})`;
+      return num(sql`ceil(${asNum(a()[0])})`);
     case 'ABS':
-      return sql`abs(${a()[0]})`;
+      return num(sql`abs(${asNum(a()[0])})`);
     case 'MIN':
     case 'MAX': {
       const args = a();
       if (args.length === 1) return args[0];
-      return sql`${raw(fn.toLowerCase())}(${join(args, ', ')})`;
+      const u = unify(args);
+      return typed(sql`${raw(fn === 'MIN' ? 'LEAST' : 'GREATEST')}(${join(u.frags, ', ')})`, u.type);
     }
     case 'MOD': {
       const [x, y] = a();
-      return sql`(${x} % NULLIF(${y}, 0))`;
+      return num(sql`CAST(mod(${numeric(x)}, NULLIF(${numeric(y)}, 0)) AS DOUBLE PRECISION)`);
     }
     case 'POWER': {
       const [x, y] = a();
-      return sql`pow(${x}, ${y})`;
+      // Cases PostgreSQL rejects (complex results, division by zero) are NULL, like other invalid input.
+      return num(
+        sql`(CASE WHEN ${float(x)} < 0 AND ${float(y)} <> trunc(${float(y)}) THEN NULL WHEN ${float(x)} = 0 AND ${float(y)} < 0 THEN NULL ELSE power(${float(x)}, ${float(y)}) END)`,
+      );
     }
-    case 'SQRT':
-      return sql`sqrt(${a()[0]})`;
+    case 'SQRT': {
+      const x = float(a()[0]);
+      return num(sql`(CASE WHEN ${x} < 0 THEN NULL ELSE sqrt(${x}) END)`);
+    }
     case 'BLANK':
-      return raw('NULL');
+      return NULL_FRAG;
     case 'ISBLANK': {
-      const x = a()[0];
-      return sql`(${x} IS NULL OR CAST(${x} AS TEXT) IN ('', '[]'))`;
+      const x = asText(a()[0]);
+      return bool(sql`(${x} IS NULL OR ${x} IN ('', '[]'))`);
     }
     case 'NOW':
-      return isoNow;
+      return raw('nc_iso(now())', 'text');
     case 'TODAY':
-      return raw(`date('now')`);
+      return raw(`to_char(CURRENT_DATE, 'YYYY-MM-DD')`, 'text');
     case 'DATEADD': {
-      const [d, n] = a();
+      const [d0, n] = a();
+      const d = asText(d0);
       const unit = dateUnit(nodes[2], 'DATEADD');
       if (unit === 'millisecond') throw new FormulaError(`DATEADD: unknown unit 'millisecond'`);
-      const [mod, mult] = DATE_UNITS[unit];
-      const amount = mult === 1 ? sql`CAST(${n} AS INTEGER)` : sql`CAST(${n} AS INTEGER) * ${raw(String(mult))}`;
-      const m = sql`printf('%+d ${raw(mod)}', ${amount})`;
-      return sql`(CASE WHEN ${d} IS NULL THEN NULL WHEN length(${d}) <= 10 THEN date(${d}, ${m}) ELSE strftime('%Y-%m-%dT%H:%M:%fZ', ${d}, ${m}) END)`;
+      const [iv, mult] = DATE_UNITS[unit];
+      const amount = mult === 1 ? int(n) : sql`${int(n)} * ${raw(String(mult))}`;
+      const delta = sql`(${amount} * INTERVAL '1 ${raw(iv)}')`;
+      return text(
+        sql`(CASE WHEN ${d} IS NULL THEN NULL WHEN length(${d}) <= 10 THEN to_char(nc_date(${d}) + ${delta}, 'YYYY-MM-DD') ELSE nc_iso(${ts(d)} + ${delta}) END)`,
+      );
     }
     case 'DATETIME_DIFF': {
       const [d1, d2] = a();
       const unit = nodes[2] ? dateUnit(nodes[2], 'DATETIME_DIFF') : 'second';
       if (unit === 'month' || unit === 'year') {
-        const months = sql`((CAST(strftime('%Y', ${d1}) AS INTEGER) - CAST(strftime('%Y', ${d2}) AS INTEGER)) * 12 + CAST(strftime('%m', ${d1}) AS INTEGER) - CAST(strftime('%m', ${d2}) AS INTEGER))`;
-        return unit === 'month' ? months : sql`CAST(${months} / 12 AS INTEGER)`;
+        const part = (p: string, d: Frag) => sql`extract(${raw(p)} from ${ts(d)})`;
+        const months = sql`((${part('year', d1)} - ${part('year', d2)}) * 12 + ${part('month', d1)} - ${part('month', d2)})`;
+        return num(unit === 'month' ? sql`CAST(${months} AS INTEGER)` : sql`CAST(trunc(${months} / 12) AS INTEGER)`);
       }
-      const factor: Record<string, number> = { millisecond: 86400000, second: 86400, minute: 1440, hour: 24, day: 1, week: 1 / 7 };
-      return sql`CAST(round((julianday(${d1}) - julianday(${d2})) * ${raw(String(factor[unit]))}, 6) AS INTEGER)`;
+      const seconds: Record<string, string> = { millisecond: '0.001', second: '1', minute: '60', hour: '3600', day: '86400', week: '604800' };
+      return num(sql`CAST(trunc(round(extract(epoch from (${ts(d1)} - ${ts(d2)})) / ${raw(seconds[unit])}, 6)) AS BIGINT)`);
     }
     case 'YEAR':
-      return sql`CAST(strftime('%Y', ${a()[0]}) AS INTEGER)`;
+      return num(sql`CAST(extract(year from ${ts(a()[0])}) AS INTEGER)`);
     case 'MONTH':
-      return sql`CAST(strftime('%m', ${a()[0]}) AS INTEGER)`;
+      return num(sql`CAST(extract(month from ${ts(a()[0])}) AS INTEGER)`);
     case 'DAY':
-      return sql`CAST(strftime('%d', ${a()[0]}) AS INTEGER)`;
+      return num(sql`CAST(extract(day from ${ts(a()[0])}) AS INTEGER)`);
     case 'WEEKDAY':
       // 0 = Monday ... 6 = Sunday (NocoDB convention)
-      return sql`((CAST(strftime('%w', ${a()[0]}) AS INTEGER) + 6) % 7)`;
-    case 'VALUE': {
-      const x = a()[0];
-      return sql`(CASE WHEN trim(CAST(${x} AS TEXT)) GLOB '*[0-9]*' THEN CAST(replace(trim(CAST(${x} AS TEXT)), ',', '') AS REAL) END)`;
-    }
+      return num(sql`CAST(extract(isodow from ${ts(a()[0])}) - 1 AS INTEGER)`);
+    case 'VALUE':
+      return num(sql`nc_num(replace(trim(${asText(a()[0])}), ',', ''))`);
     case 'TEXT':
-      return sql`CAST(${a()[0]} AS TEXT)`;
+      return asText(a()[0]);
   }
   throw new FormulaError(`Unknown function ${fn}`);
 }

@@ -76,19 +76,18 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 ### Deferred (and why)
 - List view and Gantt dependencies: the view framework makes them additive later.
 - Record-level permissions and personal views (field-level permissions are built).
-- External data sources (Postgres/MySQL connections) and snapshots: app uses its own SQLite database;
-  the storage layer is isolated so Postgres can be added later.
+- External data sources (Postgres/MySQL connections) and snapshots: the app uses its own PostgreSQL database.
 - Workflows, scripts, dashboards, interfaces, extensions, AI, docs, sync integrations, MCP server.
 - RichText, Barcode/QRCode, User, Duration, Button field types.
-- Backend language/database: Umbrella's guidelines prefer Go and PostgreSQL; this app stays on
-  Node/TypeScript with SQLite for now, with storage isolated so PostgreSQL can be added later.
+- Backend language: Umbrella's guidelines prefer Go; this app stays on Node/TypeScript. The database is
+  PostgreSQL, as in Umbrella (SQLite was dropped in October 2026).
 - NetBox extras: circuits, power, virtualization, wireless, VPN, journaling, config contexts, scripts/reports.
 - Real-time collaboration (multi-cursor/websocket updates).
 
 ## 4. Architecture
 
 ```
-/server   Node 22 + TypeScript, Fastify, better-sqlite3, zod, JWT
+/server   Node 22 + TypeScript, Fastify, PostgreSQL (pg), zod, JWT
   src/db        meta schema (migrations) + data table DDL helpers
   src/meta      bases, tables, columns, views services
   src/data      record service, query compiler (filters/sorts/search/group), formula compiler
@@ -102,11 +101,16 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 /shared   TypeScript types shared by server and web (field types, filter ops, API DTOs)
 ```
 
-**Storage model.** Metadata lives in `nc_*` tables. Each user table is a physical SQLite table
+**Storage model.** Metadata lives in `nc_*` tables. Each user table is a physical PostgreSQL table
 `t_<tableId>` with one physical column per stored field (`c_<columnId>`) plus `id`, `created_at`,
 `updated_at`, `created_by`. Many-to-many links use junction tables `l_<columnId>(a_id, b_id)`.
 Virtual fields (Lookup, Rollup, Formula) are compiled to SQL sub-expressions so they can be filtered
-and sorted like stored fields.
+and sorted like stored fields. Dates are stored as ISO-8601 text and JSON values as text; the compilers convert
+them with the `nc_*` SQL helper functions (migration 2), which return NULL instead of failing on a bad value.
+
+**Database access.** The services are synchronous and run a whole request in one transaction. `src/db/pgsync.ts`
+keeps that model on PostgreSQL: a `pg` client runs in a worker thread and the request thread blocks on
+`Atomics.wait` for each statement, so there is one connection per process and statements never interleave.
 
 ## 5. Phases and workers
 

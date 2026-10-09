@@ -11,7 +11,7 @@ export async function tokenRoutes(app: FastifyInstance) {
   app.get('/api/v1/tokens', { schema: doc('API tokens', 'List your API tokens') }, async (req) => {
     const user = requireUser(req);
     return getDb()
-      .prepare('SELECT id, description, created_at AS createdAt FROM nc_api_tokens WHERE user_id = ? ORDER BY created_at DESC')
+      .prepare('SELECT id, description, created_at AS "createdAt" FROM nc_api_tokens WHERE user_id = ? ORDER BY created_at DESC')
       .all(user.id) as ApiToken[];
   });
 

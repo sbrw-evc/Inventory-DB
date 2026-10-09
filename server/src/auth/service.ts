@@ -22,7 +22,7 @@ export async function signUp(email: string, password: string, name?: string): Pr
   if (!/^\S+@\S+\.\S+$/.test(email)) throw badRequest('Invalid email');
   if (password.length < 8) throw badRequest('Password must be at least 8 characters');
   const db = getDb();
-  if (db.prepare('SELECT 1 FROM nc_users WHERE email = ?').get(email)) throw conflict('Email already registered');
+  if (db.prepare('SELECT 1 FROM nc_users WHERE lower(email) = lower(?)').get(email)) throw conflict('Email already registered');
   const row: UserRow = {
     id: newId('usr'),
     email,
@@ -37,7 +37,7 @@ export async function signUp(email: string, password: string, name?: string): Pr
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
-  const row = getDb().prepare('SELECT * FROM nc_users WHERE email = ?').get(email) as UserRow | undefined;
+  const row = getDb().prepare('SELECT * FROM nc_users WHERE lower(email) = lower(?)').get(email) as UserRow | undefined;
   if (!row || !(await bcrypt.compare(password, row.password_hash))) throw unauthorized('Invalid email or password');
   return toUser(row);
 }
@@ -49,7 +49,7 @@ export function getUser(id: string): User {
 }
 
 export function findUserByEmail(email: string): User | null {
-  const row = getDb().prepare('SELECT * FROM nc_users WHERE email = ?').get(email) as UserRow | undefined;
+  const row = getDb().prepare('SELECT * FROM nc_users WHERE lower(email) = lower(?)').get(email) as UserRow | undefined;
   return row ? toUser(row) : null;
 }
 

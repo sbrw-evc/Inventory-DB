@@ -54,7 +54,8 @@ function deriveNetwork(rec: Row, field: string, errors: Errors) {
 const vrfEnforces = (ctx: Ctx, vrfId: number | null) => vrfId == null || !!ctx.get('ipam.vrf', vrfId)?.enforce_unique;
 const vrfName = (ctx: Ctx, vrfId: number | null) => (vrfId == null ? 'global table' : `VRF ${ctx.get('ipam.vrf', vrfId)?.name}`);
 
-const networkCols = { family: 'INTEGER', start_hex: 'TEXT', end_hex: 'TEXT', prefix_length: 'INTEGER' };
+// Hex keys compare bytewise (COLLATE "C"), independent of the database's locale.
+const networkCols = { family: 'INTEGER', start_hex: 'TEXT COLLATE "C"', end_hex: 'TEXT COLLATE "C"', prefix_length: 'INTEGER' };
 
 const ASSIGNABLE = ['dcim.interface', 'virtualization.vminterface'];
 const SCOPE_TYPES = ['dcim.region', 'dcim.site', 'dcim.location'];
@@ -260,7 +261,7 @@ export const ipamModels: ModelDef[] = [
         params: [...values, ...values],
       }),
       depth: (values) => ({
-        sql: `(SELECT COUNT(*) FROM nb_prefixes p WHERE p.family = t.family AND p.vrf_id IS t.vrf_id AND p.start_hex <= t.start_hex AND p.end_hex >= t.end_hex AND p.prefix_length < t.prefix_length) IN (${ph(values)})`,
+        sql: `(SELECT COUNT(*) FROM nb_prefixes p WHERE p.family = t.family AND p.vrf_id IS NOT DISTINCT FROM t.vrf_id AND p.start_hex <= t.start_hex AND p.end_hex >= t.end_hex AND p.prefix_length < t.prefix_length) IN (${ph(values)})`,
         params: values.map(Number),
       }),
     },
@@ -366,7 +367,7 @@ export const ipamModels: ModelDef[] = [
       descriptionF,
       commentsF,
     ],
-    extraColumns: { family: 'INTEGER', host_hex: 'TEXT', prefix_length: 'INTEGER' },
+    extraColumns: { family: 'INTEGER', host_hex: 'TEXT COLLATE "C"', prefix_length: 'INTEGER' },
     indexes: ['family, host_hex', 'assigned_object_type, assigned_object_id'],
     brief: ['address'],
     display: (r) => r.address,
