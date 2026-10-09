@@ -66,3 +66,20 @@ describe('netbox format helpers', () => {
     expect(fieldLabel('some_new_field', 'en')).toBe('Some new field');
   });
 });
+
+describe('netbox circuits / power / virtualization strings', () => {
+  it('labels components by their parent object', () => {
+    expect(plainText({ id: 5, url: '/v', display: 'eth0', virtual_machine: { id: 1, url: '/vm', display: 'app-01' } })).toBe('app-01 eth0');
+    expect(plainText({ id: 6, url: '/c', display: 'CID-1: Termination A', circuit: { id: 2, url: '/cc', display: 'CID-1' } })).toBe('CID-1 CID-1: Termination A');
+    expect(plainText({ id: 7, url: '/f', display: 'A', power_panel: { id: 3, url: '/p', display: 'PP-1' } })).toBe('PP-1 A');
+  });
+
+  it('distinguishes VM interfaces from device interfaces and translates new types', () => {
+    expect(typeLabel('virtualization/interfaces', undefined, 'en')).toBe('VM interfaces');
+    expect(typeLabel('dcim/interfaces', undefined, 'en')).toBe('Interfaces');
+    expect(typeLabel('circuits/circuits', undefined, 'ru')).toBe('Каналы связи');
+    expect(typeLabel('dcim/power-feeds', undefined, 'ru')).toBe('Линии питания');
+    expect(fieldLabel('rear_port_position', 'en')).toBe('Rear port position');
+    expect(t('powerUtilization', {}, 'ru')).toBe('Загрузка питания');
+  });
+});

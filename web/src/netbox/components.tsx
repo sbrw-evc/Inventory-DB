@@ -46,7 +46,7 @@ export function Swatch({ color }: { color: string | null | undefined }) {
 
 export function RefLink({ value }: { value: Ref | null | undefined }) {
   if (!value) return <span className="nb-muted">—</span>;
-  const dev = (value as Record<string, unknown>).device;
+  const dev = parentRef(value);
   return (
     <span>
       {isRef(dev) && (
@@ -60,11 +60,18 @@ export function RefLink({ value }: { value: Ref | null | undefined }) {
   );
 }
 
+/** The object a component belongs to (device, virtual machine, circuit, power panel), when nested in its reference. */
+export function parentRef(value: Ref): Ref | null {
+  const o = value as Record<string, unknown>;
+  for (const k of ['device', 'virtual_machine', 'circuit', 'power_panel']) if (isRef(o[k])) return o[k] as Ref;
+  return null;
+}
+
 /** Renders any API value: refs as links, choices as chips/labels, lists, booleans, colours. */
 export function Value({ v, name }: { v: unknown; name?: string }) {
   if (v == null || v === '') return <span className="nb-muted">—</span>;
   if (name === 'color' && typeof v === 'string') return <Swatch color={v} />;
-  if (name === '_utilization' || name === 'utilization') return <UtilBar value={v as number} />;
+  if (name === '_utilization' || name === 'utilization' || name === '_power_utilization') return <UtilBar value={v as number} />;
   if (Array.isArray(v)) {
     if (!v.length) return <span className="nb-muted">—</span>;
     if (name === 'tags')
@@ -169,8 +176,12 @@ export function ErrorBox({ error }: { error: unknown }) {
 export const NAV: { group: string; items: string[] }[] = [
   { group: 'organization', items: ['dcim/regions', 'dcim/sites', 'dcim/locations', 'tenancy/tenants', 'tenancy/tenant-groups'] },
   { group: 'racks', items: ['dcim/racks', 'dcim/rack-roles'] },
-  { group: 'devices', items: ['dcim/devices', 'dcim/device-roles', 'dcim/platforms', 'dcim/device-types', 'dcim/manufacturers', 'dcim/interface-templates'] },
-  { group: 'connection', items: ['dcim/interfaces', 'dcim/cables'] },
+  { group: 'devices', items: ['dcim/devices', 'dcim/device-roles', 'dcim/platforms', 'dcim/device-types', 'dcim/manufacturers'] },
+  { group: 'templates', items: ['dcim/interface-templates', 'dcim/front-port-templates', 'dcim/rear-port-templates', 'dcim/power-port-templates', 'dcim/power-outlet-templates'] },
+  { group: 'connection', items: ['dcim/interfaces', 'dcim/front-ports', 'dcim/rear-ports', 'dcim/cables'] },
+  { group: 'circuits', items: ['circuits/circuits', 'circuits/circuit-terminations', 'circuits/circuit-types', 'circuits/providers', 'circuits/provider-accounts', 'circuits/provider-networks'] },
+  { group: 'power', items: ['dcim/power-panels', 'dcim/power-feeds', 'dcim/power-ports', 'dcim/power-outlets'] },
+  { group: 'virtualization', items: ['virtualization/virtual-machines', 'virtualization/interfaces', 'virtualization/clusters', 'virtualization/cluster-types', 'virtualization/cluster-groups'] },
   { group: 'ipam', items: ['ipam/prefixes', 'ipam/ip-ranges', 'ipam/ip-addresses', 'ipam/aggregates', 'ipam/rirs', 'ipam/vrfs', 'ipam/route-targets', 'ipam/roles'] },
   { group: 'vlans', items: ['ipam/vlans', 'ipam/vlan-groups'] },
   { group: 'other', items: ['extras/tags', 'extras/custom-fields', 'extras/object-changes'] },
@@ -188,7 +199,7 @@ export function Layout({ children, panel }: { children: ReactNode; panel?: React
             <h4>{t(g.group)}</h4>
             {g.items.map((p) => (
               <NavLink key={p} to={`/${p}`} className={({ isActive }) => (isActive ? 'active' : '')}>
-                {typeLabel(p.split('/')[1])}
+                {typeLabel(p)}
               </NavLink>
             ))}
           </div>
@@ -267,8 +278,8 @@ export function RefSelect({
   }, []);
 
   const label = (r: Ref) => {
-    const dev = (r as Record<string, unknown>).device;
-    return isRef(dev) ? `${dev.display} › ${r.display}` : r.display;
+    const dev = parentRef(r);
+    return dev ? `${dev.display} › ${r.display}` : r.display;
   };
   const pick = (r: Ref) => {
     if (multiple) {

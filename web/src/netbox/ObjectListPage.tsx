@@ -18,6 +18,10 @@ const EXTRA_REFS: Record<string, string> = {
   manufacturer_id: 'dcim.manufacturer',
   tenant_id: 'tenancy.tenant',
   vrf_id: 'ipam.vrf',
+  region_id: 'dcim.region',
+  cluster_id: 'virtualization.cluster',
+  virtual_machine_id: 'virtualization.virtualmachine',
+  provider_id: 'circuits.provider',
 };
 const BOOL_FILTERS = new Set(['enabled', 'cabled', 'has_primary_ip', 'is_pool', 'mgmt_only']);
 
@@ -117,7 +121,7 @@ function ImportPanel({ model, onClose, onDone }: { model: ModelSchema; onClose: 
     <aside className="nb-panel">
       <div className="nb-panel-title">
         <span>
-          {t('importCsv')}: {typeLabel(model.path, model.verbose_name_plural)}
+          {t('importCsv')}: {typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural)}
         </span>
         <span className="nb-spacer" />
         <button className="nb-btn" onClick={onClose} aria-label={t('close')}>
@@ -275,7 +279,7 @@ export function ObjectListPage({ app }: { app: string }) {
   return (
     <Layout panel={panel}>
       <div className="nb-title">
-        <h1>{typeLabel(path, model.verbose_name_plural)}</h1>
+        <h1>{typeLabel(`${app}/${path}`, model.verbose_name_plural)}</h1>
         <span className="nb-muted">{list.data ? count : ''}</span>
       </div>
       <div className="nb-toolbar">
