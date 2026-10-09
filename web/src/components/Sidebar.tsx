@@ -161,7 +161,7 @@ function TableItem({ base, table, canEdit, open, onToggle }: { base: Base; table
     <div className="sb-table">
       <div className="sb-item-row">
         <button className={`sb-item sb-table-item ${isCurrent ? 'current' : ''}`} onClick={() => { onToggle(); if (!open && views[0]) navigate(`/base/${base.id}/table/${table.id}/view/${views[0].id}`); }}>
-          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} className="sb-chevron" />
+          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} className="sb-chevron" />
           <Icon name="table" size={14} />
           <span className="sb-label">{table.title}</span>
         </button>
@@ -301,7 +301,7 @@ function BaseItem({ base, open, onToggle }: { base: Base; open: boolean; onToggl
     <div className={`sb-base ${params.baseId === base.id ? 'current' : ''}`}>
       <div className="sb-item-row">
         <button className="sb-item sb-base-item" onClick={onToggle}>
-          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} className="sb-chevron" />
+          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} className="sb-chevron" />
           <span className="base-dot" style={{ background: base.color || 'var(--accent)' }} />
           <span className="sb-label">{base.title}</span>
         </button>
@@ -337,8 +337,11 @@ function BaseItem({ base, open, onToggle }: { base: Base; open: boolean; onToggl
   );
 }
 
-/** Left sidebar: bases → tables → views, with creation and management menus. */
-export function Sidebar() {
+/**
+ * The bases → tables → views tree. It is the content of the "Bases" group of the application
+ * sidebar (shell/AppSidebar), with the creation menu and the import / migration dialogs.
+ */
+export function BasesTree() {
   const bases = useBases();
   const params = useRouteIds();
   const actions = useSidebarActions();
@@ -363,10 +366,13 @@ export function Sidebar() {
   const list = [...(bases.data ?? [])].sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)).filter((b) => b.title.toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <aside className="sidebar">
-      <div className="sb-head">
-        <span className="sb-title">{t('Bases')}</span>
-        <Dropdown label={<Icon name="plus" size={15} />} buttonClassName="sb-more sb-new" className="menu" title={t('New')}>
+    <div className="sb-tree">
+      <div className="sb-item-row">
+        <NavLink to="/" end className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}>
+          <Icon name="home" size={16} />
+          <span className="sb-label">{t('All bases')}</span>
+        </NavLink>
+        <Dropdown label={<Icon name="plus" size={15} />} buttonClassName="sb-more sb-new-inline" className="menu" title={t('New')}>
           {(close) => (
             <>
               <MenuItem icon={<Icon name="database" />} onClick={() => { close(); void actions.createBase(); }}>
@@ -391,30 +397,23 @@ export function Sidebar() {
           <input className="input input-sm" placeholder={t('Filter bases')} value={filter} onChange={(e) => setFilter(e.target.value)} />
         </div>
       )}
-      <div className="sb-scroll">
-        {bases.isLoading && <div className="sb-loading">{t('Loading…')}</div>}
-        {list.map((b) => (
-          <BaseItem key={b.id} base={b} open={isOpen(b.id)} onToggle={() => toggle(b.id)} />
-        ))}
-        {bases.data && !bases.data.length && (
-          <div className="sb-empty">
-            <p className="muted small">{t('No bases yet.')}</p>
-            <button className="btn btn-primary btn-sm" onClick={actions.createFromTemplate}>
-              <Icon name="template" size={13} /> {t('New from Inventory template')}
-            </button>
-          </div>
-        )}
-      </div>
-      <div className="sb-foot">
-        <button className="sb-item" onClick={() => setDialog('import')}>
-          <Icon name="upload" size={14} /> {t('Import CSV / Excel')}
-        </button>
-        <button className="sb-item" onClick={() => setDialog('migrate')}>
-          <Icon name="migrate" size={14} /> {t('Migrate from NocoDB')}
-        </button>
-      </div>
+      {bases.isLoading && <div className="sb-loading">{t('Loading…')}</div>}
+      {list.map((b) => (
+        <BaseItem key={b.id} base={b} open={isOpen(b.id)} onToggle={() => toggle(b.id)} />
+      ))}
+      {bases.data && !bases.data.length && (
+        <div className="sb-empty">
+          <p className="muted small">{t('No bases yet.')}</p>
+          <button className="btn btn-primary btn-sm" onClick={actions.createFromTemplate}>
+            <Icon name="template" size={14} /> {t('New from Inventory template')}
+          </button>
+        </div>
+      )}
       {dialog === 'import' && <ImportDialog onClose={() => setDialog(null)} />}
       {dialog === 'migrate' && <MigrateDialog onClose={() => setDialog(null)} />}
-    </aside>
+    </div>
   );
 }
+
+/** Kept for callers of the old name: the tree used to be a sidebar of its own. */
+export const Sidebar = BasesTree;

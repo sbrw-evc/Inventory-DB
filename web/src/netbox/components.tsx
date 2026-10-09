@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { nb, type ModelSchema, type Ref } from './api';
 import { isChoice, isRef, statusTone, utilTone, type MonitoringStatus, type Tone } from './format';
 import { useSchema } from './hooks';
-import { t, typeLabel, valueLabel } from './i18n';
+import { t, valueLabel } from './i18n';
 
 /** API url (`/api/v1/dcim/devices/5/`) → UI route (`/dcim/devices/5`). */
 export const uiHref = (apiUrl: string) => apiUrl.replace(/^\/api\/v1/, '').replace(/\/$/, '');
@@ -165,35 +165,15 @@ export function ErrorBox({ error }: { error: unknown }) {
   return <div className="nb-alert">{msg}</div>;
 }
 
-/** Left navigation of object types, grouped like NetBox's menu. */
-export const NAV: { group: string; items: string[] }[] = [
-  { group: 'organization', items: ['dcim/regions', 'dcim/sites', 'dcim/locations', 'tenancy/tenants', 'tenancy/tenant-groups'] },
-  { group: 'racks', items: ['dcim/racks', 'dcim/rack-roles'] },
-  { group: 'devices', items: ['dcim/devices', 'dcim/device-roles', 'dcim/platforms', 'dcim/device-types', 'dcim/manufacturers', 'dcim/interface-templates'] },
-  { group: 'connection', items: ['dcim/interfaces', 'dcim/cables'] },
-  { group: 'ipam', items: ['ipam/prefixes', 'ipam/ip-ranges', 'ipam/ip-addresses', 'ipam/aggregates', 'ipam/rirs', 'ipam/vrfs', 'ipam/route-targets', 'ipam/roles'] },
-  { group: 'vlans', items: ['ipam/vlans', 'ipam/vlan-groups'] },
-  { group: 'other', items: ['extras/tags', 'extras/custom-fields', 'extras/object-changes'] },
-];
+export { NAV } from './nav';
 
+/**
+ * Page frame of the DCIM/IPAM pages. The object-type menu lives in the application sidebar (DCIM and
+ * IPAM groups, built from NAV), so the frame is the page column plus the optional side panel.
+ */
 export function Layout({ children, panel }: { children: ReactNode; panel?: ReactNode }) {
   return (
-    <div className="nb">
-      <nav className="nb-subnav" aria-label="DCIM / IPAM">
-        <NavLink to="/dcim/search" className={({ isActive }) => (isActive ? 'active' : '')}>
-          {t('search')}
-        </NavLink>
-        {NAV.map((g) => (
-          <div key={g.group} style={{ display: 'contents' }}>
-            <h4>{t(g.group)}</h4>
-            {g.items.map((p) => (
-              <NavLink key={p} to={`/${p}`} className={({ isActive }) => (isActive ? 'active' : '')}>
-                {typeLabel(p.split('/')[1])}
-              </NavLink>
-            ))}
-          </div>
-        ))}
-      </nav>
+    <div className={`nb ${panel ? 'has-panel' : ''}`}>
       <main className="nb-main">{children}</main>
       {panel}
     </div>

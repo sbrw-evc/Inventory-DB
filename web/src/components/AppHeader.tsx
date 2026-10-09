@@ -1,12 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { BaseWithTables } from '../api/endpoints';
 import { useBases } from '../api/hooks';
-import { LANGS, setLang, t, useLang } from '../i18n';
-import { useAuth } from '../lib/auth';
+import { t } from '../i18n';
 import { permissionsFor } from '../lib/roles';
 import { Icon, ViewIcon } from './Icon';
+import { Brand } from './shell/Brand';
+import { UserMenu } from './shell/UserMenu';
 import { Popover } from './Popover';
 
 interface Hit {
@@ -17,7 +19,7 @@ interface Hit {
   icon: React.ReactNode;
 }
 
-function GlobalSearch() {
+export function GlobalSearch() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const bases = useBases();
@@ -25,6 +27,19 @@ function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+
+  // "/" focuses the search from anywhere outside a text field, as in the Umbrella top bar tools.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || el?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+      input.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const hits = useMemo<Hit[]>(() => {
     const term = q.trim().toLowerCase();
@@ -55,8 +70,10 @@ function GlobalSearch() {
 
   return (
     <div className="global-search" ref={ref}>
-      <Icon name="search" size={14} />
+      <Search size={16} aria-hidden />
       <input
+        ref={input}
+        aria-label={t('Search bases, tables and views')}
         placeholder={t('Search bases, tables and views')}
         value={q}
         onChange={(e) => {
@@ -76,6 +93,7 @@ function GlobalSearch() {
           else if (e.key === 'Escape') setOpen(false);
         }}
       />
+      {!q && <kbd aria-hidden>/</kbd>}
       {open && q.trim() && (
         <Popover anchor={ref} onClose={() => setOpen(false)} matchWidth className="menu search-results">
           {hits.map((h, i) => (
@@ -95,86 +113,37 @@ function GlobalSearch() {
   );
 }
 
-function UserMenu() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const lang = useLang();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLButtonElement>(null);
-  return (
-    <>
-      <button ref={ref} className="header-user" onClick={() => setOpen((o) => !o)}>
-        <span className="avatar avatar-sm">{(user?.name || user?.email || '?').slice(0, 1).toUpperCase()}</span>
-        <span className="header-user-name">{user?.name || user?.email}</span>
-        <Icon name="chevronDown" size={12} />
-      </button>
-      {open && (
-        <Popover anchor={ref} onClose={() => setOpen(false)} align="end" className="menu">
-          <div className="menu-title">
-            {user?.name}
-            <div className="muted small">{user?.email}</div>
-          </div>
-          <button className="menu-item" onClick={() => { setOpen(false); navigate('/admin/tokens'); }}>
-            <span className="menu-item-icon"><Icon name="key" /></span>
-            <span className="menu-item-label">{t('API tokens')}</span>
-          </button>
-          <div className="menu-divider" />
-          <div className="menu-title small">{t('Language')}</div>
-          {LANGS.map((l) => (
-            <button key={l.code} className={`menu-item ${lang === l.code ? 'selected' : ''}`} onClick={() => { setLang(l.code); setOpen(false); }}>
-              <span className="menu-item-icon">{lang === l.code && <Icon name="check" />}</span>
-              <span className="menu-item-label">{l.label}</span>
-            </button>
-          ))}
-          <div className="menu-divider" />
-          <button className="menu-item danger" onClick={() => { setOpen(false); signOut(); }}>
-            <span className="menu-item-icon"><Icon name="logout" /></span>
-            <span className="menu-item-label">{t('Sign out')}</span>
-          </button>
-        </Popover>
-      )}
-    </>
-  );
-}
-
-/** Umbrella-style dark navy header: product, sections, global search, user menu. */
-export function AppHeader() {
+/** Top bar of the signed-in shell (Umbrella TopBar): menu toggle, brand, search, base role, user menu. */
+export function TopBar({ sidebar }: { sidebar?: { collapsed: boolean; toggle: () => void } }) {
   const bases = useBases();
   const location = useLocation();
   const currentBaseId = /^\/base\/([^/]+)/.exec(location.pathname)?.[1];
   const currentRole = (bases.data ?? []).find((b) => b.id === currentBaseId)?.role;
-  const sections = [
-    { to: '/', label: 'Bases', end: false, match: (p: string) => p === '/' || p.startsWith('/base') },
-    { to: '/dcim', label: 'DCIM' },
-    { to: '/ipam', label: 'IPAM' },
-    { to: '/integrations', label: 'Integrations' },
-    { to: '/admin', label: 'Administration' },
-  ];
+  const label = t(sidebar?.collapsed ? 'Expand the menu' : 'Collapse the menu');
   return (
-    <header className="app-header">
-      <NavLink to="/" className="brand">
-        <Icon name="database" size={18} />
-        <span>Inventory DB</span>
-      </NavLink>
-      <nav className="header-nav">
-        {sections.map((s) => (
-          <NavLink
-            key={s.to}
-            to={s.to}
-            end={s.to === '/' ? false : undefined}
-            className={({ isActive }) => {
-              const active = s.match ? s.match(location.pathname) : isActive;
-              return `header-link ${active ? 'active' : ''}`;
-            }}
-          >
-            {t(s.label)}
-          </NavLink>
-        ))}
-      </nav>
-      <GlobalSearch />
-      <span className="spacer" />
-      {currentRole && <span className="header-role" title={t('Your role in this base')}>{t(permissionsFor(currentRole).role)}</span>}
-      <UserMenu />
+    <header className="topbar">
+      <div className="topbar-start">
+        {sidebar && (
+          <button type="button" className="icon-btn side-toggle" aria-label={label} title={label} aria-expanded={!sidebar.collapsed} aria-controls="app-sidebar" onClick={sidebar.toggle}>
+            {sidebar.collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        )}
+        <Link to="/" className="brand-link" aria-label="Inventory DB">
+          <Brand />
+        </Link>
+      </div>
+      <div className="topbar-end">
+        <GlobalSearch />
+        {currentRole && (
+          <span className="header-role" title={t('Your role in this base')}>
+            {t(permissionsFor(currentRole).role)}
+          </span>
+        )}
+        <UserMenu />
+      </div>
     </header>
   );
 }
+
+/** Kept for callers of the old name. */
+export const AppHeader = TopBar;

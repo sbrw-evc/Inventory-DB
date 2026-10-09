@@ -6,11 +6,15 @@ import { ApiRequestError } from './api/client';
 import { App } from './App';
 import { getLang } from './i18n';
 import { AuthProvider } from './lib/auth';
+import { installScrollbars } from './lib/scrollbars';
+import './lib/theme';
 import './styles/app.css';
 import './styles/grid.css';
 import './styles/components.css';
+import './styles/mobile.css';
 
 document.documentElement.lang = getLang();
+installScrollbars();
 
 const queryClient = new QueryClient({
   defaultOptions: {
