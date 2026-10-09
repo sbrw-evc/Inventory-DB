@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { Column, Table } from '@shared';
-import { isReadOnlyType } from '@shared';
+import { formatGeo, isReadOnlyType, parseGeo } from '@shared';
 import { dataApi } from '../api/endpoints';
 import { qk } from '../api/hooks';
 import { Icon } from '../components/Icon';
@@ -13,6 +13,7 @@ import { AttachmentEditor } from './AttachmentEditor';
 import { CellDisplay, CheckboxMark, isChecked, Stars } from './CellDisplay';
 import { LinkPicker } from './LinkPicker';
 import { SelectEditor } from './SelectEditor';
+import '../styles/fieldPermissions.css';
 
 export interface FieldInputProps {
   column: Column;
@@ -143,6 +144,57 @@ function LinksField({ column, table, recordId, readOnly }: FieldInputProps) {
   );
 }
 
+/** Latitude + longitude inputs; commits "lat;lng" (or null when both are empty). */
+function GeoField({ value, onChange, readOnly }: FieldInputProps) {
+  const cur = parseGeo(value);
+  const [lat, setLat] = useState(cur ? String(cur.lat) : '');
+  const [lng, setLng] = useState(cur ? String(cur.lng) : '');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const p = parseGeo(value);
+    setLat(p ? String(p.lat) : '');
+    setLng(p ? String(p.lng) : '');
+  }, [value]);
+  const commit = () => {
+    if (!lat.trim() && !lng.trim()) {
+      setError(null);
+      if (value) onChange(null);
+      return;
+    }
+    const p = parseGeo(`${lat};${lng}`);
+    if (!p) {
+      setError(t('Latitude must be between −90 and 90, longitude between −180 and 180'));
+      return;
+    }
+    setError(null);
+    const next = formatGeo(p);
+    if (next !== value) onChange(next);
+  };
+  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+  };
+  return (
+    <div className="geo-field">
+      <div className="geo-inputs">
+        <label className="geo-input">
+          <span className="muted small">{t('Latitude')}</span>
+          <input className={`input ${error ? 'input-invalid' : ''}`} inputMode="decimal" disabled={readOnly} value={lat} placeholder="55.7558" onChange={(e) => setLat(e.target.value)} onBlur={commit} onKeyDown={onKey} />
+        </label>
+        <label className="geo-input">
+          <span className="muted small">{t('Longitude')}</span>
+          <input className={`input ${error ? 'input-invalid' : ''}`} inputMode="decimal" disabled={readOnly} value={lng} placeholder="37.6173" onChange={(e) => setLng(e.target.value)} onBlur={commit} onKeyDown={onKey} />
+        </label>
+        {cur && (
+          <a className="link-btn small" href={`https://www.openstreetmap.org/?mlat=${cur.lat}&mlon=${cur.lng}#map=15/${cur.lat}/${cur.lng}`} target="_blank" rel="noreferrer noopener">
+            <Icon name="mapPin" size={13} /> {t('Open map')}
+          </a>
+        )}
+      </div>
+      {error && <div className="error-text small">{error}</div>}
+    </div>
+  );
+}
+
 /** Always-visible editor for a field (expanded record, forms). */
 export function FieldInput(props: FieldInputProps) {
   const { column, value, onChange, readOnly } = props;
@@ -164,6 +216,8 @@ export function FieldInput(props: FieldInputProps) {
       return <SelectField {...props} />;
     case 'Attachment':
       return <AttachmentEditor value={value} onChange={onChange} readOnly={readOnly} />;
+    case 'GeoData':
+      return <GeoField {...props} />;
     case 'Date':
       return (
         <input

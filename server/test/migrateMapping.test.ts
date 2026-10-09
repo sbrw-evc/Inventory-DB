@@ -58,7 +58,7 @@ describe('planColumn (uidt → FieldType)', () => {
     expect(planColumn(col('Duration'))).toMatchObject({ type: 'SingleLineText', note: expect.any(String) });
     expect(planColumn(col('User'))).toMatchObject({ type: 'SingleLineText', note: expect.any(String) });
     expect(planColumn(col('CreatedBy'))).toMatchObject({ type: 'SingleLineText' });
-    expect(planColumn(col('GeoData'))).toMatchObject({ type: 'SingleLineText' });
+    expect(planColumn(col('GeoData'))).toMatchObject({ type: 'GeoData' });
     expect(planColumn(col('SpecificDBType'))).toMatchObject({ type: 'SingleLineText' });
     expect(planColumn(col('SomethingNew'))).toMatchObject({ type: 'SingleLineText', note: 'SomethingNew converted to text' });
   });
@@ -128,7 +128,7 @@ describe('formulas and titles', () => {
 describe('views', () => {
   it('maps view types', () => {
     expect([1, 2, 3, 4, 6].map(mapViewType)).toEqual(['form', 'gallery', 'grid', 'kanban', 'calendar']);
-    expect(mapViewType(5)).toBeNull();
+    expect(mapViewType(5)).toBe('map');
     expect(mapViewType(9)).toBeNull();
     expect(parseWidth('200px')).toBe(200);
     expect(parseWidth(150)).toBe(150);

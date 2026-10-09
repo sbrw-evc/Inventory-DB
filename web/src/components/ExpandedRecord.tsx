@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import type { AuditEntry, Column, RecordData, Table } from '@shared';
-import { isReadOnlyType } from '@shared';
+import { isFieldReadOnlyFor, isReadOnlyType } from '@shared';
 import { dataApi, platformApi } from '../api/endpoints';
 import { qk } from '../api/hooks';
 import { FieldInput } from '../cells/FieldInput';
@@ -184,8 +184,8 @@ export function ExpandedRecord({ table, recordId, resolved, defaults, initialRow
     const base = resolved ?? table.columns.map((column) => ({ column, show: true, width: 0 }));
     const known = new Set(base.map((r) => r.column.id));
     const extra = table.columns.filter((c) => !known.has(c.id)).map((column) => ({ column, show: false, width: 0 }));
-    return [...base, ...extra].filter((r) => !(isNew && isReadOnlyType(r.column.type) && r.column.type !== 'Links'));
-  }, [resolved, table.columns, isNew]);
+    return [...base, ...extra].filter((r) => !(isNew && ((isReadOnlyType(r.column.type) && r.column.type !== 'Links') || isFieldReadOnlyFor(r.column, perms.role))));
+  }, [resolved, table.columns, isNew, perms.role]);
   const shown = ordered.filter((r) => r.show || r.column.primary);
   const hidden = ordered.filter((r) => !r.show && !r.column.primary);
 
@@ -195,7 +195,7 @@ export function ExpandedRecord({ table, recordId, resolved, defaults, initialRow
   };
 
   const create = async () => {
-    const missing = table.columns.filter((c) => c.required && !isReadOnlyType(c.type) && (draft[c.id] === undefined || draft[c.id] === null || draft[c.id] === ''));
+    const missing = table.columns.filter((c) => c.required && !isReadOnlyType(c.type) && !isFieldReadOnlyFor(c, perms.role) && (draft[c.id] === undefined || draft[c.id] === null || draft[c.id] === ''));
     if (missing.length) {
       toastError(new Error(t('Please fill in: {fields}', { fields: missing.map((c) => c.title).join(', ') })));
       return;
@@ -222,7 +222,7 @@ export function ExpandedRecord({ table, recordId, resolved, defaults, initialRow
         column={r.column}
         value={row[r.column.id]}
         onChange={(v) => setValue(r.column, v)}
-        readOnly={!perms.canEdit}
+        readOnly={!perms.canEdit || isFieldReadOnlyFor(r.column, perms.role)}
         table={table}
         recordId={currentId ?? undefined}
       />

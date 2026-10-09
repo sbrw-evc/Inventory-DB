@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Column, ListQuery, RecordData, Sort, Table, View } from '@shared';
-import { isReadOnlyType } from '@shared';
+import { isFieldLocked } from '@shared';
 import { metaApi } from '../../api/endpoints';
 import { qk } from '../../api/hooks';
 import { isChecked } from '../../cells/CellDisplay';
@@ -154,7 +154,7 @@ export function GridView({ table, view, resolved, sorts, source, baseQuery, perm
     [visible.length],
   );
 
-  const canEditCell = (c: Column) => perms.canEdit && !isReadOnlyType(c.type);
+  const canEditCell = (c: Column) => perms.canEdit && !isFieldLocked(c, perms.role);
 
   const startEditing = useCallback(
     (a: ActiveCell, initialText?: string) => {
@@ -169,7 +169,7 @@ export function GridView({ table, view, resolved, sorts, source, baseQuery, perm
         setLinkPicker({ rowId: cell.row.id, column: cell.column });
         return;
       }
-      if (!perms.canEdit || isReadOnlyType(cell.column.type)) return;
+      if (!perms.canEdit || isFieldLocked(cell.column, perms.role)) return;
       if (cell.column.type === 'Checkbox') {
         void muts.updateCell(cell.row.id, cell.column.id, !isChecked(cell.row[cell.column.id]), cell.row[cell.column.id]);
         return;
@@ -244,7 +244,8 @@ export function GridView({ table, view, resolved, sorts, source, baseQuery, perm
       scrollRef.current?.focus({ preventScroll: true });
     },
     quickChange: (row, columnId, value) => {
-      if (!perms.canEdit) return;
+      const col = table.columns.find((c) => c.id === columnId);
+      if (!perms.canEdit || (col && isFieldLocked(col, perms.role))) return;
       void muts.updateCell(row.id, columnId, value, row[columnId]);
     },
     toggleSelected,
@@ -255,6 +256,11 @@ export function GridView({ table, view, resolved, sorts, source, baseQuery, perm
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.target !== scrollRef.current) return;
     const mod = e.metaKey || e.ctrlKey;
+    if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      void muts.redo();
+      return;
+    }
     if (mod && e.key.toLowerCase() === 'z') {
       e.preventDefault();
       void muts.undo();

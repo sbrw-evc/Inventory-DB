@@ -1,13 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import type { Column, ListQuery, RecordData, Table, View } from '@shared';
+import type { ListQuery, RecordData, Table, View } from '@shared';
+import { isFieldLocked } from '@shared';
 import { qk } from '../api/hooks';
 import { Icon } from '../components/Icon';
+import './calendarSpans.css';
 import { getLang, t } from '../i18n';
 import { recordTitle } from '../lib/baseContext';
 import { chipStyle, choiceColor } from '../lib/colors';
 import { andFilters } from '../lib/filters';
-import { parseYmd, toDateInput, ymd } from '../lib/format';
+import { ymd } from '../lib/format';
+import { addDays, DATE_FIELD_TYPES, daysBetween, EDITABLE_DATE_TYPES, moveToDay, overlapFilter, shiftDays, spanOf } from '../lib/dateSpan';
 import { patchCachedRecord, type RecordSource, useRecordMutations } from '../lib/records';
 import type { Permissions } from '../lib/roles';
 
@@ -29,24 +32,11 @@ function startOfGrid(month: Date): Date {
   return new Date(first.getFullYear(), first.getMonth(), 1 - dow);
 }
 
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-
-/** Local day key of a stored Date/DateTime value. */
-function dayKey(column: Column, v: unknown): string | null {
-  if (!v) return null;
-  if (column.type === 'Date') return toDateInput(v) || null;
-  const d = new Date(String(v));
-  return Number.isNaN(d.getTime()) ? null : ymd(d);
-}
-
-/** Moves a value to another day, keeping the time of day for DateTime fields. */
-function moveToDay(column: Column, v: unknown, day: string): string {
-  if (column.type === 'Date') return day;
-  const target = parseYmd(day)!;
-  const old = v ? new Date(String(v)) : null;
-  if (old && !Number.isNaN(old.getTime())) target.setHours(old.getHours(), old.getMinutes(), old.getSeconds());
-  else target.setHours(9, 0, 0);
-  return target.toISOString();
+/** One record on one day; multi-day records (end date field) appear on every day they span. */
+interface DayItem {
+  row: RecordData;
+  /** first / middle / last / single day of the span */
+  part: 'single' | 'start' | 'middle' | 'end';
 }
 
 export function CalendarView({ table, view, source, baseQuery, perms, onOpen, onAdd }: Props) {
@@ -57,40 +47,45 @@ export function CalendarView({ table, view, source, baseQuery, perms, onOpen, on
     return new Date(n.getFullYear(), n.getMonth(), 1);
   });
   const [overDay, setOverDay] = useState<string | null>(null);
-  const dateCols = table.columns.filter((c) => ['Date', 'DateTime', 'CreatedTime', 'LastModifiedTime'].includes(c.type));
+  const dateCols = table.columns.filter((c) => DATE_FIELD_TYPES.includes(c.type));
   const column = table.columns.find((c) => c.id === view.meta.dateColumnId) ?? dateCols[0];
+  const endColumn = table.columns.find((c) => c.id === view.meta.endDateColumnId && c.id !== column?.id && DATE_FIELD_TYPES.includes(c.type));
   const colorCol = table.columns.find((c) => c.type === 'SingleSelect');
-  const editableDate = !!column && (column.type === 'Date' || column.type === 'DateTime') && perms.canEdit;
+  const canWrite = (c: typeof column) => !!c && EDITABLE_DATE_TYPES.includes(c.type) && perms.canEdit && !isFieldLocked(c, perms.role);
+  const editableDate = canWrite(column) && (!endColumn || canWrite(endColumn));
 
   const gridStart = startOfGrid(month);
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const rangeFilter = column
-    ? {
-        logic: 'and' as const,
-        children: [
-          { columnId: column.id, op: 'gte' as const, value: ymd(days[0]) },
-          { columnId: column.id, op: 'lt' as const, value: ymd(addDays(days[41], 1)) },
-        ],
-      }
-    : undefined;
+  const rangeFilter = column ? overlapFilter(column, endColumn, ymd(days[0]), ymd(addDays(days[41], 1))) : undefined;
   const filter = andFilters(baseQuery.filter, rangeFilter);
   const query = useQuery({
-    queryKey: [...source.key, 'calendar', column?.id, ymd(days[0]), JSON.stringify(baseQuery)],
+    queryKey: [...source.key, 'calendar', column?.id, endColumn?.id, ymd(days[0]), JSON.stringify(baseQuery)],
     queryFn: ({ signal }) => source.list({ ...baseQuery, filter, offset: 0, limit: 1000 }, signal),
     enabled: !!column,
   });
 
+  const firstDay = ymd(days[0]);
   const byDay = useMemo(() => {
-    const m = new Map<string, RecordData[]>();
+    const m = new Map<string, DayItem[]>();
     if (!column) return m;
+    const gridStartDate = days[0];
     for (const r of query.data?.list ?? []) {
-      const k = dayKey(column, r[column.id]);
-      if (!k) continue;
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(r);
+      const span = spanOf(r, column, endColumn);
+      if (!span) continue;
+      const total = daysBetween(span.start, span.end);
+      // Only walk the days visible in the grid.
+      const from = Math.max(0, daysBetween(span.start, gridStartDate));
+      const to = Math.min(total, daysBetween(span.start, days[41]));
+      for (let i = from; i <= to; i++) {
+        const k = ymd(addDays(span.start, i));
+        const part: DayItem['part'] = total === 0 ? 'single' : i === 0 ? 'start' : i === total ? 'end' : 'middle';
+        if (!m.has(k)) m.set(k, []);
+        m.get(k)!.push({ row: r, part });
+      }
     }
     return m;
-  }, [query.data, column]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data, column, endColumn, firstDay]);
 
   if (!column) {
     return (
@@ -109,12 +104,19 @@ export function CalendarView({ table, view, source, baseQuery, perms, onOpen, on
   const drop = async (day: string, e: React.DragEvent) => {
     e.preventDefault();
     setOverDay(null);
-    const id = Number(e.dataTransfer.getData(DRAG_MIME));
+    const [idRaw, fromDay] = e.dataTransfer.getData(DRAG_MIME).split('|');
+    const id = Number(idRaw);
     const row = query.data?.list.find((r) => r.id === id);
     if (!row || !editableDate) return;
-    const value = moveToDay(column, row[column.id], day);
-    patchCachedRecord(qc, table.id, id, { [column.id]: value });
-    await muts.updateRecord(id, { [column.id]: value });
+    // Multi-day records move by the distance between the day grabbed and the day dropped on.
+    const span = spanOf(row, column, endColumn);
+    const grabbed = fromDay ? new Date(`${fromDay}T00:00:00`) : span?.start;
+    const delta = grabbed ? daysBetween(grabbed, new Date(`${day}T00:00:00`)) : 0;
+    const patch: Record<string, unknown> = { [column.id]: span ? shiftDays(column, row[column.id], delta) : moveToDay(column, row[column.id], day) };
+    if (endColumn && row[endColumn.id]) patch[endColumn.id] = shiftDays(endColumn, row[endColumn.id], delta);
+    if (!delta && span) return;
+    patchCachedRecord(qc, table.id, id, patch);
+    await muts.updateRecord(id, patch);
     await qc.invalidateQueries({ queryKey: qk.records(table.id) });
   };
 
@@ -168,17 +170,17 @@ export function CalendarView({ table, view, source, baseQuery, perms, onOpen, on
                 )}
               </div>
               <div className="calendar-items">
-                {items.map((r) => {
+                {items.map(({ row: r, part }) => {
                   const sel = colorCol ? r[colorCol.id] : null;
                   const style = sel ? chipStyle(choiceColor(colorCol!, String(sel))) : undefined;
                   return (
                     <div
                       key={r.id}
-                      className="calendar-item"
+                      className={`calendar-item calendar-span-${part}`}
                       style={style}
                       draggable={editableDate}
                       onDragStart={(e) => {
-                        e.dataTransfer.setData(DRAG_MIME, String(r.id));
+                        e.dataTransfer.setData(DRAG_MIME, `${r.id}|${key}`);
                         e.dataTransfer.effectAllowed = 'move';
                       }}
                       onClick={(e) => {
@@ -187,7 +189,7 @@ export function CalendarView({ table, view, source, baseQuery, perms, onOpen, on
                       }}
                       title={recordTitle(table, r)}
                     >
-                      {column.type !== 'Date' && r[column.id] ? (
+                      {column.type !== 'Date' && r[column.id] && (part === 'single' || part === 'start') ? (
                         <span className="calendar-time">
                           {new Date(String(r[column.id])).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })}
                         </span>

@@ -10,6 +10,7 @@ import { patchCachedRecord, type RecordSource, useRecordMutations } from '../lib
 import type { Permissions } from '../lib/roles';
 import type { ResolvedColumn } from '../lib/viewColumns';
 import { RecordCard } from './RecordCard';
+import './kanbanStacks.css';
 
 interface Props {
   table: Table;
@@ -21,6 +22,17 @@ interface Props {
   onOpen: (id: number) => void;
   onAdd: (defaults: Record<string, unknown>) => void;
   onChooseField: (columnId: string) => void;
+  /** Persist a new stack order (drag stack headers); omitted when the view can't be changed. */
+  onStackOrder?: (order: string[]) => void;
+}
+
+/** Stack being dragged by its header, and the stack it's over. */
+interface StackDrag {
+  dragging: string | null;
+  over: string | null;
+  setDragging: (s: string | null) => void;
+  setOver: (s: string | null) => void;
+  drop: (target: string) => void;
 }
 
 const DRAG_MIME = 'application/x-inventorydb-record';
@@ -32,6 +44,7 @@ function Stack({
   props,
   dragging,
   setDragging,
+  stackDrag,
 }: {
   table: Table;
   column: Column;
@@ -39,6 +52,7 @@ function Stack({
   props: Props;
   dragging: { id: number; from: string | null } | null;
   setDragging: (d: { id: number; from: string | null } | null) => void;
+  stackDrag: StackDrag | null;
 }) {
   const { source, baseQuery, resolved, perms, onOpen, onAdd } = props;
   const qc = useQueryClient();
@@ -66,10 +80,17 @@ function Stack({
     await qc.invalidateQueries({ queryKey: qk.records(table.id) });
   };
 
+  const movableStack = !!stackDrag && value !== null;
+  const stackOver = !!stackDrag?.dragging && stackDrag.over === value && stackDrag.dragging !== value;
   return (
     <div
-      className={`kanban-stack ${over ? 'drag-over' : ''}`}
+      className={`kanban-stack ${over ? 'drag-over' : ''} ${stackOver ? 'stack-drop-target' : ''} ${stackDrag?.dragging === value && value !== null ? 'stack-dragging' : ''}`}
       onDragOver={(e) => {
+        if (stackDrag?.dragging && value !== null) {
+          e.preventDefault();
+          if (stackDrag.over !== value) stackDrag.setOver(value);
+          return;
+        }
         if (!dragging || !perms.canEdit) return;
         e.preventDefault();
         setOver(true);
@@ -77,9 +98,31 @@ function Stack({
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false);
       }}
-      onDrop={onDrop}
+      onDrop={(e) => {
+        if (stackDrag?.dragging) {
+          e.preventDefault();
+          if (value !== null) stackDrag.drop(value);
+          return;
+        }
+        void onDrop(e);
+      }}
     >
-      <div className="kanban-stack-head">
+      <div
+        className={`kanban-stack-head ${movableStack ? 'stack-draggable' : ''}`}
+        draggable={movableStack}
+        title={movableStack ? t('Drag to reorder stacks') : undefined}
+        onDragStart={(e) => {
+          if (!movableStack) return;
+          e.dataTransfer.setData('application/x-inventorydb-stack', value!);
+          e.dataTransfer.effectAllowed = 'move';
+          stackDrag!.setDragging(value);
+        }}
+        onDragEnd={() => {
+          stackDrag?.setDragging(null);
+          stackDrag?.setOver(null);
+        }}
+      >
+        {movableStack && <Icon name="drag" size={13} className="muted" />}
         {value === null ? <span className="chip chip-empty">{t('Uncategorized')}</span> : <Chip column={column} title={value} />}
         <span className="group-count">{total}</span>
       </div>
@@ -120,8 +163,10 @@ function Stack({
 
 /** Kanban: one stack per option of a SingleSelect field (plus "Uncategorized"); drag cards between stacks. */
 export function KanbanView(props: Props) {
-  const { table, view, perms, onChooseField } = props;
+  const { table, view, perms, onChooseField, onStackOrder } = props;
   const [dragging, setDragging] = useState<{ id: number; from: string | null } | null>(null);
+  const [stackDragging, setStackDragging] = useState<string | null>(null);
+  const [stackOver, setStackOver] = useState<string | null>(null);
   const selectCols = table.columns.filter((c) => c.type === 'SingleSelect');
   const column = table.columns.find((c) => c.id === view.meta.groupColumnId && c.type === 'SingleSelect') ?? selectCols[0];
 
@@ -137,6 +182,26 @@ export function KanbanView(props: Props) {
   const choices = (column.options.choices ?? []).map((c) => c.title);
   const order = view.meta.stackOrder?.filter((s) => choices.includes(s)) ?? [];
   const stacks: Array<string | null> = [null, ...order, ...choices.filter((c) => !order.includes(c))];
+  const stackDrag: StackDrag | null = onStackOrder
+    ? {
+        dragging: stackDragging,
+        over: stackOver,
+        setDragging: setStackDragging,
+        setOver: setStackOver,
+        drop: (target) => {
+          const moving = stackDragging;
+          setStackDragging(null);
+          setStackOver(null);
+          if (!moving || moving === target) return;
+          const current = stacks.filter((s): s is string => s !== null);
+          const next = current.filter((s) => s !== moving);
+          const from = current.indexOf(moving);
+          const to = current.indexOf(target);
+          next.splice(from < to ? next.indexOf(target) + 1 : next.indexOf(target), 0, moving);
+          onStackOrder(next);
+        },
+      }
+    : null;
 
   return (
     <div className="kanban-scroll" onDragEnd={() => setDragging(null)}>
@@ -150,7 +215,7 @@ export function KanbanView(props: Props) {
       )}
       <div className="kanban-board">
         {stacks.map((s) => (
-          <Stack key={s ?? '__none'} table={table} column={column} value={s} props={props} dragging={dragging} setDragging={setDragging} />
+          <Stack key={s ?? '__none'} table={table} column={column} value={s} props={props} dragging={dragging} setDragging={setDragging} stackDrag={stackDrag} />
         ))}
       </div>
     </div>

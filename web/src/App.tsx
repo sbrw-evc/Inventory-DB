@@ -3,13 +3,10 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { DialogHost } from './components/dialogs';
 import { useLang } from './i18n';
 import { Toasts } from './lib/toast';
-import { AdminPage } from './pages/AdminPage';
 import { AppLayout, BasesLayout } from './pages/AppLayout';
 import { AuthPage } from './pages/AuthPage';
 import { BasePage } from './pages/BasePage';
 import { HomePage } from './pages/HomePage';
-import { NetboxPlaceholder } from './pages/NetboxPlaceholder';
-import { SharedFormPage, SharedViewPage } from './pages/SharedPages';
 
 // DCIM/IPAM pages load on demand to keep the spreadsheet bundle small.
 const DcimRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.DcimRoutes })));
@@ -18,6 +15,10 @@ const TenancyRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ 
 const CircuitsRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.CircuitsRoutes })));
 const VirtualizationRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.VirtualizationRoutes })));
 const ExtrasRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.ExtrasRoutes })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage })));
+const SharedViewPage = lazy(() => import('./pages/SharedPages').then((m) => ({ default: m.SharedViewPage })));
+const SharedFormPage = lazy(() => import('./pages/SharedPages').then((m) => ({ default: m.SharedFormPage })));
 const lazyPage = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
 export function App() {
@@ -28,8 +29,8 @@ export function App() {
       <Routes>
         <Route path="/signin" element={<AuthPage mode="signin" />} />
         <Route path="/signup" element={<AuthPage mode="signup" />} />
-        <Route path="/shared/view/:shareUuid" element={<SharedViewPage />} />
-        <Route path="/shared/form/:shareUuid" element={<SharedFormPage />} />
+        <Route path="/shared/view/:shareUuid" element={lazyPage(<SharedViewPage />)} />
+        <Route path="/shared/form/:shareUuid" element={lazyPage(<SharedFormPage />)} />
         <Route element={<AppLayout />}>
           <Route element={<BasesLayout />}>
             <Route index element={<HomePage />} />
@@ -41,8 +42,8 @@ export function App() {
           <Route path="/circuits/*" element={lazyPage(<CircuitsRoutes />)} />
           <Route path="/virtualization/*" element={lazyPage(<VirtualizationRoutes />)} />
           <Route path="/extras/*" element={lazyPage(<ExtrasRoutes />)} />
-          <Route path="/integrations/*" element={<NetboxPlaceholder section="Integrations" />} />
-          <Route path="/admin/*" element={<AdminPage />} />
+          <Route path="/integrations/*" element={lazyPage(<IntegrationsPage />)} />
+          <Route path="/admin/*" element={lazyPage(<AdminPage />)} />
           <Route path="/account/tokens" element={<Navigate to="/admin/tokens" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

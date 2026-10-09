@@ -13,6 +13,7 @@ import {
   getOwnedIntegration,
   getSecret,
   listIntegrations,
+  recordActivity,
   rotateSecret,
   updateIntegration,
 } from '../integrations/store.js';
@@ -120,6 +121,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     const all = await buildCis(dcimClientFor(app, authHeaders(req)), baseUrl);
     const items = all.slice(query.offset, query.offset + query.limit);
     const next = query.offset + items.length;
+    if (next >= all.length) recordActivity(integration.id, { lastFeedAt: new Date().toISOString(), lastFeedCount: all.length });
     return {
       source: 'inventory-db',
       integration_id: integration.id,
@@ -161,6 +163,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       recordAlert(id, event, targets);
       return { alert_id: event.alert_id, matched: targets.map((t) => `${t.type}:${t.id}`) };
     });
+    recordActivity(id, { lastAlertAt: new Date().toISOString() });
     reply.status(202);
     return { results };
   });

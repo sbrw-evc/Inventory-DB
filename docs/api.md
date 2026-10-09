@@ -30,7 +30,7 @@ Owners in brackets are the module that implements the endpoint.
 | POST | /tables/:tableId/columns | editor | `ColumnInput = {title, type, options?, required?, defaultValue?, description?, primary?}` | `Column` (Links also creates the symmetric column on the related table) |
 | PATCH | /columns/:columnId | editor | partial `ColumnInput` (type changes convert data best-effort) | `Column` |
 | DELETE | /columns/:columnId | editor | | `{ok:true}` |
-| POST | /tables/:tableId/views | editor | `{title, type, copyFromViewId?}` | `View` |
+| POST | /tables/:tableId/views | editor | `{title, type, copyFromViewId?}` (`type`: grid, form, gallery, kanban, calendar, timeline, map) | `View` |
 | PATCH | /views/:viewId | editor (viewer can't; locked views need owner) | partial `{title, order, locked, filter, sorts, columns, meta}` | `View` |
 | DELETE | /views/:viewId | editor | | `{ok:true}` (the last view of a table cannot be deleted) |
 | GET | /columns/:columnId | viewer | | `Column` |
@@ -51,6 +51,24 @@ Meta notes:
 - Type changes convert data best-effort (invalid → empty). Virtual → stored materialises the computed values.
 - PATCH `columns` on a view may be the full list or a subset (others keep their settings).
 - Locked views: editors may lock a view; changing, unlocking or deleting a locked view requires owner.
+- View defaults on creation: calendar/timeline `meta.dateColumnId` = first Date/DateTime field; timeline also
+  `endDateColumnId` = the second one and `timelineScale: 'week'` (`day|week|month`); map `geoColumnId` = first GeoData
+  field. Timeline swimlanes use `meta.groupColumnId` (SingleSelect or Links). Calendar honours `endDateColumnId` too
+  (multi-day records). Send `null` for a meta key to clear it. Kanban `meta.stackOrder` lists option titles.
+
+### Field permissions
+Column `options.permissions = { hiddenFor?: Role[], readOnlyFor?: Role[] }` (roles `editor|commenter|viewer`; owners
+always have full access). Only owners may set or change it (403 otherwise); it survives type changes; `null` clears it.
+- A field **hidden** for the caller's role behaves as if it did not exist: it is left out of `GET /bases/:id`,
+  `/tables/:id` (also from views' `columns`), `/views/:id`; `GET/PATCH/DELETE /columns/:id` → 404; it is stripped from
+  record lists, single records, write responses, linked-record lists, exports and record history; request
+  `filter`/`sorts`/`fields`/`searchColumnId`/group `columnId` naming it → 400 (as unknown fields); free-text search
+  skips it; non-owner view PATCHes may not reference it in filters/sorts/groupBy (400). Formula/Lookup/Rollup fields
+  reading a hidden field are hidden too.
+- Writes (insert/update/link/unlink, import into an existing table) touching a field **read-only** or hidden for the
+  caller's role → 403.
+- Public shared views leave out every field hidden for any role; shared forms also leave out fields read-only for
+  any role. Webhook payloads are unchanged (full records).
 
 ## Data [data engine]
 Record keys are **column ids**; `id` is the row id. Select values are option titles (MultiSelect = string[]),
@@ -79,6 +97,8 @@ Data notes:
 - Filter conditions with an empty value are ignored; unknown fields/ops in a request filter → 400.
   Date filters accept `YYYY-MM-DD`, ISO date-times, or `today`/`tomorrow`/`yesterday`.
 - `viewId` applies the view's filter and sorts (query `sorts` override them); it does not hide fields — use `fields`.
+- GeoData values are `"lat;lng"` strings (NocoDB format); writes also accept `"lat,lng"`, `[lat, lng]` or `{lat, lng}`;
+  latitude must be −90..90 and longitude −180..180 (400 otherwise). Filter ops: `eq`, `blank`, `notblank`.
 
 ## Platform [platform]
 | Method | Path | Min role | Notes |
@@ -132,7 +152,7 @@ Details and the Umbrella-side setup: [integrations.md](integrations.md).
 |---|---|---|---|
 | GET | /integrations | user | the caller's integrations |
 | POST | /integrations | user | `{kind:'umbrella', title, active?, umbrellaUrl?, inventoryUrl?}` → `{integration, secret}` (secret shown once) |
-| GET/PATCH/DELETE | /integrations/:id | creator | |
+| GET/PATCH/DELETE | /integrations/:id | creator | `Integration` also reports `lastFeedAt`, `lastFeedCount` (last full read of the CMDB feed) and `lastAlertAt` (last signed alert batch) |
 | POST | /integrations/:id/rotate-secret | creator | → `{secret}` |
 | GET | /integrations/:id/umbrella/ci | user | CMDB feed: `query offset, limit (≤5000)` → `UmbrellaCiFeed` built from the DCIM/IPAM API as the caller |
 | POST | /integrations/:id/umbrella/alerts | HMAC | `UmbrellaAlertEvent` or an array (≤500); headers `x-umbrella-timestamp`, `x-umbrella-signature` → 202 `{results:[{alert_id, matched}]}` |

@@ -170,7 +170,7 @@ describe('runMigration (fake engine)', () => {
     const result = await runMigration({ url: mock.url, token: MOCK_TOKEN, nocoBaseId: 'pinv0001', userId: 'u1', jobId: job.id, client: { retryBaseMs: 1 } });
     const finished = fake.s.jobs.get(job.id)!;
     expect(finished.status, finished.message).toBe('done');
-    expect(result).toMatchObject({ tables: 2, records: 5, links: 2, views: 5 });
+    expect(result).toMatchObject({ tables: 2, records: 5, links: 2, views: 6 });
     expect(finished.result).toEqual(result);
     expect(fake.s.bases).toEqual([{ id: result!.baseId, title: 'Inventory', owner: 'u1' }]);
     expect(fake.s.tables.map((t) => t.title)).toEqual(['Products', 'Suppliers']);
@@ -240,7 +240,7 @@ describe('runMigration (fake engine)', () => {
 
     // Views
     const pviews = fake.s.views.filter((v) => v.tableId === products.id);
-    expect(pviews.map((v) => `${v.title}:${v.type}`)).toEqual(['Products:grid', 'In stock:grid', 'By category:kanban']);
+    expect(pviews.map((v) => `${v.title}:${v.type}`)).toEqual(['Products:grid', 'In stock:grid', 'By category:kanban', 'Warehouses map:map']);
     const inStock = pviews[1]!;
     expect(inStock.locked).toBe(true);
     expect(inStock.filter).toEqual({
@@ -286,7 +286,7 @@ describe('runMigration (fake engine)', () => {
         'low_stock_sql_view: database view is not migrated',
         'Products.Barcode: Barcode fields are not supported',
         'Products / view "In stock": filter relative date comparison "today"',
-        'Products / view "Warehouses map": map views are not supported',
+        'Products / view "Warehouses map": map location field was not migrated',
       ]),
     );
     expect(result!.converted).toEqual(['Suppliers.Owner: User converted to text (user names/emails)']);

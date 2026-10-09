@@ -12,11 +12,10 @@ import { apiSource } from '../lib/records';
 import { permissionsFor } from '../lib/roles';
 import { useDebounced } from '../lib/useDebounced';
 import { resolveViewColumns, toViewColumns } from '../lib/viewColumns';
-import { CalendarView } from '../views/CalendarView';
-import { FormBuilder } from '../views/FormBuilder';
 import { GalleryView } from '../views/GalleryView';
 import { GridView } from '../views/grid/GridView';
 import { KanbanView } from '../views/KanbanView';
+import { CalendarView, FormBuilder, MapView, TimelineView } from '../views/lazyViews';
 import { useViewState } from '../views/useViewState';
 
 function parseJson<T>(s: string | null): T | null {
@@ -137,8 +136,26 @@ function ViewHost({ base, table, view }: { base: BaseWithTables; table: Table; v
           onOpen={openRecord}
           onAdd={(d) => setNewRecord(d)}
           onChooseField={(id) => update({ meta: { groupColumnId: id } })}
+          onStackOrder={canPersist ? (order) => update({ meta: { stackOrder: order } }, { immediate: true }) : undefined}
         />
       );
+      break;
+    case 'timeline':
+      body = (
+        <TimelineView
+          table={table}
+          view={draft}
+          source={source}
+          baseQuery={baseQuery}
+          perms={perms}
+          onOpen={openRecord}
+          onAdd={(d) => setNewRecord(d)}
+          onScale={canPersist ? (s) => update({ meta: { timelineScale: s } }, { immediate: true }) : undefined}
+        />
+      );
+      break;
+    case 'map':
+      body = <MapView table={table} view={draft} resolved={resolved} source={source} baseQuery={baseQuery} onOpen={openRecord} />;
       break;
     case 'calendar':
       body = <CalendarView table={table} view={draft} source={source} baseQuery={baseQuery} perms={perms} onOpen={openRecord} onAdd={(d) => setNewRecord(d)} />;

@@ -4,6 +4,7 @@ import Papa from 'papaparse';
 import type { Column, FieldType, Table } from '../../../shared/src/index.js';
 import { isReadOnlyType } from '../../../shared/src/index.js';
 import { requireBaseRole, requireUser } from '../auth/plugin.js';
+import type { Access } from '../data/access.js';
 import { insertRecords } from '../data/records.js';
 import { getDb } from '../db/index.js';
 import { badRequest } from '../errors.js';
@@ -158,6 +159,8 @@ export interface ImportOptions {
   tableId?: string;
   tableTitle?: string;
   columnMap?: Record<string, string>;
+  /** Caller's role: when importing into an existing table, field permissions apply (403 on read-only fields). */
+  access?: Access;
 }
 
 /** Import parsed rows into a new or existing table. Runs in one transaction. */
@@ -213,7 +216,7 @@ export function importSheet(opts: ImportOptions): { table: Table; inserted: numb
           }
           return rec;
         });
-        inserted += insertRecords(table.id, batch, { userId: opts.userId }).length;
+        inserted += insertRecords(table.id, batch, { userId: opts.userId, access: created ? undefined : opts.access }).length;
       }
     });
 
@@ -257,7 +260,7 @@ export async function importRoutes(app: FastifyInstance) {
     { schema: doc('Import', 'Import a CSV/XLSX/JSON file into a new table (tableTitle) or an existing one (tableId, columnMap)') },
     async (req) => {
       const { baseId } = req.params;
-      requireBaseRole(req, baseId, 'editor');
+      const role = requireBaseRole(req, baseId, 'editor');
       const user = requireUser(req);
       const up = await readUpload(req);
       const sheets = await parseUpload(up.filename, up.buffer);
@@ -279,6 +282,7 @@ export async function importRoutes(app: FastifyInstance) {
         tableId: up.fields.tableId || undefined,
         tableTitle: up.fields.tableTitle || undefined,
         columnMap,
+        access: { role },
       });
     },
   );

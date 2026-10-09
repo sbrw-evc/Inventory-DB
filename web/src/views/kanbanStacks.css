@@ -1,0 +1,11 @@
+/* Kanban: reordering stacks by dragging their headers. */
+.kanban-stack-head.stack-draggable {
+  cursor: grab;
+}
+.kanban-stack.stack-dragging {
+  opacity: 0.5;
+}
+.kanban-stack.stack-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}

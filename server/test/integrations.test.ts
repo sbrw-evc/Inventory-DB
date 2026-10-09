@@ -259,3 +259,22 @@ describe('integrations: helpers', () => {
     await expect(client.list('dcim/racks')).rejects.toMatchObject({ statusCode: 503 });
   });
 });
+
+describe('integration activity', () => {
+  it('records the last full feed read and the last signed alert delivery', async () => {
+    const { app, owner, id, secret } = await setup();
+    const alert = { alert_id: 'z1', status: 'open', severity: 'info', title: 'Ping', ci: { source_refs: ['inventory-db:dcim.device:100'] } };
+    const get = async () => (await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: owner.headers })).json();
+    expect(await get()).toMatchObject({ lastFeedAt: null, lastFeedCount: null, lastAlertAt: null });
+    await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/umbrella/ci?limit=1`, headers: owner.headers });
+    expect((await get()).lastFeedAt).toBeNull(); // only reading the last page counts as a full read
+    await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/umbrella/ci`, headers: owner.headers });
+    const afterFeed = await get();
+    expect(afterFeed.lastFeedAt).toEqual(expect.any(String));
+    expect(afterFeed.lastFeedCount).toBe(4);
+    await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/umbrella/alerts`, ...signed('whsec_wrong', alert) });
+    expect((await get()).lastAlertAt).toBeNull();
+    await app.inject({ method: 'POST', url: `/api/v1/integrations/${id}/umbrella/alerts`, ...signed(secret, alert) });
+    expect((await get()).lastAlertAt).toEqual(expect.any(String));
+  });
+});

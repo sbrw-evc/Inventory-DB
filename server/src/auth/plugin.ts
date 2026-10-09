@@ -49,6 +49,13 @@ export function requireTableRole(req: FastifyRequest, tableId: string, min: Role
   return row.base_id;
 }
 
+/** Like requireTableRole, but returns the caller's role too (for field-level permissions). */
+export function requireTableAccess(req: FastifyRequest, tableId: string, min: Role): { baseId: string; role: Role } {
+  const row = getDb().prepare('SELECT base_id FROM nc_tables WHERE id = ?').get(tableId) as { base_id: string } | undefined;
+  if (!row) throw notFound('Table');
+  return { baseId: row.base_id, role: requireBaseRole(req, row.base_id, min) };
+}
+
 export function requireViewRole(req: FastifyRequest, viewId: string, min: Role): { baseId: string; tableId: string } {
   const row = getDb()
     .prepare('SELECT t.base_id, v.table_id FROM nc_views v JOIN nc_tables t ON t.id = v.table_id WHERE v.id = ?')

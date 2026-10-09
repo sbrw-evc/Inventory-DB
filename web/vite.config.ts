@@ -13,5 +13,14 @@ export default defineConfig({
     ],
   },
   server: { port: 5173, proxy: { '/api': 'http://localhost:8080' } },
+  build: {
+    rollupOptions: {
+      output: {
+        // React and the data/router libraries change rarely: keep them in their own long-cached chunk.
+        manualChunks: (id: string) =>
+          /node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@tanstack)\//.test(id) ? 'vendor' : undefined,
+      },
+    },
+  },
   test: { environment: 'jsdom' },
 } as never);

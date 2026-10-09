@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { ColumnInput, FilterGroup } from '../../../shared/src/index.js';
-import { FIELD_TYPES, FILTER_OPS } from '../../../shared/src/index.js';
-import { requireBaseRole, requireColumnRole, requireTableRole, requireUser, requireViewRole } from '../auth/plugin.js';
+import type { ColumnInput, FilterGroup, Role, ViewMeta, ViewType } from '../../../shared/src/index.js';
+import { FIELD_TYPES, FILTER_OPS, VIEW_TYPES } from '../../../shared/src/index.js';
+import { requireBaseRole, requireColumnRole, requireTableAccess, requireUser, requireViewRole } from '../auth/plugin.js';
 import { getBaseRole } from '../auth/service.js';
-import { forbidden } from '../errors.js';
+import { assertFilterVisible, assertSortsVisible, hiddenColumnIdsForRole, tableForRole, viewForHidden } from '../data/access.js';
+import { forbidden, notFound } from '../errors.js';
+import { loadColumn } from '../meta/store.js';
 import {
   addColumn,
   createBase,
@@ -68,7 +70,7 @@ export const filterGroup: z.ZodType<FilterGroup> = z.lazy(() =>
 ) as z.ZodType<FilterGroup>;
 export const sortList = z.array(z.object({ columnId: z.string(), direction: z.enum(['asc', 'desc']) }));
 
-const viewType = z.enum(['grid', 'form', 'gallery', 'kanban', 'calendar']);
+const viewType = z.enum(VIEW_TYPES as [ViewType, ...ViewType[]]);
 const viewBody = z.object({ title: z.string().min(1).max(255), type: viewType, copyFromViewId: z.string().optional() });
 const viewPatch = z.object({
   title: z.string().min(1).max(255).optional(),
@@ -94,6 +96,29 @@ const viewPatch = z.object({
 
 type P<K extends string> = { Params: Record<K, string> };
 
+/** Column-scoped role check that also treats a field hidden for the caller as missing (404). */
+function requireVisibleColumn(req: Parameters<typeof requireColumnRole>[0], columnId: string, min: Role) {
+  const { baseId, tableId } = requireColumnRole(req, columnId, min);
+  const role = getBaseRole(baseId, requireUser(req).id)!;
+  if (role !== 'owner' && hiddenColumnIdsForRole(tableId, role).has(columnId)) throw notFound('Column');
+  return { baseId, tableId, role };
+}
+
+/** Column references in a view patch must be visible to non-owners (400 like unknown fields). */
+function assertViewPatchVisible(tableId: string, role: Role, patch: { filter?: FilterGroup | null; sorts?: { columnId: string; direction: 'asc' | 'desc' }[]; meta?: Record<string, unknown> }) {
+  if (role === 'owner') return;
+  const hidden = hiddenColumnIdsForRole(tableId, role);
+  if (!hidden.size) return;
+  assertFilterVisible(patch.filter, hidden);
+  assertSortsVisible(patch.sorts, hidden);
+  const meta = (patch.meta ?? {}) as ViewMeta;
+  assertSortsVisible(meta.groupBy, hidden, 'Group');
+  for (const k of ['groupColumnId', 'coverColumnId', 'dateColumnId', 'endDateColumnId', 'geoColumnId'] as const) {
+    const id = meta[k];
+    if (typeof id === 'string' && hidden.has(id)) throw notFound('Column');
+  }
+}
+
 export async function metaRoutes(app: FastifyInstance) {
   // Bases
   app.get('/api/v1/bases', async (req) => listBases(requireUser(req).id));
@@ -102,7 +127,8 @@ export async function metaRoutes(app: FastifyInstance) {
 
   app.get<P<'baseId'>>('/api/v1/bases/:baseId', async (req) => {
     const role = requireBaseRole(req, req.params.baseId, 'viewer');
-    return { ...getBase(req.params.baseId), role };
+    const base = getBase(req.params.baseId);
+    return { ...base, tables: base.tables.map((t) => tableForRole(t, role)), role };
   });
 
   app.patch<P<'baseId'>>('/api/v1/bases/:baseId', async (req) => {
@@ -118,70 +144,81 @@ export async function metaRoutes(app: FastifyInstance) {
 
   // Tables
   app.post<P<'baseId'>>('/api/v1/bases/:baseId/tables', async (req) => {
-    requireBaseRole(req, req.params.baseId, 'editor');
+    const role = requireBaseRole(req, req.params.baseId, 'editor');
     const body = tableBody.parse(req.body);
+    if (role !== 'owner' && body.columns?.some((c) => (c.options as { permissions?: unknown } | undefined)?.permissions))
+      throw forbidden('Only owners can set field permissions');
     return createTable(req.params.baseId, { ...body, columns: body.columns as ColumnInput[] | undefined });
   });
 
   app.get<P<'tableId'>>('/api/v1/tables/:tableId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'viewer');
-    return getTable(req.params.tableId);
+    const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
+    return tableForRole(getTable(req.params.tableId), role);
   });
 
   app.patch<P<'tableId'>>('/api/v1/tables/:tableId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
-    return updateTable(req.params.tableId, tablePatch.parse(req.body));
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
+    return tableForRole(updateTable(req.params.tableId, tablePatch.parse(req.body)), role);
   });
 
   app.delete<P<'tableId'>>('/api/v1/tables/:tableId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    requireTableAccess(req, req.params.tableId, 'editor');
     deleteTable(req.params.tableId);
     return { ok: true };
   });
 
   // Columns
   app.post<P<'tableId'>>('/api/v1/tables/:tableId/columns', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
-    return addColumn(req.params.tableId, columnInput.parse(req.body) as ColumnInput);
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
+    const input = columnInput.parse(req.body) as ColumnInput;
+    if (role !== 'owner' && input.options?.permissions) throw forbidden('Only owners can set field permissions');
+    return addColumn(req.params.tableId, input);
   });
 
   app.get<P<'columnId'>>('/api/v1/columns/:columnId', async (req) => {
-    requireColumnRole(req, req.params.columnId, 'viewer');
+    requireVisibleColumn(req, req.params.columnId, 'viewer');
     return getColumn(req.params.columnId);
   });
 
   app.patch<P<'columnId'>>('/api/v1/columns/:columnId', async (req) => {
-    requireColumnRole(req, req.params.columnId, 'editor');
-    return updateColumn(req.params.columnId, columnInput.partial().parse(req.body) as Partial<ColumnInput>);
+    const { role } = requireVisibleColumn(req, req.params.columnId, 'editor');
+    const patch = columnInput.partial().parse(req.body) as Partial<ColumnInput>;
+    if (role !== 'owner' && patch.options && 'permissions' in patch.options) {
+      const cur = loadColumn(req.params.columnId).options.permissions ?? null;
+      if (JSON.stringify(cur) !== JSON.stringify(patch.options.permissions ?? null)) throw forbidden('Only owners can change field permissions');
+    }
+    return updateColumn(req.params.columnId, patch);
   });
 
   app.delete<P<'columnId'>>('/api/v1/columns/:columnId', async (req) => {
-    requireColumnRole(req, req.params.columnId, 'editor');
+    requireVisibleColumn(req, req.params.columnId, 'editor');
     deleteColumn(req.params.columnId);
     return { ok: true };
   });
 
   // Views
   app.post<P<'tableId'>>('/api/v1/tables/:tableId/views', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
-    return createView(req.params.tableId, viewBody.parse(req.body));
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
+    return viewForHidden(createView(req.params.tableId, viewBody.parse(req.body)), hiddenColumnIdsForRole(req.params.tableId, role));
   });
 
   app.get<P<'viewId'>>('/api/v1/views/:viewId', async (req) => {
-    requireViewRole(req, req.params.viewId, 'viewer');
-    return getView(req.params.viewId);
+    const { baseId, tableId } = requireViewRole(req, req.params.viewId, 'viewer');
+    const role = getBaseRole(baseId, requireUser(req).id)!;
+    return viewForHidden(getView(req.params.viewId), hiddenColumnIdsForRole(tableId, role));
   });
 
   app.patch<P<'viewId'>>('/api/v1/views/:viewId', async (req) => {
-    const { baseId } = requireViewRole(req, req.params.viewId, 'editor');
-    const role = getBaseRole(baseId, requireUser(req).id);
+    const { baseId, tableId } = requireViewRole(req, req.params.viewId, 'editor');
+    const role = getBaseRole(baseId, requireUser(req).id)!;
     const patch = viewPatch.parse(req.body);
+    assertViewPatchVisible(tableId, role, patch);
     const view = getView(req.params.viewId);
     if (role !== 'owner') {
       // Editors may lock a view, but only owners may unlock or change a locked view.
       if (view.locked) throw forbidden('This view is locked; only an owner can change it');
     }
-    return updateView(req.params.viewId, patch);
+    return viewForHidden(updateView(req.params.viewId, patch), hiddenColumnIdsForRole(tableId, role));
   });
 
   app.delete<P<'viewId'>>('/api/v1/views/:viewId', async (req) => {

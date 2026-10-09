@@ -398,7 +398,7 @@ export class NocoDBClient {
    * (fk_cover_image_col_id), `forms` (heading, subheading, success_msg, redirect_url, columns),
    * `calendars` (calendar_range). Returns null when the endpoint is missing in this NocoDB version.
    */
-  async getViewDetails(kind: 'kanbans' | 'galleries' | 'forms' | 'calendars' | 'grids', viewId: string): Promise<Record<string, unknown> | null> {
+  async getViewDetails(kind: 'kanbans' | 'galleries' | 'forms' | 'calendars' | 'grids' | 'maps', viewId: string): Promise<Record<string, unknown> | null> {
     try {
       return await this.get<Record<string, unknown>>(`/api/v2/meta/${kind}/${encodeURIComponent(viewId)}`);
     } catch (err) {

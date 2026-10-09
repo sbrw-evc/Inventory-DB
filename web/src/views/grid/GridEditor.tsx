@@ -21,11 +21,12 @@ export const INLINE_TYPES = new Set([
   'Percent',
   'Date',
   'DateTime',
+  'GeoData',
 ]);
 /** Types edited in a popover anchored to the cell. */
 export const POPOVER_TYPES = new Set(['LongText', 'JSON', 'SingleSelect', 'MultiSelect', 'Attachment']);
 /** Types where typing a character starts editing with that character. */
-export const TYPE_TO_EDIT = new Set(['SingleLineText', 'Email', 'URL', 'PhoneNumber', 'Number', 'Decimal', 'Currency', 'Percent', 'LongText']);
+export const TYPE_TO_EDIT = new Set(['SingleLineText', 'Email', 'URL', 'PhoneNumber', 'Number', 'Decimal', 'Currency', 'Percent', 'LongText', 'GeoData']);
 
 interface EditorProps {
   column: Column;
@@ -116,7 +117,16 @@ function TextAreaPopover({ column, value, initialText, onCommit, onCancel, ancho
     onCommit(parsed, move);
   };
   return (
-    <Popover anchor={anchor ? anchor.getBoundingClientRect() : null} onClose={() => commit(null)} className="popover-pad textarea-popover" offset={-((anchor?.offsetHeight ?? 0))}>
+    <Popover
+      anchor={anchor ? anchor.getBoundingClientRect() : null}
+      onClose={() => commit(null)}
+      onEscape={() => {
+        done.current = true;
+        onCancel();
+      }}
+      className="popover-pad textarea-popover"
+      offset={-(anchor?.offsetHeight ?? 0)}
+    >
       <textarea
         autoFocus
         className={`input ${column.type === 'JSON' ? 'mono' : ''}`}

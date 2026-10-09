@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { en } from './en';
 import { ru } from './ru';
+import { ruFeatures } from './ruFeatures';
 
 /**
  * Tiny i18n: English strings are the keys; other languages map them to translations.
@@ -12,7 +13,7 @@ export const LANGS: Array<{ code: Lang; label: string }> = [
   { code: 'ru', label: 'Русский' },
 ];
 
-const DICTS: Record<Lang, Record<string, string>> = { en, ru };
+const DICTS: Record<Lang, Record<string, string>> = { en, ru: { ...ruFeatures, ...ru } };
 // Shared with the NetBox pages, which read the same key.
 const KEY = 'lang';
 

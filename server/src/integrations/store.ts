@@ -14,9 +14,15 @@ interface IntegrationRow {
   created_at: string;
 }
 
-interface IntegrationConfig {
+interface IntegrationConfig extends IntegrationActivity {
   umbrellaUrl?: string | null;
   inventoryUrl?: string | null;
+}
+
+interface IntegrationActivity {
+  lastFeedAt?: string | null;
+  lastFeedCount?: number | null;
+  lastAlertAt?: string | null;
 }
 
 const toIntegration = (r: IntegrationRow): Integration => {
@@ -28,6 +34,9 @@ const toIntegration = (r: IntegrationRow): Integration => {
     active: !!r.active,
     umbrellaUrl: config.umbrellaUrl ?? null,
     inventoryUrl: config.inventoryUrl ?? null,
+    lastFeedAt: config.lastFeedAt ?? null,
+    lastFeedCount: config.lastFeedCount ?? null,
+    lastAlertAt: config.lastAlertAt ?? null,
     createdBy: r.created_by,
     createdAt: r.created_at,
   };
@@ -74,6 +83,14 @@ export function createIntegration(userId: string, input: IntegrationInput): { in
     )
     .run(row);
   return { integration: toIntegration(row), secret };
+}
+
+/** Remembers when Umbrella last pulled the full CMDB feed / last delivered alerts (shown on the admin page). */
+export function recordActivity(id: string, patch: IntegrationActivity): void {
+  const row = getRow(id);
+  if (!row) return;
+  const config = { ...json<IntegrationConfig>(row.config, {}), ...patch };
+  getDb().prepare('UPDATE nc_integrations SET config = ? WHERE id = ?').run(JSON.stringify(config), id);
 }
 
 export function updateIntegration(id: string, patch: Partial<Omit<IntegrationInput, 'kind'>>): Integration {
