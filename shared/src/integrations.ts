@@ -10,6 +10,11 @@ export interface Integration {
   umbrellaUrl?: string | null;
   /** Public URL of this Inventory DB, used for record links in the CMDB feed. Defaults to the request host. */
   inventoryUrl?: string | null;
+  /** When Umbrella last read the whole CMDB feed, and how many CIs it had. */
+  lastFeedAt?: string | null;
+  lastFeedCount?: number | null;
+  /** When Umbrella last delivered a correctly signed alert batch. */
+  lastAlertAt?: string | null;
   createdBy: string;
   createdAt: string;
 }

@@ -51,6 +51,7 @@ export function ViewToolbar(p: ToolbarProps) {
   const nFilters = countConditions(p.filter);
   const hiddenCount = resolved.filter((r) => !r.show).length;
   const groupBy = view.meta.groupBy ?? [];
+  const dateColumns = columns.filter((c) => ['Date', 'DateTime', 'CreatedTime', 'LastModifiedTime'].includes(c.type));
 
   const exportAs = async (format: 'csv' | 'xlsx') => {
     try {
@@ -72,7 +73,7 @@ export function ViewToolbar(p: ToolbarProps) {
           {view.locked && <Icon name="lock" size={13} className="muted" title={t('Locked view')} />}
         </div>
         <span className="toolbar-sep" />
-        {type !== 'form' && type !== 'calendar' && (
+        {type !== 'form' && type !== 'calendar' && type !== 'timeline' && (
           <Dropdown
             label={<><Icon name="eyeOff" size={14} /> {t('Fields')}{hiddenCount ? ` · ${hiddenCount} ${t('hidden')}` : ''}</>}
             active={hiddenCount > 0}
@@ -99,7 +100,7 @@ export function ViewToolbar(p: ToolbarProps) {
                 />
               )}
             </Dropdown>
-            {type !== 'calendar' && (
+            {type !== 'calendar' && type !== 'timeline' && type !== 'map' && (
               <Dropdown
                 label={<><Icon name="sort" size={14} /> {t('Sort')}{p.sorts.length ? ` · ${p.sorts.length}` : ''}</>}
                 active={p.sorts.length > 0}
@@ -173,15 +174,62 @@ export function ViewToolbar(p: ToolbarProps) {
             )}
           </Dropdown>
         )}
-        {type === 'calendar' && (
-          <Dropdown label={<><Icon name="calendar" size={14} /> {t('Date field')}</>} className="menu" disabled={!canPersist}>
+        {(type === 'calendar' || type === 'timeline') && (
+          <>
+            <Dropdown label={<><Icon name="calendar" size={14} /> {type === 'timeline' ? t('Start date') : t('Date field')}</>} className="menu" disabled={!canPersist}>
+              {(close) => (
+                <ColumnPicker
+                  label={t('Place records by')}
+                  columns={dateColumns}
+                  value={view.meta.dateColumnId}
+                  onChange={(id) => {
+                    update({ meta: { dateColumnId: id } });
+                    close();
+                  }}
+                />
+              )}
+            </Dropdown>
+            <Dropdown label={<><Icon name="arrowRight" size={14} /> {t('End date')}</>} className="menu" disabled={!canPersist} active={!!view.meta.endDateColumnId}>
+              {(close) => (
+                <ColumnPicker
+                  label={t('Records span until')}
+                  allowNone
+                  columns={dateColumns.filter((c) => c.id !== view.meta.dateColumnId)}
+                  value={view.meta.endDateColumnId}
+                  onChange={(id) => {
+                    update({ meta: { endDateColumnId: (id ?? null) as unknown as string } });
+                    close();
+                  }}
+                />
+              )}
+            </Dropdown>
+          </>
+        )}
+        {type === 'timeline' && (
+          <Dropdown label={<><Icon name="group" size={14} /> {t('Swimlanes')}</>} className="menu" disabled={!canPersist} active={!!view.meta.groupColumnId}>
+            {(close) => (
+              <ColumnPicker
+                label={t('Swimlanes by')}
+                allowNone
+                columns={columns.filter((c) => c.type === 'SingleSelect' || c.type === 'Links')}
+                value={view.meta.groupColumnId}
+                onChange={(id) => {
+                  update({ meta: { groupColumnId: (id ?? null) as unknown as string } });
+                  close();
+                }}
+              />
+            )}
+          </Dropdown>
+        )}
+        {type === 'map' && (
+          <Dropdown label={<><Icon name="mapPin" size={14} /> {t('Location field')}</>} className="menu" disabled={!canPersist}>
             {(close) => (
               <ColumnPicker
                 label={t('Place records by')}
-                columns={columns.filter((c) => ['Date', 'DateTime', 'CreatedTime', 'LastModifiedTime'].includes(c.type))}
-                value={view.meta.dateColumnId}
+                columns={columns.filter((c) => c.type === 'GeoData')}
+                value={view.meta.geoColumnId}
                 onChange={(id) => {
-                  update({ meta: { dateColumnId: id } });
+                  update({ meta: { geoColumnId: id } });
                   close();
                 }}
               />

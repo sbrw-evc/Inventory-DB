@@ -12,11 +12,11 @@ import { publicSource } from '../lib/records';
 import { PUBLIC_PERMISSIONS } from '../lib/roles';
 import { useDebounced } from '../lib/useDebounced';
 import { resolveViewColumns } from '../lib/viewColumns';
-import { CalendarView } from '../views/CalendarView';
 import { FormRenderer } from '../views/FormRenderer';
 import { GalleryView } from '../views/GalleryView';
 import { GridView } from '../views/grid/GridView';
 import { KanbanView } from '../views/KanbanView';
+import { CalendarView, MapView, TimelineView } from '../views/lazyViews';
 
 const pwKey = (uuid: string) => `inventorydb.sharepw.${uuid}`;
 
@@ -144,6 +144,12 @@ function SharedViewBody({ data, uuid, password }: { data: PublicViewData; uuid: 
       break;
     case 'calendar':
       body = <CalendarView table={table} view={view} source={source} baseQuery={baseQuery} perms={PUBLIC_PERMISSIONS} onOpen={openById} onAdd={() => {}} />;
+      break;
+    case 'timeline':
+      body = <TimelineView table={table} view={view} source={source} baseQuery={baseQuery} perms={PUBLIC_PERMISSIONS} onOpen={openById} onAdd={() => {}} />;
+      break;
+    case 'map':
+      body = <MapView table={table} view={view} resolved={resolved} source={source} baseQuery={baseQuery} onOpen={openById} />;
       break;
     default:
       body = (
