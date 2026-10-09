@@ -29,6 +29,8 @@ flowchart LR
 1. In Inventory DB create an integration: `POST /api/v1/integrations`
    `{"kind":"umbrella","title":"Umbrella prod","umbrellaUrl":"https://umbrella.corp","inventoryUrl":"https://inventory.corp"}`.
    Save the returned `secret`; it is shown once (`POST /integrations/:id/rotate-secret` issues a new one).
+   The **Integrations** page in the web UI does the same and shows the feed and webhook URLs to paste into Umbrella,
+   the time of the last full feed read and of the last signed alert, and alerts that matched no device.
 2. Create an API token for a read-only service user (`POST /api/v1/tokens`). The feed contains what
    that user can read through the DCIM/IPAM API.
 3. In Umbrella, put the token and the secret into OpenBao and build two connectors in the low-code

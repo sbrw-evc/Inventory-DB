@@ -34,16 +34,19 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 2. **Field types**: SingleLineText, LongText, Number, Decimal, Currency, Percent, Rating, Checkbox,
    Date, DateTime, Email, URL, PhoneNumber, SingleSelect, MultiSelect, Attachment (URL/upload),
    JSON, AutoNumber (id), CreatedTime, LastModifiedTime, Links (many-to-many), Lookup, Rollup, Formula
-   (arithmetic, comparison, string and date functions, IF/AND/OR).
+   (arithmetic, comparison, string and date functions, IF/AND/OR), GeoData ("lat;lng").
 3. **Records**: list with pagination, CRUD, bulk insert/update/delete, link/unlink.
 4. **Query engine**: nested filter groups (AND/OR) with type-aware operators, multi-sort,
    group by, full-text search; works on lookup/rollup/formula fields too.
-5. **Views**: Grid, Form, Gallery, Kanban, Calendar; each with its own filters/sorts/hidden fields/field
-   order/widths; collaborative and locked modes.
+5. **Views**: Grid, Form, Gallery, Kanban (drag cards and stacks), Calendar (multi-day spans), Timeline (start/end
+   dates, swimlanes, day/week/month zoom, drag to move/resize), Map (GeoData on OpenStreetMap via Leaflet); each with
+   its own filters/sorts/hidden fields/field order/widths; collaborative and locked modes.
 6. **UI**: sidebar of bases/tables/views, grid with inline editing and keyboard navigation, expanded
-   record drawer with comments and history, toolbar (fields, filter, sort, group, search), undo of last edit.
+   record drawer with comments and history, toolbar (fields, filter, sort, group, search), undo/redo of cell edits.
+   Heavy views (calendar, timeline, map, form builder) and secondary pages load on demand.
 7. **Auth & roles**: email/password sign-up/in (JWT), base members with roles owner / editor /
    commenter / viewer enforced on every route, API tokens (`xc-token` header like NocoDB).
+   Field-level permissions: per field and role, hidden or read-only (owners always full), enforced by the API.
 8. **REST API**: `/api/v1/...` meta + data endpoints, OpenAPI JSON + Swagger UI at `/api/docs`.
 9. **Import/export**: CSV and XLSX import (new table or into existing table, type inference), CSV and XLSX
    export of a view (respects filters/sorts/hidden fields).
@@ -52,7 +55,7 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 12. **Audit log & comments** per record.
 13. **Migrate from NocoDB**: connect to a NocoDB instance (cloud or self-hosted URL + API token), pick a
     base, and copy its tables, field definitions (mapped to our types, unsupported ones become text),
-    select options, records, many-to-many/has-many links, and Grid/Form/Gallery/Kanban/Calendar views with
+    select options, records, many-to-many/has-many links, and Grid/Form/Gallery/Kanban/Calendar/Map views with
     their filters, sorts and hidden fields. Uses NocoDB's v2 REST API (`/api/v2/meta/...`,
     `/api/v2/tables/{id}/records`, links endpoints). Runs as a background job with progress and a
     report of anything skipped. NocoDB CSV exports also import through the regular CSV importer.
@@ -67,18 +70,19 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
     `/metrics` endpoint.
 16. **Inventory template**: one-click base with Products, Suppliers, Warehouses, Stock movements,
     linked together with rollups (on-hand quantity) and formulas (stock value, low-stock flag).
+17. **Umbrella integration**: CMDB feed and signed alert webhook (`docs/integrations.md`), device status chips, and an
+    Integrations admin page (create/edit/delete, feed and webhook URLs, secret rotation, last sync, unmatched alerts).
 
 ### Deferred (and why)
-- Timeline/Gantt, Map and List views: lower value for inventory; the view framework makes them additive later.
-- Field/record-level permissions and personal views: role checks are base-level for now.
+- List view and Gantt dependencies: the view framework makes them additive later.
+- Record-level permissions and personal views (field-level permissions are built).
 - External data sources (Postgres/MySQL connections) and snapshots: app uses its own SQLite database;
   the storage layer is isolated so Postgres can be added later.
 - Workflows, scripts, dashboards, interfaces, extensions, AI, docs, sync integrations, MCP server.
-- RichText, Barcode/QRCode, User, Duration, GeoData, Button field types.
+- RichText, Barcode/QRCode, User, Duration, Button field types.
 - Backend language/database: Umbrella's guidelines prefer Go and PostgreSQL; this app stays on
   Node/TypeScript with SQLite for now, with storage isolated so PostgreSQL can be added later.
 - NetBox extras: circuits, power, virtualization, wireless, VPN, journaling, config contexts, scripts/reports.
-- Integrations between Inventory DB and Umbrella are built in the separate "Umbrella and Inventory integration" thread.
 - Real-time collaboration (multi-cursor/websocket updates).
 
 ## 4. Architecture
