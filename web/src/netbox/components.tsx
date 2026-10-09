@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { nb, type ModelSchema, type Ref } from './api';
 import { isChoice, isRef, statusTone, utilTone, type MonitoringStatus, type Tone } from './format';
 import { useSchema } from './hooks';
-import { t, valueLabel } from './i18n';
+import { currentLang, t, typeLabel, valueLabel } from './i18n';
 
 /** API url (`/api/v1/dcim/devices/5/`) → UI route (`/dcim/devices/5`). */
 export const uiHref = (apiUrl: string) => apiUrl.replace(/^\/api\/v1/, '').replace(/\/$/, '');
@@ -67,6 +67,13 @@ export function parentRef(value: Ref): Ref | null {
   return null;
 }
 
+/** An object type such as `dcim.interface`, shown as its translated name. */
+function ObjectTypeName({ objectType }: { objectType: string }) {
+  const { data: schema } = useSchema();
+  const model = schema?.find((m) => m.object_type === objectType);
+  return <span>{model ? typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural) : objectType}</span>;
+}
+
 /** Renders any API value: refs as links, choices as chips/labels, lists, booleans, colours. */
 export function Value({ v, name }: { v: unknown; name?: string }) {
   if (v == null || v === '') return <span className="nb-muted">—</span>;
@@ -96,6 +103,7 @@ export function Value({ v, name }: { v: unknown; name?: string }) {
     );
   }
   if (isRef(v)) return <RefLink value={v} />;
+  if (typeof v === 'string' && name?.endsWith('_type') && /^[a-z]+\.[a-z]+$/.test(v)) return <ObjectTypeName objectType={v} />;
   if (isChoice(v)) {
     if (name === 'status' || name === 'action') return <StatusChip value={v} />;
     return <span>{valueLabel(String(v.value), v.label)}</span>;
@@ -106,7 +114,7 @@ export function Value({ v, name }: { v: unknown; name?: string }) {
     return <code style={{ fontSize: 11 }}>{JSON.stringify(v)}</code>;
   }
   if (typeof v === 'boolean') return <span>{v ? t('yes') : t('no')}</span>;
-  if (name === 'created' || name === 'last_updated' || name === 'time') return <span>{new Date(String(v)).toLocaleString()}</span>;
+  if (name === 'created' || name === 'last_updated' || name === 'time') return <span>{new Date(String(v)).toLocaleString(currentLang())}</span>;
   return <span>{String(v)}</span>;
 }
 

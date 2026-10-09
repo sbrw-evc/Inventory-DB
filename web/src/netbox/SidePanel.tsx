@@ -5,7 +5,7 @@ import { Chip, ErrorBox, KV, Tabs, Value } from './components';
 import { configFor, objectRoute } from './config';
 import { changedKeys, statusTone } from './format';
 import { useAsync, useMe } from './hooks';
-import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
+import { currentLang, fieldLabel, t, typeLabel, valueLabel } from './i18n';
 import { ObjectForm } from './ObjectForm';
 
 /** Read-only details of an object: all fields, computed values, tags, custom fields and timestamps. */
@@ -73,7 +73,7 @@ export function ObjectHistory({ objectType, id }: { objectType: string; id: numb
           <div key={c.id} style={{ borderBottom: '1px solid var(--nb-border)', paddingBottom: 8 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <Chip tone={statusTone(action.value)}>{valueLabel(action.value, action.label)}</Chip>
-              <span>{new Date(String(c.time ?? c.created)).toLocaleString()}</span>
+              <span>{new Date(String(c.time ?? c.created)).toLocaleString(currentLang())}</span>
               <span className="nb-muted">{t('by', { user: String(c.user_name ?? '—') })}</span>
             </div>
             {action.value === 'update' && keys.length > 0 && (
@@ -129,7 +129,7 @@ export function SidePanel({
   return (
     <aside className="nb-panel" aria-label={typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural)}>
       <div className="nb-panel-title">
-        <span>{id === 'new' ? `${t('add')}: ${model.verbose_name}` : (obj?.display ?? '…')}</span>
+        <span>{id === 'new' ? `${t('add')}: ${typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural)}` : (obj?.display ?? '…')}</span>
         <span className="nb-spacer" />
         <button className="nb-btn" onClick={onClose} aria-label={t('close')}>
           ×

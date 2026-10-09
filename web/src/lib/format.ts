@@ -1,6 +1,6 @@
 import type { Attachment, Column, FieldType } from '@shared';
 import { formatGeo, parseGeo } from '@shared';
-import { t } from '../i18n';
+import { getLang, t } from '../i18n';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -38,7 +38,7 @@ export function formatNumber(column: Pick<Column, 'type' | 'options'>, v: unknow
     case 'Currency': {
       const code = column.options?.currencyCode || 'USD';
       try {
-        return new Intl.NumberFormat(undefined, {
+        return new Intl.NumberFormat(getLang(), {
           style: 'currency',
           currency: code,
           minimumFractionDigits: precision,
@@ -52,9 +52,9 @@ export function formatNumber(column: Pick<Column, 'type' | 'options'>, v: unknow
       return `${n.toFixed(precision)}%`;
     case 'Number':
     case 'ID':
-      return column.type === 'ID' ? String(n) : n.toLocaleString(undefined, { maximumFractionDigits: precision });
+      return column.type === 'ID' ? String(n) : n.toLocaleString(getLang(), { maximumFractionDigits: precision });
     default:
-      return n.toLocaleString(undefined, { minimumFractionDigits: precision, maximumFractionDigits: precision });
+      return n.toLocaleString(getLang(), { minimumFractionDigits: precision, maximumFractionDigits: precision });
   }
 }
 
@@ -101,7 +101,7 @@ export function formatDate(v: unknown, withTime: boolean): string {
   const s = String(v);
   const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? parseYmd(s) : new Date(s);
   if (!d || Number.isNaN(d.getTime())) return s;
-  const date = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const date = d.toLocaleDateString(getLang(), { year: 'numeric', month: 'short', day: 'numeric' });
   if (!withTime) return date;
   return `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -299,5 +299,5 @@ export function relativeTime(iso: string): string {
   if (diff < 3600) return t('{n}m ago', { n: Math.floor(diff / 60) });
   if (diff < 86400) return t('{n}h ago', { n: Math.floor(diff / 3600) });
   if (diff < 86400 * 7) return t('{n}d ago', { n: Math.floor(diff / 86400) });
-  return d.toLocaleDateString();
+  return d.toLocaleDateString(getLang());
 }
