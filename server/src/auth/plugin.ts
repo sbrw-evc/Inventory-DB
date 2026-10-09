@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Role, User } from '../../../shared/src/index.js';
 import { getDb } from '../db/index.js';
 import { notFound, unauthorized } from '../errors.js';
-import { assertBaseRole, getUser, userIdForApiToken, verifyJwt } from './service.js';
+import { assertBaseRole, getUser, isDisabled, userIdForApiToken, verifyJwt } from './service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -22,7 +22,7 @@ export async function authPlugin(app: FastifyInstance) {
     const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? (req.headers['xc-auth'] as string | undefined);
     if (typeof apiToken === 'string' && apiToken) userId = userIdForApiToken(apiToken);
     else if (bearer) userId = await verifyJwt(bearer);
-    if (userId) {
+    if (userId && !isDisabled(userId)) {
       try {
         req.user = getUser(userId);
       } catch {

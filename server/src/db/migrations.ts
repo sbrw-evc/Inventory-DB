@@ -232,4 +232,32 @@ export const migrations: string[] = [
     WHERE jsonb_typeof(e) NOT IN ('array', 'object')
   $f$;
   `,
+  // Settings section: account sources (local, LDAP / AD, Entra ID), password ageing, app settings and the local
+  // secret store used when OpenBao is not configured.
+  `
+  ALTER TABLE nc_users
+    ADD COLUMN source TEXT NOT NULL DEFAULT 'local',
+    ADD COLUMN external_id TEXT,
+    ADD COLUMN username TEXT,
+    ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN password_changed_at TEXT,
+    ADD COLUMN last_sign_in_at TEXT,
+    -- 'ldap' / 'entra' when the DCIM/IPAM admin role came from the directory's administrators group.
+    ADD COLUMN admin_granted_by TEXT;
+  UPDATE nc_users SET password_changed_at = created_at;
+  CREATE UNIQUE INDEX nc_users_external ON nc_users (source, external_id) WHERE external_id IS NOT NULL;
+
+  CREATE TABLE nc_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    updated_by TEXT
+  );
+
+  CREATE TABLE nc_secrets (
+    path TEXT PRIMARY KEY,
+    data_enc TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ];
