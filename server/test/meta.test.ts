@@ -18,8 +18,12 @@ function call(headers: H) {
 }
 
 const physicalColumns = (tableId: string) =>
-  (getDb().prepare(`SELECT name FROM pragma_table_info(?)`).all(`t_${tableId}`) as { name: string }[]).map((r) => r.name);
-const tableExists = (name: string) => !!getDb().prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
+  (
+    getDb()
+      .prepare('SELECT column_name AS name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ? ORDER BY ordinal_position')
+      .all(`t_${tableId}`) as { name: string }[]
+  ).map((r) => r.name);
+const tableExists = (name: string) => !!getDb().prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?').get(name);
 
 beforeAll(async () => {
   app = await createTestApp();

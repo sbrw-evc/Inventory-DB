@@ -23,12 +23,12 @@ export function assertRecordExists(tableId: string, id: number) {
   throw notFound('Record');
 }
 
-const SELECT = `SELECT c.id, c.table_id AS tableId, c.record_id AS recordId, c.user_id AS userId,
-  COALESCE(u.name, '') AS userName, c.body, c.created_at AS createdAt
+const SELECT = `SELECT c.id, c.table_id AS "tableId", c.record_id AS "recordId", c.user_id AS "userId",
+  COALESCE(u.name, '') AS "userName", c.body, c.created_at AS "createdAt"
   FROM nc_comments c LEFT JOIN nc_users u ON u.id = c.user_id`;
 
 export function listComments(tableId: string, id: number): Comment[] {
-  return getDb().prepare(`${SELECT} WHERE c.table_id = ? AND c.record_id = ? ORDER BY c.created_at, c.rowid`).all(tableId, id) as Comment[];
+  return getDb().prepare(`${SELECT} WHERE c.table_id = ? AND c.record_id = ? ORDER BY c.created_at, c.seq`).all(tableId, id) as Comment[];
 }
 
 export async function commentRoutes(app: FastifyInstance) {

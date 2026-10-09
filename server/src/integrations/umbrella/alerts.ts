@@ -85,7 +85,7 @@ export function recordAlert(integrationId: string, event: UmbrellaAlertEvent, ta
      VALUES (@integrationId, @alertId, @type, @id, @status, @severity, @title, @signal, @incident, @grafana, @ts, @ts)
      ON CONFLICT (integration_id, alert_id, object_type, object_id) DO UPDATE SET
        status = excluded.status, severity = excluded.severity, title = excluded.title, signal = excluded.signal,
-       incident_url = COALESCE(excluded.incident_url, incident_url), grafana_url = COALESCE(excluded.grafana_url, grafana_url),
+       incident_url = COALESCE(excluded.incident_url, nc_monitoring_alerts.incident_url), grafana_url = COALESCE(excluded.grafana_url, nc_monitoring_alerts.grafana_url),
        updated_at = excluded.updated_at
      WHERE excluded.updated_at >= nc_monitoring_alerts.updated_at`,
   );

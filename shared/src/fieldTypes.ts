@@ -38,18 +38,18 @@ export const SYSTEM_FIELD_TYPES: readonly FieldType[] = ['ID', 'CreatedTime', 'L
 export const isVirtual = (t: FieldType) => VIRTUAL_FIELD_TYPES.includes(t);
 export const isReadOnlyType = (t: FieldType) => isVirtual(t) || SYSTEM_FIELD_TYPES.includes(t);
 
-/** How a value of each type is stored in SQLite. */
-export const SQL_TYPE: Partial<Record<FieldType, 'TEXT' | 'INTEGER' | 'REAL'>> = {
+/** PostgreSQL column type of each stored field type. Dates are ISO-8601 text, checkboxes 0/1. */
+export const SQL_TYPE: Partial<Record<FieldType, 'TEXT' | 'BIGINT' | 'INTEGER' | 'DOUBLE PRECISION'>> = {
   SingleLineText: 'TEXT',
   LongText: 'TEXT',
-  Number: 'INTEGER',
-  Decimal: 'REAL',
-  Currency: 'REAL',
-  Percent: 'REAL',
+  Number: 'BIGINT',
+  Decimal: 'DOUBLE PRECISION',
+  Currency: 'DOUBLE PRECISION',
+  Percent: 'DOUBLE PRECISION',
   Rating: 'INTEGER',
   Checkbox: 'INTEGER',
-  Date: 'TEXT',
-  DateTime: 'TEXT',
+  Date: 'TEXT', // YYYY-MM-DD
+  DateTime: 'TEXT', // ISO-8601 UTC
   Email: 'TEXT',
   URL: 'TEXT',
   PhoneNumber: 'TEXT',

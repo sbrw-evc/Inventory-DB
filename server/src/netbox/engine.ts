@@ -1,7 +1,7 @@
 /**
  * Generic, model-driven CRUD for DCIM/IPAM objects: input conversion and validation, uniqueness, tags, custom
  * fields, m2m, referential rules on delete, serialization (NetBox shapes), change log and events.
- * Everything is synchronous so a request can run inside one better-sqlite3 transaction.
+ * Everything is synchronous so a request can run inside one database transaction (see db/pgsync.ts).
  */
 import { randomUUID } from 'node:crypto';
 import type { User } from '../../../shared/src/index.js';
@@ -451,7 +451,8 @@ function write(ctx: Ctx, m: ModelDef, body: Record<string, unknown>, existing: R
   if (!existing) {
     const cols = ['created', 'last_updated', 'custom_fields', ...columns];
     const vals = [t, t, JSON.stringify(cf), ...columns.map((c) => toDb(fieldByCol.get(c), rec[c]))];
-    id = Number(ctx.db.prepare(`INSERT INTO ${q(m.table)} (${cols.map(q).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...vals).lastInsertRowid);
+    const inserted = ctx.db.prepare(`INSERT INTO ${q(m.table)} (${cols.map(q).join(', ')}) VALUES (${cols.map(() => '?').join(', ')}) RETURNING id`).get(...vals);
+    id = Number((inserted as Row).id);
   } else {
     id = existing.id;
     const sets = ['last_updated = ?', 'custom_fields = ?', ...columns.map((c) => `${q(c)} = ?`)];
@@ -462,12 +463,12 @@ function write(ctx: Ctx, m: ModelDef, body: Record<string, unknown>, existing: R
     if (f.kind !== 'm2m' || (existing && !info.provided.has(f.name) && !(f.name in info.m2m))) continue;
     const key = `${m.type}.${f.name}`;
     ctx.db.prepare('DELETE FROM nb_m2m WHERE field = ? AND src_id = ?').run(key, id);
-    const ins = ctx.db.prepare('INSERT OR IGNORE INTO nb_m2m (field, src_id, dst_id) VALUES (?, ?, ?)');
+    const ins = ctx.db.prepare('INSERT INTO nb_m2m (field, src_id, dst_id) VALUES (?, ?, ?) ON CONFLICT DO NOTHING');
     for (const dst of info.m2m[f.name] ?? []) ins.run(key, id, dst);
   }
   if (tags) {
     ctx.db.prepare('DELETE FROM nb_tagged WHERE object_type = ? AND object_id = ?').run(m.type, id);
-    const ins = ctx.db.prepare('INSERT OR IGNORE INTO nb_tagged (object_type, object_id, tag_id) VALUES (?, ?, ?)');
+    const ins = ctx.db.prepare('INSERT INTO nb_tagged (object_type, object_id, tag_id) VALUES (?, ?, ?) ON CONFLICT DO NOTHING');
     for (const tag of tags) ins.run(m.type, id, tag);
   }
   ctx.invalidate();

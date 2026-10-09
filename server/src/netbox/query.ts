@@ -49,7 +49,7 @@ function lookupFrag(expr: string, lookup: string, values: string[], f: FieldDef 
     case 'isw':
     case 'iew': {
       const pat = (v: unknown) => (lookup === 'isw' ? `${String(v)}%` : lookup === 'iew' ? `%${String(v)}` : `%${String(v)}%`);
-      const sql = vals.map(() => `${expr} LIKE ?`).join(' OR ');
+      const sql = vals.map(() => `CAST(${expr} AS TEXT) ILIKE ?`).join(' OR ');
       return lookup === 'nic' ? { sql: `NOT (${sql})`, params: vals.map(pat) } : { sql: `(${sql})`, params: vals.map(pat) };
     }
     case 'ie':
@@ -62,7 +62,9 @@ function lookupFrag(expr: string, lookup: string, values: string[], f: FieldDef 
       return { sql: `${expr} ${op} ?`, params: [vals[0]] };
     }
     case 'empty':
-      return ['true', '1'].includes(values[0]) ? { sql: `(${expr} IS NULL OR ${expr} = '')`, params: [] } : { sql: `(${expr} IS NOT NULL AND ${expr} != '')`, params: [] };
+      return ['true', '1'].includes(values[0])
+        ? { sql: `(${expr} IS NULL OR CAST(${expr} AS TEXT) = '')`, params: [] }
+        : { sql: `(${expr} IS NOT NULL AND CAST(${expr} AS TEXT) <> '')`, params: [] };
   }
   throw badRequest(`Unsupported lookup "${lookup}"`);
 }
@@ -105,7 +107,11 @@ export function buildWhere(ctx: Ctx, m: ModelDef, query: Query): SqlFrag {
     if (base.startsWith('cf_') && cfDefs.has(base.slice(3))) {
       const def = cfDefs.get(base.slice(3))!;
       const fake: FieldDef = { name: base, kind: def.type === 'integer' || def.type === 'decimal' ? 'float' : def.type === 'boolean' ? 'bool' : 'string' };
-      add(lookupFrag(`json_extract(t.custom_fields, '$.${def.name}')`, lookup, values, fake));
+      // Custom field values live in a JSON object; compare numbers and booleans as numbers (booleans as 1/0).
+      const path = `(t.custom_fields::jsonb ->> '${String(def.name).replace(/'/g, "''")}')`;
+      const expr =
+        fake.kind === 'float' ? `nc_num(${path})` : fake.kind === 'bool' ? `(CASE ${path} WHEN 'true' THEN 1 WHEN 'false' THEN 0 END)` : path;
+      add(lookupFrag(expr, lookup, values, fake));
       continue;
     }
     // fk by id (`site_id`) or by slug/name (`site`)
@@ -136,7 +142,7 @@ export function buildWhere(ctx: Ctx, m: ModelDef, query: Query): SqlFrag {
 
   const qText = arr(query.q)[0]?.trim();
   if (qText) {
-    const cols = m.fields.filter((f) => f.search).map((f) => `t.${q(colOf(f))} LIKE ?`);
+    const cols = m.fields.filter((f) => f.search).map((f) => `CAST(t.${q(colOf(f))} AS TEXT) ILIKE ?`);
     const parts = [...cols];
     const ps: unknown[] = cols.map(() => `%${qText}%`);
     const extra = m.searchExtra?.(qText);
@@ -174,11 +180,11 @@ export function buildOrder(m: ModelDef, ordering: string | undefined): string {
       const rel = modelByType(f.ref!)!;
       const relOrder = rel.orderExpr?.[rel.ordering[0]?.replace(/^-/, '')];
       const relCol = relOrder ? null : fieldOf(rel, 'name') ? 'name' : fieldOf(rel, 'model') ? 'model' : null;
-      if (relCol) parts.push(`(SELECT ${q(relCol)} FROM ${q(rel.table)} r WHERE r.id = t.${q(colOf(f))}) COLLATE NOCASE${dir}`);
+      if (relCol) parts.push(`lower((SELECT ${q(relCol)} FROM ${q(rel.table)} r WHERE r.id = t.${q(colOf(f))}))${dir}`);
       else parts.push(`t.${q(colOf(f))}${dir}`);
       continue;
     }
-    parts.push(`t.${q(colOf(f))}${isText(f) ? ' COLLATE NOCASE' : ''}${dir}`);
+    parts.push(isText(f) ? `lower(t.${q(colOf(f))})${dir}` : `t.${q(colOf(f))}${dir}`);
   }
   parts.push('t.id');
   return `ORDER BY ${parts.join(', ')}`;

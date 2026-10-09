@@ -117,7 +117,7 @@ function writeLog(hook: Webhook, event: WebhookEvent, payload: unknown, status: 
     );
     db.prepare(
       `DELETE FROM nc_hook_logs WHERE hook_id = ? AND id NOT IN
-       (SELECT id FROM nc_hook_logs WHERE hook_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ${LOGS_KEPT_PER_HOOK})`,
+       (SELECT id FROM nc_hook_logs WHERE hook_id = ? ORDER BY created_at DESC, seq DESC LIMIT ${LOGS_KEPT_PER_HOOK})`,
     ).run(hook.id, hook.id);
   } catch (err) {
     // The hook may have been deleted (FK) or the DB swapped out (tests) while delivering.
@@ -333,7 +333,7 @@ export async function webhookRoutes(app: FastifyInstance) {
     const row = getHookRow(req.params.hookId);
     requireTableRole(req, row.table_id, 'editor');
     const rows = getDb()
-      .prepare('SELECT * FROM nc_hook_logs WHERE hook_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 100')
+      .prepare('SELECT * FROM nc_hook_logs WHERE hook_id = ? ORDER BY created_at DESC, seq DESC LIMIT 100')
       .all(row.id) as { id: string; hook_id: string; event: WebhookEvent; status: number | null; error: string | null; payload: string | null; response: string | null; created_at: string }[];
     return rows.map(
       (r): WebhookLog => ({

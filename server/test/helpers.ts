@@ -1,10 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
-import { openDb, setDb } from '../src/db/index.js';
+import { randomBytes } from 'node:crypto';
+import { type DB, openDb, setDb } from '../src/db/index.js';
+import { TEST_DATABASE_URL, TEST_SCHEMA_PREFIX } from './db-env.js';
 
-/** Fresh in-memory database + app per test file. */
+/** A fresh, empty database (its own schema) with all migrations applied. */
+export function openTestDb(): DB {
+  return openDb(TEST_DATABASE_URL, { schema: `${TEST_SCHEMA_PREFIX}${randomBytes(6).toString('hex')}` });
+}
+
+/** Fresh database + app per test file. */
 export async function createTestApp(): Promise<FastifyInstance> {
-  setDb(openDb(':memory:'));
+  setDb(openTestDb());
   return buildApp({ webDist: '/nonexistent' });
 }
 

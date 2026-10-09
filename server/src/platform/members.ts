@@ -12,7 +12,7 @@ const role = z.enum(['owner', 'editor', 'commenter', 'viewer']);
 export function listMembers(baseId: string): BaseMember[] {
   return getDb()
     .prepare(
-      `SELECT u.id AS userId, u.email, u.name, m.role FROM nc_base_members m
+      `SELECT u.id AS "userId", u.email, u.name, m.role FROM nc_base_members m
        JOIN nc_users u ON u.id = m.user_id WHERE m.base_id = ?
        ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'editor' THEN 1 WHEN 'commenter' THEN 2 ELSE 3 END, u.email`,
     )

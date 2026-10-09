@@ -1,19 +1,24 @@
-import Database from 'better-sqlite3';
 import type { FastifyInstance } from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Column, ListResult, RecordData, Table } from '../../shared/src/index.js';
 import { FormulaError, compileFormula, displayFormula, normalizeFormula, parseFormula } from '../src/data/formula.js';
 import { val } from '../src/data/sql.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import type { DB } from '../src/db/index.js';
+import { createTestApp, openTestDb, signUpUser } from './helpers.js';
 
-const mem = new Database(':memory:');
-/** Evaluate a formula with {a}, {b}, {s}, {d} bound to constants. */
+let db: DB;
+beforeAll(() => {
+  db = openTestDb();
+});
+
+/** Evaluate a formula with {a}, {b}, {s}, {d} bound to constants; conditions come back as 1/0 like formula fields. */
 function evalF(src: string, refs: Record<string, unknown> = {}) {
   const frag = compileFormula(parseFormula(src), (name) => {
     if (!(name in refs)) throw new FormulaError(`Unknown field {${name}}`);
     return val(refs[name]);
   });
-  return (mem.prepare(`SELECT ${frag.sql} AS v`).get(...frag.params) as { v: unknown }).v;
+  const expr = frag.type === 'bool' ? `CAST(${frag.sql} AS INTEGER)` : frag.sql;
+  return (db.prepare(`SELECT ${expr} AS v`).get(...frag.params) as { v: unknown }).v;
 }
 
 describe('formula parser and compiler', () => {
