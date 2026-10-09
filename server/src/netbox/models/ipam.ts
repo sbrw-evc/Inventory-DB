@@ -1,7 +1,7 @@
 import { cidrToString, hexKey, ifaceToString, parseCidr, parseIp, type Cidr } from '../cidr.js';
 import { badRequest } from '../../errors.js';
 import { aggregateUtilization, familyObj, prefixChildren, prefixDepth, prefixUtilization } from '../ipam.js';
-import type { Ctx, Errors, ModelDef, Row, SqlFrag } from '../types.js';
+import type { Ctx, Errors, ModelDef, Row, SqlFrag, WriteInfo } from '../types.js';
 import { choices } from '../types.js';
 import { addError, commentsF, count, descriptionF, nameF, slugF, tenantF } from './common.js';
 
@@ -56,8 +56,54 @@ const vrfName = (ctx: Ctx, vrfId: number | null) => (vrfId == null ? 'global tab
 
 const networkCols = { family: 'INTEGER', start_hex: 'TEXT', end_hex: 'TEXT', prefix_length: 'INTEGER' };
 
+const ASSIGNABLE = ['dcim.interface', 'virtualization.vminterface'];
+const SCOPE_TYPES = ['dcim.region', 'dcim.site', 'dcim.location'];
+
+const regionTree = (n: number) =>
+  `WITH RECURSIVE r(id) AS (SELECT id FROM nb_regions WHERE id IN (${ph(Array(n).fill(0))}) UNION SELECT c.id FROM nb_regions c JOIN r ON c.parent_id = r.id) SELECT id FROM r`;
+
+/**
+ * NetBox 4 prefix scope: `scope_type` (region/site/location) + `scope_id`. `site` stays writable for compatibility:
+ * setting it scopes the prefix to that site, and a site or location scope fills `site`.
+ */
+function deriveScope(rec: Row, errors: Errors, ctx: Ctx, info: WriteInfo) {
+  const scopeGiven = info.provided.has('scope_type') || info.provided.has('scope_id');
+  const siteGiven = info.provided.has('site');
+  if (scopeGiven) {
+    if (rec.scope_type == null && rec.scope_id == null) {
+      if (!siteGiven) rec.site_id = null;
+      else if (rec.site_id != null) addError(errors, 'scope_type', 'Clear the site too, or set the scope to the site.');
+      return;
+    }
+    if (rec.scope_type == null || rec.scope_id == null) {
+      addError(errors, rec.scope_type == null ? 'scope_type' : 'scope_id', 'scope_type and scope_id must be set together.');
+      return;
+    }
+    if (!SCOPE_TYPES.includes(rec.scope_type)) {
+      addError(errors, 'scope_type', `Invalid scope type "${rec.scope_type}" (one of ${SCOPE_TYPES.join(', ')}).`);
+      return;
+    }
+    const obj = ctx.get(rec.scope_type, rec.scope_id);
+    if (!obj) {
+      addError(errors, 'scope_id', `${rec.scope_type} ${rec.scope_id} not found.`);
+      return;
+    }
+    const site = rec.scope_type === 'dcim.site' ? obj.id : rec.scope_type === 'dcim.location' ? obj.site_id : null;
+    if (siteGiven && rec.site_id !== site) addError(errors, 'site', 'The site does not match the scope.');
+    rec.site_id = site;
+  } else if (siteGiven) {
+    rec.scope_type = rec.site_id != null ? 'dcim.site' : null;
+    rec.scope_id = rec.site_id;
+  }
+}
+
 const ifaceDevice = (values: string[], col: string): SqlFrag => ({
   sql: `(t.assigned_object_type = 'dcim.interface' AND t.assigned_object_id IN (SELECT i.id FROM nb_interfaces i JOIN nb_devices d ON d.id = i.device_id WHERE d.${col} IN (${ph(values)})))`,
+  params: values,
+});
+
+const vmIface = (values: string[], col: string): SqlFrag => ({
+  sql: `(t.assigned_object_type = 'virtualization.vminterface' AND t.assigned_object_id IN (SELECT i.id FROM nb_vm_interfaces i JOIN nb_virtual_machines v ON v.id = i.virtual_machine_id WHERE v.${col} IN (${ph(values)})))`,
   params: values,
 });
 
@@ -178,6 +224,8 @@ export const ipamModels: ModelDef[] = [
       { name: 'prefix', kind: 'cidr', required: true, search: true },
       { name: 'vrf', kind: 'fk', ref: 'ipam.vrf' },
       { name: 'site', kind: 'fk', ref: 'dcim.site' },
+      { name: 'scope_type', kind: 'string', maxLength: 50 },
+      { name: 'scope_id', kind: 'int', min: 1 },
       tenantF,
       { name: 'vlan', kind: 'fk', ref: 'ipam.vlan' },
       { name: 'status', kind: 'choice', choices: PREFIX_STATUS, default: 'active', required: true },
@@ -206,6 +254,11 @@ export const ipamModels: ModelDef[] = [
           sql: '(t.family = ? AND t.start_hex <= ? AND t.end_hex >= ? AND t.prefix_length <= ?)',
           params: [c.family, hexKey(c.network), hexKey(c.last), c.prefixLength],
         })),
+      location_id: (values) => ({ sql: `(t.scope_type = 'dcim.location' AND t.scope_id IN (${ph(values)}))`, params: values.map(Number) }),
+      region_id: (values) => ({
+        sql: `((t.scope_type = 'dcim.region' AND t.scope_id IN (${regionTree(values.length)})) OR t.site_id IN (SELECT id FROM nb_sites WHERE region_id IN (${regionTree(values.length)})))`,
+        params: [...values, ...values],
+      }),
       depth: (values) => ({
         sql: `(SELECT COUNT(*) FROM nb_prefixes p WHERE p.family = t.family AND p.vrf_id IS t.vrf_id AND p.start_hex <= t.start_hex AND p.end_hex >= t.end_hex AND p.prefix_length < t.prefix_length) IN (${ph(values)})`,
         params: values.map(Number),
@@ -216,7 +269,10 @@ export const ipamModels: ModelDef[] = [
       if (!c) return null;
       return { sql: '(t.family = ? AND t.start_hex <= ? AND t.end_hex >= ?)', params: [c.family, hexKey(c.network), hexKey(c.last)] };
     },
-    derive: (rec, errors) => deriveNetwork(rec, 'prefix', errors),
+    derive(rec, errors, ctx, info) {
+      deriveNetwork(rec, 'prefix', errors);
+      deriveScope(rec, errors, ctx, info);
+    },
     validate(rec, errors, ctx) {
       if (rec.family == null) return;
       if (rec.prefix_length === 0) addError(errors, 'prefix', 'Cannot create a prefix with a /0 mask.');
@@ -231,6 +287,7 @@ export const ipamModels: ModelDef[] = [
     },
     serializeExtra: (r, ctx) => ({
       family: familyObj(r.family),
+      scope: r.scope_type ? ctx.ref(r.scope_type, r.scope_id) : null,
       _depth: prefixDepth(ctx, r),
       _children: prefixChildren(ctx, r),
       _utilization: prefixUtilization(ctx, r),
@@ -321,11 +378,14 @@ export const ipamModels: ModelDef[] = [
       parent: (values) =>
         anyOf(values, (c) => ({ sql: '(t.family = ? AND t.host_hex >= ? AND t.host_hex <= ?)', params: [c.family, hexKey(c.network), hexKey(c.last)] })),
       interface_id: (values) => ({ sql: `(t.assigned_object_type = 'dcim.interface' AND t.assigned_object_id IN (${ph(values)}))`, params: values.map(Number) }),
+      vminterface_id: (values) => ({ sql: `(t.assigned_object_type = 'virtualization.vminterface' AND t.assigned_object_id IN (${ph(values)}))`, params: values.map(Number) }),
+      virtual_machine_id: (values) => vmIface(values, 'id'),
+      virtual_machine: (values) => vmIface(values, 'name'),
       device_id: (values) => ifaceDevice(values, 'id'),
       device: (values) => ifaceDevice(values, 'name'),
       site_id: (values) => ifaceDevice(values, 'site_id'),
       assigned_to_interface: (values) => ({
-        sql: ['true', '1'].includes(values[0]) ? "t.assigned_object_type = 'dcim.interface'" : 't.assigned_object_id IS NULL',
+        sql: ['true', '1'].includes(values[0]) ? 't.assigned_object_id IS NOT NULL' : 't.assigned_object_id IS NULL',
         params: [],
       }),
     },
@@ -351,8 +411,8 @@ export const ipamModels: ModelDef[] = [
     },
     validate(rec, errors, ctx) {
       if (rec.assigned_object_type != null) {
-        if (rec.assigned_object_type !== 'dcim.interface') addError(errors, 'assigned_object_type', 'Only dcim.interface is supported.');
-        else if (!ctx.get('dcim.interface', rec.assigned_object_id)) addError(errors, 'assigned_object_id', `Interface ${rec.assigned_object_id} not found.`);
+        if (!ASSIGNABLE.includes(rec.assigned_object_type)) addError(errors, 'assigned_object_type', `Must be one of ${ASSIGNABLE.join(', ')}.`);
+        else if (!ctx.get(rec.assigned_object_type, rec.assigned_object_id)) addError(errors, 'assigned_object_id', `${rec.assigned_object_type} ${rec.assigned_object_id} not found.`);
       }
       if (rec.dns_name != null && !/^([0-9A-Za-z_-]+|\*)(\.[0-9A-Za-z_-]+)*\.?$/.test(rec.dns_name)) {
         addError(errors, 'dns_name', 'Only alphanumeric characters, asterisks, hyphens, periods, and underscores are allowed in DNS names.');
@@ -368,17 +428,21 @@ export const ipamModels: ModelDef[] = [
     afterWrite(row, ctx, info) {
       // An IP moved away from a device can no longer be that device's primary IP.
       const iface = row.assigned_object_type === 'dcim.interface' ? ctx.get('dcim.interface', row.assigned_object_id) : null;
+      const vmIfaceRow = row.assigned_object_type === 'virtualization.vminterface' ? ctx.get('virtualization.vminterface', row.assigned_object_id) : null;
       const deviceId = iface?.device_id ?? null;
+      const vmId = vmIfaceRow?.virtual_machine_id ?? null;
       if (info.existing) {
-        ctx.db.prepare('UPDATE nb_devices SET primary_ip4_id = NULL WHERE primary_ip4_id = ? AND id IS NOT ?').run(row.id, deviceId);
-        ctx.db.prepare('UPDATE nb_devices SET primary_ip6_id = NULL WHERE primary_ip6_id = ? AND id IS NOT ?').run(row.id, deviceId);
+        for (const col of ['primary_ip4_id', 'primary_ip6_id']) {
+          ctx.db.prepare(`UPDATE nb_devices SET ${col} = NULL WHERE ${col} = ? AND id IS NOT ?`).run(row.id, deviceId);
+          ctx.db.prepare(`UPDATE nb_virtual_machines SET ${col} = NULL WHERE ${col} = ? AND id IS NOT ?`).run(row.id, vmId);
+        }
         ctx.invalidate();
       }
     },
     serializeExtra(r, ctx) {
       return {
         family: familyObj(r.family),
-        assigned_object: r.assigned_object_type === 'dcim.interface' ? ctx.ref('dcim.interface', r.assigned_object_id) : null,
+        assigned_object: ASSIGNABLE.includes(r.assigned_object_type) ? ctx.ref(r.assigned_object_type, r.assigned_object_id) : null,
       };
     },
   },

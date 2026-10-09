@@ -13,7 +13,7 @@ type Tab = { to: string; label: string; icon: LucideIcon; active: (p: string) =>
 
 const TABS: Tab[] = [
   { to: '/', label: 'Bases', icon: LayoutGrid, active: basesOwn },
-  { to: '/dcim/devices', label: 'DCIM', icon: HardDrive, active: (p) => p.startsWith('/dcim') || p.startsWith('/tenancy') },
+  { to: '/dcim/devices', label: 'DCIM', icon: HardDrive, active: (p) => ['/dcim', '/tenancy', '/circuits', '/virtualization'].some((x) => p.startsWith(x)) },
   { to: '/ipam/prefixes', label: 'IPAM', icon: Network, active: (p) => p.startsWith('/ipam') },
   { to: '/integrations', label: 'Integrations', icon: Plug, active: (p) => p.startsWith('/integrations') },
 ];

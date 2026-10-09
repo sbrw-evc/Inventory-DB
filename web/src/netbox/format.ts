@@ -46,8 +46,9 @@ export function plainText(v: unknown): string {
   if (v == null) return '';
   if (Array.isArray(v)) return v.map(plainText).filter(Boolean).join(', ');
   if (isRef(v)) {
-    const dev = (v as Record<string, unknown>).device;
-    return isRef(dev) ? `${dev.display} ${v.display}` : v.display;
+    const o = v as Record<string, unknown>;
+    const parent = [o.device, o.virtual_machine, o.circuit, o.power_panel].find(isRef);
+    return parent ? `${parent.display} ${v.display}` : v.display;
   }
   if (isChoice(v)) return v.label;
   if (typeof v === 'object') {

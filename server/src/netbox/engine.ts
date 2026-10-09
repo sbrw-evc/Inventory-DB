@@ -153,7 +153,7 @@ export function resolveRef(ctx: Ctx, type: string, raw: unknown): Conv {
   }
   const names = new Set(m.fields.map((f) => f.name));
   const tryCols = (lookup!.__text != null
-    ? (['slug', 'name', 'model', 'address', 'prefix'] as const).filter((c) => names.has(c)).map((c) => [c, lookup!.__text] as const)
+    ? (['slug', 'name', 'model', 'address', 'prefix', 'cid', 'account'] as const).filter((c) => names.has(c)).map((c) => [c, lookup!.__text] as const)
     : Object.entries(lookup!).filter(([k]) => names.has(k)));
   for (const [col, val] of tryCols) {
     const field = fieldOf(m, col)!;

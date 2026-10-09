@@ -28,6 +28,10 @@ import {
   ArrowRightLeft,
   UsersRound,
   Waypoints,
+  Monitor,
+  PlugZap,
+  Power,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { NAV } from '../../netbox/nav';
@@ -65,29 +69,63 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   'ipam/roles': Tag,
   'ipam/vlans': Layers,
   'ipam/vlan-groups': FolderTree,
+  'dcim/front-port-templates': ListTree,
+  'dcim/rear-port-templates': ListTree,
+  'dcim/power-port-templates': ListTree,
+  'dcim/power-outlet-templates': ListTree,
+  'dcim/front-ports': EthernetPort,
+  'dcim/rear-ports': EthernetPort,
+  'dcim/power-panels': Zap,
+  'dcim/power-feeds': Cable,
+  'dcim/power-ports': PlugZap,
+  'dcim/power-outlets': Power,
+  'circuits/circuits': Cable,
+  'circuits/circuit-terminations': Waypoints,
+  'circuits/circuit-types': Tag,
+  'circuits/providers': Building2,
+  'circuits/provider-accounts': KeyRound,
+  'circuits/provider-networks': Network,
+  'virtualization/virtual-machines': Monitor,
+  'virtualization/interfaces': EthernetPort,
+  'virtualization/clusters': Boxes,
+  'virtualization/cluster-types': Tag,
+  'virtualization/cluster-groups': FolderTree,
   'extras/tags': Tags,
   'extras/custom-fields': SlidersHorizontal,
   'extras/object-changes': FileClock,
 };
 
+type Section = 'dcim' | 'circuits' | 'virtualization' | 'ipam' | 'admin';
+
 /** Which sidebar group a NAV group of the NetBox pages goes to. */
-function sectionOf(group: string, items: string[]): 'dcim' | 'ipam' | 'admin' {
+function sectionOf(group: string, items: string[]): Section {
   if (group === 'other' || items.every((i) => i.startsWith('extras/'))) return 'admin';
   if (items.every((i) => i.startsWith('ipam/'))) return 'ipam';
+  if (items.every((i) => i.startsWith('circuits/'))) return 'circuits';
+  if (items.every((i) => i.startsWith('virtualization/'))) return 'virtualization';
   return 'dcim';
 }
 
-function netboxPages(section: 'dcim' | 'ipam' | 'admin'): NavPage[] {
-  return NAV.filter((g) => sectionOf(g.group, g.items) === section).flatMap((g) =>
-    g.items.map((p, i) => ({ id: p, to: `/${p}`, label: p.split('/')[1], icon: TYPE_ICONS[p] ?? Database, netbox: true, sub: i === 0 && section !== 'admin' ? g.group : undefined })),
+function netboxPages(section: Section): NavPage[] {
+  const groups = NAV.filter((g) => sectionOf(g.group, g.items) === section);
+  return groups.flatMap((g) =>
+    g.items.map((p, i) => ({ id: p, to: `/${p}`, label: p, icon: TYPE_ICONS[p] ?? Database, netbox: true, sub: i === 0 && groups.length > 1 ? g.group : undefined })),
   );
+}
+
+/** A NetBox section shown as a sidebar group only when NAV has pages for it. */
+function nbGroup(id: Section, title: string, icon: LucideIcon, extra: NavPage[] = []): NavGroup[] {
+  const pages = [...extra, ...netboxPages(id)];
+  return pages.length ? [{ id, title, icon, pages }] : [];
 }
 
 export function navGroups(): NavGroup[] {
   return [
     { id: 'bases', title: 'Bases', icon: Database, pages: [], tree: 'bases' },
-    { id: 'dcim', title: 'DCIM', icon: Server, pages: [{ id: 'dcim/search', to: '/dcim/search', label: 'search', icon: Search, netbox: true }, ...netboxPages('dcim')] },
-    { id: 'ipam', title: 'IPAM', icon: Network, pages: netboxPages('ipam') },
+    ...nbGroup('dcim', 'DCIM', Server, [{ id: 'dcim/search', to: '/dcim/search', label: 'search', icon: Search, netbox: true }]),
+    ...nbGroup('circuits', 'Circuits', Cable),
+    ...nbGroup('virtualization', 'Virtualization', Boxes),
+    ...nbGroup('ipam', 'IPAM', Network),
     {
       id: 'integrations',
       title: 'Integrations',

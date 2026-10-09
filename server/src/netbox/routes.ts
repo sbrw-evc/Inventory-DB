@@ -5,7 +5,9 @@ import { bootstrapAdmin, getNetboxRole, listRoles, requireNetboxRole, setRole, t
 import { requireUser } from '../auth/plugin.js';
 import { formatIp } from './cidr.js';
 import { importCsv } from './csvImport.js';
-import { rackElevation, traceInterface } from './dcim.js';
+import { serializeTrace, tracePath, TERMINATION_TYPES } from './cabling.js';
+import { rackElevation } from './dcim.js';
+import { rackPower } from './power.js';
 import { createCtx, createObject, deleteObject, getRowOr404, nestedRef, serialize, updateObject } from './engine.js';
 import { netboxEvents } from './events.js';
 import { availableIps, availablePrefixes, nextAvailablePrefix, prefixCidr } from './ipam.js';
@@ -150,10 +152,16 @@ export async function registerNetboxRoutes(app: FastifyInstance) {
     }),
   );
 
-  // Cable trace
-  app.get('/api/v1/dcim/interfaces/:id/trace', async (req: Req) =>
-    run(req, 'viewer', (ctx) => traceInterface(ctx, getRowOr404(ctx, M('dcim.interface'), req.params.id))),
-  );
+  // Rack power summary
+  app.get('/api/v1/dcim/racks/:id/power', async (req: Req) => run(req, 'viewer', (ctx) => rackPower(ctx, getRowOr404(ctx, M('dcim.rack'), req.params.id).id)));
+
+  // Cable trace (and NetBox's `paths` alias for pass-through ports) on every cable termination type
+  for (const type of Object.keys(TERMINATION_TYPES)) {
+    const m = M(type);
+    const handler = async (req: Req) => run(req, 'viewer', (ctx) => serializeTrace(ctx, tracePath(ctx, type, getRowOr404(ctx, m, req.params.id))));
+    app.get(`/api/v1/${m.app}/${m.path}/:id/trace`, handler);
+    if (['dcim.frontport', 'dcim.rearport', 'circuits.circuittermination'].includes(type)) app.get(`/api/v1/${m.app}/${m.path}/:id/paths`, handler);
+  }
 
   // Available prefixes
   app.get('/api/v1/ipam/prefixes/:id/available-prefixes', async (req: Req) =>
@@ -253,7 +261,7 @@ export async function registerNetboxRoutes(app: FastifyInstance) {
       const types = req.query.object_type ? String(req.query.object_type).split(',') : null;
       const results: Obj[] = [];
       for (const m of models) {
-        if (m.readOnlyModel || m.type === 'extras.customfield' || m.type === 'dcim.interfacetemplate') continue;
+        if (m.readOnlyModel || m.type === 'extras.customfield' || m.type.endsWith('template')) continue;
         if (types && !types.includes(m.type)) continue;
         const { rows } = listRows(ctx, m, { q: text, limit: String(per) });
         for (const r of rows) {

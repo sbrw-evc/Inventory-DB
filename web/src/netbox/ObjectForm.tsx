@@ -3,11 +3,24 @@ import { ApiError, nb, type FieldSchema, type ModelSchema, type NbObject } from 
 import { RefSelect } from './components';
 import { isChoice, isRef } from './format';
 import { useCustomFields } from './hooks';
-import { fieldLabel, t, valueLabel } from './i18n';
+import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
 
 type Values = Record<string, unknown>;
 
 const HIDDEN = new Set(['assigned_object_type']);
+
+/** Object types a cable can terminate on, in picker order. */
+export const TERMINATION_TYPES = ['dcim.interface', 'dcim.frontport', 'dcim.rearport', 'circuits.circuittermination', 'dcim.powerport', 'dcim.poweroutlet', 'dcim.powerfeed'] as const;
+const TERMINATION_LABELS: Record<string, string> = {
+  'dcim.interface': 'interfaces',
+  'dcim.frontport': 'front-ports',
+  'dcim.rearport': 'rear-ports',
+  'circuits.circuittermination': 'circuit-terminations',
+  'dcim.powerport': 'power-ports',
+  'dcim.poweroutlet': 'power-outlets',
+  'dcim.powerfeed': 'power-feeds',
+};
+const IP_TARGETS: Record<string, string> = { 'dcim.interface': 'dcim/interfaces', 'virtualization.vminterface': 'virtualization/interfaces' };
 
 /** Form value for a serialized API value. */
 function toFormValue(f: FieldSchema, v: unknown): unknown {
@@ -29,8 +42,12 @@ function initialValues(model: ModelSchema, obj: NbObject | undefined, presets: V
   if (model.taggable) vals.tags = obj ? ((obj.tags ?? []) as { id: number }[]).map((x) => x.id) : [];
   if (model.custom_fields) vals.custom_fields = { ...(obj?.custom_fields ?? {}) };
   for (const side of ['a_terminations', 'b_terminations']) {
-    if (model.write_extras.includes(side)) vals[side] = obj ? ((obj[side] as { object_id: number }[]) ?? []).map((x) => x.object_id) : [];
+    if (!model.write_extras.includes(side)) continue;
+    const ends = obj ? ((obj[side] as { object_type: string; object_id: number }[]) ?? []) : [];
+    vals[side] = ends.map((x) => x.object_id);
+    vals[`${side}_type`] = ends[0]?.object_type ?? 'dcim.interface';
   }
+  if (model.object_type === 'ipam.ipaddress') vals.assigned_object_type = obj?.assigned_object_type ?? 'dcim.interface';
   return { ...vals, ...presets };
 }
 
@@ -43,6 +60,15 @@ function refParams(model: ModelSchema, field: string, vals: Values, obj?: NbObje
   if (type === 'dcim.interface' && field === 'parent' && vals.device) return { device_id: vals.device as number };
   if (type === 'dcim.location' && field === 'parent' && vals.site) return { site_id: vals.site as number };
   if (type === 'ipam.vlan' && field === 'group' && vals.site) return { site_id: vals.site as number };
+  if ((type === 'dcim.frontport' || type === 'dcim.poweroutlet') && (field === 'rear_port' || field === 'power_port') && vals.device) return { device_id: vals.device as number };
+  if ((type === 'dcim.frontporttemplate' || type === 'dcim.poweroutlettemplate') && (field === 'rear_port' || field === 'power_port') && vals.device_type) return { device_type_id: vals.device_type as number };
+  if (type === 'dcim.powerpanel' && field === 'location' && vals.site) return { site_id: vals.site as number };
+  if (type === 'circuits.circuit' && field === 'provider_account' && vals.provider) return { provider_id: vals.provider as number };
+  if (type === 'virtualization.virtualmachine' && field === 'cluster' && vals.site) return { site_id: vals.site as number };
+  if (type === 'virtualization.virtualmachine' && field === 'device' && vals.cluster) return { cluster_id: vals.cluster as number };
+  if (type === 'virtualization.virtualmachine' && field === 'role') return { vm_role: 'true' };
+  if (type === 'virtualization.virtualmachine' && (field === 'primary_ip4' || field === 'primary_ip6') && obj) return { virtual_machine_id: obj.id, family: field === 'primary_ip4' ? 4 : 6 };
+  if (type === 'virtualization.vminterface' && (field === 'parent' || field === 'bridge') && vals.virtual_machine) return { virtual_machine_id: vals.virtual_machine as number };
   return undefined;
 }
 
@@ -90,11 +116,11 @@ export function ObjectForm({
       if (f.kind === 'slug' && !obj && (v == null || v === '')) continue; // server generates it
       body[f.name] = v;
     }
-    if (model.object_type === 'ipam.ipaddress') body.assigned_object_type = body.assigned_object_id ? 'dcim.interface' : null;
+    if (model.object_type === 'ipam.ipaddress') body.assigned_object_type = body.assigned_object_id ? vals.assigned_object_type : null;
     if (model.taggable) body.tags = vals.tags;
     if (model.custom_fields && cfDefs?.length) body.custom_fields = vals.custom_fields;
     for (const side of ['a_terminations', 'b_terminations']) {
-      if (model.write_extras.includes(side)) body[side] = ((vals[side] as number[]) ?? []).map((id) => ({ object_type: 'dcim.interface', object_id: id }));
+      if (model.write_extras.includes(side)) body[side] = ((vals[side] as number[]) ?? []).map((id) => ({ object_type: vals[`${side}_type`], object_id: id }));
     }
     if (Object.keys(localErrors).length) {
       setErrors(localErrors);
@@ -139,7 +165,19 @@ export function ObjectForm({
     const id = `nbf-${f.name}`;
     const v = vals[f.name];
     if (model.object_type === 'ipam.ipaddress' && f.name === 'assigned_object_id') {
-      return <RefSelect id={id} objectType="dcim.interface" value={(v as number) ?? null} onChange={(x) => set(f.name, x)} />;
+      const target = String(vals.assigned_object_type ?? 'dcim.interface');
+      return (
+        <span style={{ display: 'grid', gap: 4 }}>
+          <select aria-label={t('assignedType')} value={target} onChange={(e) => setVals((s) => ({ ...s, assigned_object_type: e.target.value, assigned_object_id: null }))}>
+            {Object.entries(IP_TARGETS).map(([k, p]) => (
+              <option key={k} value={k}>
+                {typeLabel(p)}
+              </option>
+            ))}
+          </select>
+          <RefSelect key={target} id={id} objectType={target} value={(v as number) ?? null} onChange={(x) => set(f.name, x)} />
+        </span>
+      );
     }
     switch (f.kind) {
       case 'bool':
@@ -208,7 +246,29 @@ export function ObjectForm({
       {formError && <div className="nb-alert">{formError}</div>}
       {model.write_extras.includes('a_terminations') &&
         (['a_terminations', 'b_terminations'] as const).map((side) =>
-          row(side, fieldLabel(side), <RefSelect objectType="dcim.interface" multiple value={(vals[side] as number[]) ?? []} params={{ cabled: 'false' }} placeholder={t('selectInterface')} onChange={(x) => set(side, x)} />, !obj),
+          row(
+            side,
+            fieldLabel(side),
+            <span style={{ display: 'grid', gap: 4 }}>
+              <select aria-label={`${fieldLabel(side)}: ${t('terminationType')}`} value={String(vals[`${side}_type`])} onChange={(e) => setVals((s) => ({ ...s, [`${side}_type`]: e.target.value, [side]: [] }))}>
+                {TERMINATION_TYPES.map((k) => (
+                  <option key={k} value={k}>
+                    {typeLabel(TERMINATION_LABELS[k])}
+                  </option>
+                ))}
+              </select>
+              <RefSelect
+                key={String(vals[`${side}_type`])}
+                objectType={String(vals[`${side}_type`])}
+                multiple
+                value={(vals[side] as number[]) ?? []}
+                params={{ cabled: 'false' }}
+                placeholder={t('selectTerminations')}
+                onChange={(x) => set(side, x)}
+              />
+            </span>,
+            !obj,
+          ),
         )}
       {fields.map((f) => row(f.name, fieldLabel(f.name), control(f), f.required && !(f.kind === 'slug' && !obj) && f.kind !== 'bool', f.kind === 'bool'))}
       {model.taggable && row('tags', t('tags'), <RefSelect objectType="extras.tag" multiple value={(vals.tags as number[]) ?? []} onChange={(x) => set('tags', x)} />)}

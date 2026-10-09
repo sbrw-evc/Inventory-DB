@@ -46,7 +46,7 @@ export function Swatch({ color }: { color: string | null | undefined }) {
 
 export function RefLink({ value }: { value: Ref | null | undefined }) {
   if (!value) return <span className="nb-muted">—</span>;
-  const dev = (value as Record<string, unknown>).device;
+  const dev = parentRef(value);
   return (
     <span>
       {isRef(dev) && (
@@ -60,11 +60,18 @@ export function RefLink({ value }: { value: Ref | null | undefined }) {
   );
 }
 
+/** The object a component belongs to (device, virtual machine, circuit, power panel), when nested in its reference. */
+export function parentRef(value: Ref): Ref | null {
+  const o = value as Record<string, unknown>;
+  for (const k of ['device', 'virtual_machine', 'circuit', 'power_panel']) if (isRef(o[k])) return o[k] as Ref;
+  return null;
+}
+
 /** Renders any API value: refs as links, choices as chips/labels, lists, booleans, colours. */
 export function Value({ v, name }: { v: unknown; name?: string }) {
   if (v == null || v === '') return <span className="nb-muted">—</span>;
   if (name === 'color' && typeof v === 'string') return <Swatch color={v} />;
-  if (name === '_utilization' || name === 'utilization') return <UtilBar value={v as number} />;
+  if (name === '_utilization' || name === 'utilization' || name === '_power_utilization') return <UtilBar value={v as number} />;
   if (Array.isArray(v)) {
     if (!v.length) return <span className="nb-muted">—</span>;
     if (name === 'tags')
@@ -247,8 +254,8 @@ export function RefSelect({
   }, []);
 
   const label = (r: Ref) => {
-    const dev = (r as Record<string, unknown>).device;
-    return isRef(dev) ? `${dev.display} › ${r.display}` : r.display;
+    const dev = parentRef(r);
+    return dev ? `${dev.display} › ${r.display}` : r.display;
   };
   const pick = (r: Ref) => {
     if (multiple) {

@@ -1,5 +1,7 @@
-import { checkPlacement, ifaceTermination, INTERFACE_TYPES, linkPeers, rackPlacements, VIRTUAL_IFACE_TYPES, deviceDims } from '../dcim.js';
-import type { Ctx, Errors, ModelDef, Row, SqlFrag } from '../types.js';
+import { cableEnds, clearCableEnds, connectionFields, parseTerminations, setCableEnds, termObj, TERMINATION_TYPES, validateCableSides, VIRTUAL_IFACE_TYPES } from '../cabling.js';
+import { checkPlacement, INTERFACE_TYPES, rackPlacements, deviceDims } from '../dcim.js';
+import { feedAvailablePower, feedLoad, powerPortDraw, rackPowerUtilization } from '../power.js';
+import type { Ctx, Errors, FieldDef, ModelDef, Row, SqlFrag } from '../types.js';
 import { choices } from '../types.js';
 import { addError, checkTreeCycle, colorF, commentsF, count, descriptionF, nameF, slugF, tenantF, treeDepth } from './common.js';
 
@@ -16,6 +18,35 @@ const CABLE_TYPES = choices(
 const LENGTH_UNITS = choices(['km', 'Kilometers'], ['m', 'Meters'], ['cm', 'Centimeters'], ['mi', 'Miles'], ['ft', 'Feet'], ['in', 'Inches']);
 const FACES = choices('front', 'rear');
 const IFACE_MODES = choices('access', ['tagged', 'Tagged'], ['tagged-all', 'Tagged (All)']);
+const POWERFEED_STATUS = choices('offline', 'active', 'planned', 'failed');
+const PORT_TYPES = choices(
+  ['8p8c', '8P8C'], ['8p6c', '8P6C'], ['110-punch', '110 Punch'], ['bnc', 'BNC'], ['f', 'F Connector'], ['n', 'N Connector'], ['mrj21', 'MRJ21'],
+  ['fc', 'FC'], ['lc', 'LC'], ['lc-pc', 'LC/PC'], ['lc-upc', 'LC/UPC'], ['lc-apc', 'LC/APC'], ['lsh', 'LSH'], ['mpo', 'MPO'], ['mtrj', 'MTRJ'],
+  ['sc', 'SC'], ['sc-pc', 'SC/PC'], ['sc-upc', 'SC/UPC'], ['sc-apc', 'SC/APC'], ['st', 'ST'], ['cs', 'CS'], ['sn', 'SN'], ['splice', 'Splice'], ['other', 'Other'],
+);
+const POWERPORT_TYPES = choices(
+  ['iec-60320-c6', 'C6'], ['iec-60320-c8', 'C8'], ['iec-60320-c14', 'C14'], ['iec-60320-c16', 'C16'], ['iec-60320-c20', 'C20'],
+  ['iec-60309-p-n-e-6h', 'P+N+E 6H'], ['iec-60309-3p-n-e-6h', '3P+N+E 6H'], ['nema-5-15p', 'NEMA 5-15P'], ['nema-l5-30p', 'NEMA L5-30P'], ['nema-l6-30p', 'NEMA L6-30P'],
+  ['cee-7-7', 'CEE 7/7 (Schuko)'], ['dc-terminal', 'DC Terminal'], ['hardwired', 'Hardwired'], ['other', 'Other'],
+);
+const POWEROUTLET_TYPES = choices(
+  ['iec-60320-c5', 'C5'], ['iec-60320-c7', 'C7'], ['iec-60320-c13', 'C13'], ['iec-60320-c15', 'C15'], ['iec-60320-c19', 'C19'],
+  ['iec-60309-p-n-e-6h', 'P+N+E 6H'], ['iec-60309-3p-n-e-6h', '3P+N+E 6H'], ['nema-5-15r', 'NEMA 5-15R'], ['nema-l5-30r', 'NEMA L5-30R'], ['nema-l6-30r', 'NEMA L6-30R'],
+  ['cee-7-3', 'CEE 7/3 (Schuko)'], ['dc-terminal', 'DC Terminal'], ['hardwired', 'Hardwired'], ['other', 'Other'],
+);
+
+/** Read-only cable columns of every cable termination. */
+const cableFields: FieldDef[] = [
+  { name: 'mark_connected', kind: 'bool' },
+  { name: 'cable', kind: 'fk', ref: 'dcim.cable', readOnly: true, onDelete: 'setnull' },
+  { name: 'cable_end', kind: 'string', readOnly: true },
+];
+const cabledFilter = (values: string[]): SqlFrag => ({ sql: ['true', '1'].includes(values[0]) ? 't.cable_id IS NOT NULL' : 't.cable_id IS NULL', params: [] });
+/** Tables of device components that take cables. */
+const DEVICE_TERM_TABLES = ['nb_interfaces', 'nb_front_ports', 'nb_rear_ports', 'nb_power_ports', 'nb_power_outlets'];
+const deviceCableIds = (values: string[], col: string) =>
+  DEVICE_TERM_TABLES.map((tb) => `SELECT cable_id FROM ${tb} WHERE ${col} IN (${values.map(() => '?').join(',')})`).join(' UNION ');
+const termFilter = (table: string) => (values: string[]): SqlFrag => ({ sql: `t.id IN (SELECT cable_id FROM ${table} WHERE id IN (${values.map(() => '?').join(',')}))`, params: values });
 
 const deviceIdsFilter = (sqlFor: string) => (values: string[]): SqlFrag => ({
   sql: `t.device_id IN (SELECT id FROM nb_devices WHERE ${sqlFor} IN (${values.map(() => '?').join(',')}))`,
@@ -28,35 +59,10 @@ function sameSite(ctx: Ctx, errors: Errors, field: string, type: string, id: num
   if (obj && obj.site_id !== siteId) addError(errors, field, `${label} must belong to the assigned site.`);
 }
 
-/** Parses `a_terminations` / `b_terminations` into interface ids. */
-function parseTerminations(raw: unknown, side: string, errors: Errors, ctx: Ctx): number[] {
-  if (!Array.isArray(raw)) {
-    addError(errors, side, 'Provide a list of terminations, e.g. [{"object_type": "dcim.interface", "object_id": 1}].');
-    return [];
-  }
-  const ids: number[] = [];
-  for (const t of raw) {
-    let id: unknown = t;
-    if (t && typeof t === 'object') {
-      const o = t as Record<string, unknown>;
-      const type = o.object_type ?? 'dcim.interface';
-      if (type !== 'dcim.interface') {
-        addError(errors, side, `Unsupported termination type "${String(type)}" (only dcim.interface).`);
-        continue;
-      }
-      id = o.object_id ?? o.id;
-    }
-    const n = Number(id);
-    const iface = Number.isInteger(n) ? ctx.get('dcim.interface', n) : null;
-    if (!iface) {
-      addError(errors, side, `Interface ${String(id)} not found.`);
-      continue;
-    }
-    if (VIRTUAL_IFACE_TYPES.has(iface.type)) addError(errors, side, `Cables cannot be attached to ${iface.type} interfaces (${iface.name}).`);
-    ids.push(n);
-  }
-  return ids;
-}
+const clearPrefixScope = (ctx: Ctx, type: string, id: number) => {
+  ctx.db.prepare('UPDATE nb_prefixes SET scope_type = NULL, scope_id = NULL WHERE scope_type = ? AND scope_id = ?').run(type, id);
+  ctx.invalidate();
+};
 
 export const dcimModels: ModelDef[] = [
   {
@@ -72,6 +78,7 @@ export const dcimModels: ModelDef[] = [
     display: (r) => r.name,
     ordering: ['name'],
     validate: (rec, errors, ctx) => checkTreeCycle(ctx, 'dcim.region', rec, errors),
+    beforeDelete: (r, ctx) => clearPrefixScope(ctx, 'dcim.region', r.id),
     serializeExtra: (r, ctx) => ({
       _depth: treeDepth(ctx, 'dcim.region', r),
       site_count: count(ctx, 'SELECT COUNT(*) n FROM nb_sites WHERE region_id = ?', r.id),
@@ -149,6 +156,7 @@ export const dcimModels: ModelDef[] = [
       checkTreeCycle(ctx, 'dcim.location', rec, errors);
       sameSite(ctx, errors, 'parent', 'dcim.location', rec.parent_id, rec.site_id, 'Parent location');
     },
+    beforeDelete: (r, ctx) => clearPrefixScope(ctx, 'dcim.location', r.id),
     serializeExtra: (r, ctx) => ({
       _depth: treeDepth(ctx, 'dcim.location', r),
       rack_count: count(ctx, 'SELECT COUNT(*) n FROM nb_racks WHERE location_id = ?', r.id),
@@ -216,7 +224,9 @@ export const dcimModels: ModelDef[] = [
       for (const p of rackPlacements(ctx, r.id)) for (let u = p.position; u < p.position + p.u_height; u++) used.add(u);
       return {
         device_count: count(ctx, 'SELECT COUNT(*) n FROM nb_devices WHERE rack_id = ?', r.id),
+        powerfeed_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_feeds WHERE rack_id = ?', r.id),
         _utilization: r.u_height ? Math.round((used.size / r.u_height) * 1000) / 10 : 0,
+        _power_utilization: rackPowerUtilization(ctx, r.id),
       };
     },
   },
@@ -274,6 +284,10 @@ export const dcimModels: ModelDef[] = [
     serializeExtra: (r, ctx) => ({
       device_count: count(ctx, 'SELECT COUNT(*) n FROM nb_devices WHERE device_type_id = ?', r.id),
       interface_template_count: count(ctx, 'SELECT COUNT(*) n FROM nb_interface_templates WHERE device_type_id = ?', r.id),
+      front_port_template_count: count(ctx, 'SELECT COUNT(*) n FROM nb_front_port_templates WHERE device_type_id = ?', r.id),
+      rear_port_template_count: count(ctx, 'SELECT COUNT(*) n FROM nb_rear_port_templates WHERE device_type_id = ?', r.id),
+      power_port_template_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_port_templates WHERE device_type_id = ?', r.id),
+      power_outlet_template_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_outlet_templates WHERE device_type_id = ?', r.id),
     }),
   },
   {
@@ -345,6 +359,7 @@ export const dcimModels: ModelDef[] = [
       { name: 'site', kind: 'fk', ref: 'dcim.site', required: true },
       { name: 'location', kind: 'fk', ref: 'dcim.location' },
       { name: 'rack', kind: 'fk', ref: 'dcim.rack' },
+      { name: 'cluster', kind: 'fk', ref: 'virtualization.cluster', onDelete: 'setnull' },
       { name: 'position', kind: 'int', min: 1, max: 100 },
       { name: 'face', kind: 'choice', choices: FACES },
       { name: 'status', kind: 'choice', choices: DEVICE_STATUS, default: 'active', required: true },
@@ -380,6 +395,10 @@ export const dcimModels: ModelDef[] = [
         if (rack?.location_id != null && rack.location_id !== rec.location_id) addError(errors, 'rack', 'Rack must belong to the assigned location.');
       }
       checkPlacement(ctx, rec, errors);
+      if (rec.cluster_id != null) {
+        const cluster = ctx.get('virtualization.cluster', rec.cluster_id);
+        if (cluster?.site_id != null && cluster.site_id !== rec.site_id) addError(errors, 'cluster', `The assigned cluster belongs to a different site (${ctx.get('dcim.site', cluster.site_id)?.name}).`);
+      }
       for (const [field, fam] of [['primary_ip4', 4], ['primary_ip6', 6]] as const) {
         const ipId = rec[`${field}_id`];
         if (ipId == null) continue;
@@ -392,19 +411,7 @@ export const dcimModels: ModelDef[] = [
     },
     afterWrite(row, ctx, info) {
       if (info.existing) return;
-      // Instantiate interface templates from the device type
-      const templates = ctx.db.prepare('SELECT * FROM nb_interface_templates WHERE device_type_id = ? ORDER BY id').all(row.device_type_id) as Row[];
-      for (const t of templates) {
-        ctx.create('dcim.interface', {
-          device: row.id,
-          name: t.name,
-          label: t.label,
-          type: t.type,
-          enabled: !!t.enabled,
-          mgmt_only: !!t.mgmt_only,
-          description: t.description,
-        });
-      }
+      instantiateComponents(ctx, row);
     },
     beforeDelete(row, ctx) {
       // Clear primary IPs so interface/IP cleanup doesn't trip validation, cables go with the interfaces.
@@ -416,6 +423,10 @@ export const dcimModels: ModelDef[] = [
       return {
         primary_ip: ctx.ref('ipam.ipaddress', r.primary_ip4_id ?? r.primary_ip6_id),
         interface_count: count(ctx, 'SELECT COUNT(*) n FROM nb_interfaces WHERE device_id = ?', r.id),
+        front_port_count: count(ctx, 'SELECT COUNT(*) n FROM nb_front_ports WHERE device_id = ?', r.id),
+        rear_port_count: count(ctx, 'SELECT COUNT(*) n FROM nb_rear_ports WHERE device_id = ?', r.id),
+        power_port_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_ports WHERE device_id = ?', r.id),
+        power_outlet_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_outlets WHERE device_id = ?', r.id),
         u_height: dims.u_height,
       };
     },
@@ -496,15 +507,8 @@ export const dcimModels: ModelDef[] = [
       ctx.invalidate();
     },
     serializeExtra(r, ctx) {
-      const peers = linkPeers(ctx, r);
-      const endpoints = peers.map((p) => ctx.ref('dcim.interface', p.id));
       return {
-        link_peers: endpoints,
-        link_peers_type: peers.length ? 'dcim.interface' : null,
-        connected_endpoints: endpoints.length ? endpoints : null,
-        connected_endpoints_type: peers.length ? 'dcim.interface' : null,
-        connected_endpoints_reachable: peers.length ? true : null,
-        _occupied: r.cable_id != null || !!r.mark_connected,
+        ...connectionFields(ctx, 'dcim.interface', r),
         count_ipaddresses: count(ctx, "SELECT COUNT(*) n FROM nb_ip_addresses WHERE assigned_object_type = 'dcim.interface' AND assigned_object_id = ?", r.id),
       };
     },
@@ -532,17 +536,31 @@ export const dcimModels: ModelDef[] = [
     ordering: ['id'],
     writeExtras: ['a_terminations', 'b_terminations'],
     filters: {
-      device_id: (values) => ({
-        sql: `t.id IN (SELECT cable_id FROM nb_interfaces WHERE device_id IN (${values.map(() => '?').join(',')}))`,
-        params: values,
+      device_id: (values) => ({ sql: `t.id IN (${deviceCableIds(values, 'device_id')})`, params: DEVICE_TERM_TABLES.flatMap(() => values) }),
+      rack_id: (values) => ({
+        sql: `t.id IN (${DEVICE_TERM_TABLES.map((tb) => `SELECT x.cable_id FROM ${tb} x JOIN nb_devices d ON d.id = x.device_id WHERE d.rack_id IN (${values.map(() => '?').join(',')})`).join(' UNION ')} UNION SELECT cable_id FROM nb_power_feeds WHERE rack_id IN (${values.map(() => '?').join(',')}))`,
+        params: [...DEVICE_TERM_TABLES.flatMap(() => values), ...values],
       }),
-      site_id: (values) => ({
-        sql: `t.id IN (SELECT i.cable_id FROM nb_interfaces i JOIN nb_devices d ON d.id = i.device_id WHERE d.site_id IN (${values.map(() => '?').join(',')}))`,
-        params: values,
-      }),
-      interface_id: (values) => ({
-        sql: `t.id IN (SELECT cable_id FROM nb_interfaces WHERE id IN (${values.map(() => '?').join(',')}))`,
-        params: values,
+      site_id: (values) => {
+        const p = values.map(() => '?').join(',');
+        return {
+          sql: `t.id IN (${DEVICE_TERM_TABLES.map((tb) => `SELECT x.cable_id FROM ${tb} x JOIN nb_devices d ON d.id = x.device_id WHERE d.site_id IN (${p})`).join(' UNION ')}
+            UNION SELECT cable_id FROM nb_circuit_terminations WHERE site_id IN (${p})
+            UNION SELECT f.cable_id FROM nb_power_feeds f JOIN nb_power_panels pp ON pp.id = f.power_panel_id WHERE pp.site_id IN (${p}))`,
+          params: [...DEVICE_TERM_TABLES.flatMap(() => values), ...values, ...values],
+        };
+      },
+      interface_id: termFilter('nb_interfaces'),
+      frontport_id: termFilter('nb_front_ports'),
+      rearport_id: termFilter('nb_rear_ports'),
+      powerport_id: termFilter('nb_power_ports'),
+      poweroutlet_id: termFilter('nb_power_outlets'),
+      powerfeed_id: termFilter('nb_power_feeds'),
+      circuittermination_id: termFilter('nb_circuit_terminations'),
+      circuit_id: (values) => ({ sql: `t.id IN (SELECT cable_id FROM nb_circuit_terminations WHERE circuit_id IN (${values.map(() => '?').join(',')}))`, params: values }),
+      termination_type: (values) => ({
+        sql: `(${values.map((v) => (TERMINATION_TYPES[v] ? `t.id IN (SELECT cable_id FROM ${TERMINATION_TYPES[v].table})` : '0')).join(' OR ')})`,
+        params: [],
       }),
     },
     derive(rec) {
@@ -551,48 +569,323 @@ export const dcimModels: ModelDef[] = [
     },
     validate(rec, errors, ctx, info) {
       if (rec.length != null && rec.length_unit == null) addError(errors, 'length_unit', 'Must specify a unit when setting a cable length.');
-      const sides: Record<'a' | 'b', number[] | null> = { a: null, b: null };
+      const sides: Record<'a' | 'b', { type: string; id: number }[] | null> = { a: null, b: null };
       for (const side of ['a', 'b'] as const) {
         const key = `${side}_terminations`;
-        if (key in info.extras) sides[side] = parseTerminations(info.extras[key], key, errors, ctx);
+        if (key in info.extras) sides[side] = parseTerminations(ctx, info.extras[key], key, errors);
         else if (!info.existing) addError(errors, key, 'This field is required.');
       }
-      for (const side of ['a', 'b'] as const) {
-        const ids = sides[side];
-        if (!ids) continue;
-        if (ids.length === 0) addError(errors, `${side}_terminations`, 'At least one termination is required.');
-        for (const id of ids) {
-          const iface = ctx.get('dcim.interface', id)!;
-          if (iface.cable_id != null && iface.cable_id !== rec.id) {
-            addError(errors, `${side}_terminations`, `${ctx.get('dcim.device', iface.device_id)?.name ?? ''} ${iface.name} already has a cable (#${iface.cable_id}).`);
-          }
-        }
-      }
-      if (sides.a && sides.b && sides.a.some((id) => sides.b!.includes(id))) addError(errors, 'b_terminations', 'An interface cannot be on both ends of a cable.');
+      // On update with one side given, check compatibility against the stored other side.
+      if (info.existing && (!sides.a || !sides.b)) {
+        const ends = cableEnds(ctx, rec.id);
+        const check = {
+          a: sides.a ?? ends.filter((e) => e.end === 'A').map((e) => ({ type: e.type, id: e.row.id })),
+          b: sides.b ?? ends.filter((e) => e.end === 'B').map((e) => ({ type: e.type, id: e.row.id })),
+        };
+        validateCableSides(ctx, rec.id, check, errors);
+      } else validateCableSides(ctx, rec.id ?? null, sides, errors);
       info.extras.__sides = sides;
     },
     afterWrite(row, ctx, info) {
-      const sides = info.extras.__sides as Record<'a' | 'b', number[] | null>;
-      for (const side of ['a', 'b'] as const) {
-        const ids = sides[side];
-        if (!ids) continue;
-        const end = side.toUpperCase();
-        ctx.db.prepare('UPDATE nb_interfaces SET cable_id = NULL, cable_end = NULL WHERE cable_id = ? AND cable_end = ?').run(row.id, end);
-        const upd = ctx.db.prepare('UPDATE nb_interfaces SET cable_id = ?, cable_end = ? WHERE id = ?');
-        for (const id of ids) upd.run(row.id, end, id);
-      }
-      ctx.invalidate();
+      const sides = info.extras.__sides as Record<'a' | 'b', { type: string; id: number }[] | null>;
+      for (const side of ['a', 'b'] as const) if (sides[side]) setCableEnds(ctx, row.id, side.toUpperCase() as 'A' | 'B', sides[side]!);
     },
     beforeDelete(row, ctx) {
-      ctx.db.prepare('UPDATE nb_interfaces SET cable_id = NULL, cable_end = NULL WHERE cable_id = ?').run(row.id);
-      ctx.invalidate();
+      clearCableEnds(ctx, row.id);
     },
     serializeExtra(r, ctx) {
-      const ends = ctx.db.prepare('SELECT id, cable_end FROM nb_interfaces WHERE cable_id = ? ORDER BY id').all(r.id) as Row[];
+      const ends = cableEnds(ctx, r.id);
       return {
-        a_terminations: ends.filter((e) => e.cable_end === 'A').map((e) => ifaceTermination(ctx, e.id)),
-        b_terminations: ends.filter((e) => e.cable_end === 'B').map((e) => ifaceTermination(ctx, e.id)),
+        a_terminations: ends.filter((e) => e.end === 'A').map((e) => termObj(ctx, e.type, e.row.id)),
+        b_terminations: ends.filter((e) => e.end === 'B').map((e) => termObj(ctx, e.type, e.row.id)),
+      };
+    },
+  },
+  ...componentModels(),
+  {
+    type: 'dcim.powerpanel',
+    app: 'dcim',
+    path: 'power-panels',
+    table: 'nb_power_panels',
+    verbose: 'power panel',
+    verbosePlural: 'power panels',
+    fields: [
+      { name: 'site', kind: 'fk', ref: 'dcim.site', required: true },
+      { name: 'location', kind: 'fk', ref: 'dcim.location' },
+      nameF(),
+      descriptionF,
+      commentsF,
+    ],
+    unique: [['site', 'name']],
+    brief: ['name'],
+    display: (r) => r.name,
+    ordering: ['site', 'name'],
+    validate(rec, errors, ctx) {
+      sameSite(ctx, errors, 'location', 'dcim.location', rec.location_id, rec.site_id, 'Location');
+    },
+    serializeExtra: (r, ctx) => ({ powerfeed_count: count(ctx, 'SELECT COUNT(*) n FROM nb_power_feeds WHERE power_panel_id = ?', r.id) }),
+  },
+  {
+    type: 'dcim.powerfeed',
+    app: 'dcim',
+    path: 'power-feeds',
+    table: 'nb_power_feeds',
+    verbose: 'power feed',
+    verbosePlural: 'power feeds',
+    fields: [
+      { name: 'power_panel', kind: 'fk', ref: 'dcim.powerpanel', required: true },
+      { name: 'rack', kind: 'fk', ref: 'dcim.rack' },
+      nameF(),
+      { name: 'status', kind: 'choice', choices: POWERFEED_STATUS, default: 'active', required: true },
+      { name: 'type', kind: 'choice', choices: choices('primary', 'redundant'), default: 'primary', required: true },
+      { name: 'supply', kind: 'choice', choices: choices(['ac', 'AC'], ['dc', 'DC']), default: 'ac', required: true },
+      { name: 'phase', kind: 'choice', choices: choices(['single-phase', 'Single phase'], ['three-phase', 'Three-phase']), default: 'single-phase', required: true },
+      { name: 'voltage', kind: 'int', min: -32768, max: 32767, default: 230, required: true },
+      { name: 'amperage', kind: 'int', min: 1, max: 32767, default: 16, required: true },
+      { name: 'max_utilization', kind: 'int', min: 1, max: 100, default: 80, required: true },
+      tenantF,
+      descriptionF,
+      commentsF,
+      ...cableFields,
+    ],
+    unique: [['power_panel', 'name']],
+    brief: ['power_panel', 'name', 'cable'],
+    display: (r) => r.name,
+    ordering: ['power_panel', 'name'],
+    filters: {
+      site_id: (values) => ({ sql: `t.power_panel_id IN (SELECT id FROM nb_power_panels WHERE site_id IN (${values.map(() => '?').join(',')}))`, params: values }),
+      cabled: cabledFilter,
+    },
+    validate(rec, errors, ctx) {
+      const panel = ctx.get('dcim.powerpanel', rec.power_panel_id);
+      if (panel && rec.rack_id != null) {
+        const rack = ctx.get('dcim.rack', rec.rack_id);
+        if (rack && rack.site_id !== panel.site_id) addError(errors, 'rack', `Rack ${rack.name} (site ${ctx.get('dcim.site', rack.site_id)?.name}) and power panel ${panel.name} (site ${ctx.get('dcim.site', panel.site_id)?.name}) are in different sites.`);
+      }
+      if (rec.supply === 'ac' && rec.voltage < 0) addError(errors, 'voltage', 'Voltage cannot be negative for AC supply.');
+      if (rec.supply === 'dc' && rec.phase === 'three-phase') addError(errors, 'phase', 'DC supply cannot be three-phase.');
+    },
+    beforeDelete: removeCable,
+    serializeExtra(r, ctx) {
+      const load = feedLoad(ctx, r);
+      const available = feedAvailablePower(r);
+      return {
+        ...connectionFields(ctx, 'dcim.powerfeed', r),
+        site: ctx.ref('dcim.site', ctx.get('dcim.powerpanel', r.power_panel_id)?.site_id),
+        available_power: available,
+        allocated_draw: load.allocated,
+        maximum_draw: load.maximum,
+        _utilization: available > 0 ? Math.round((load.allocated / available) * 1000) / 10 : 0,
       };
     },
   },
 ];
+
+// ---------------------------------------------------------------------------------------------------------------
+// Device components (front/rear ports, power ports/outlets) and their templates
+
+function removeCable(row: Row, ctx: Ctx) {
+  if (row.cable_id != null) ctx.remove('dcim.cable', row.cable_id);
+}
+
+function componentModel(def: {
+  type: string;
+  path: string;
+  table: string;
+  verbose: string;
+  verbosePlural: string;
+  fields: FieldDef[];
+  unique?: string[][];
+  validate?: ModelDef['validate'];
+  serializeExtra?: ModelDef['serializeExtra'];
+}): ModelDef {
+  return {
+    app: 'dcim',
+    ...def,
+    fields: [
+      { name: 'device', kind: 'fk', ref: 'dcim.device', required: true, onDelete: 'cascade' },
+      nameF(64),
+      { name: 'label', kind: 'string', maxLength: 64, search: true },
+      ...def.fields,
+      descriptionF,
+      ...cableFields,
+    ],
+    unique: [['device', 'name'], ...(def.unique ?? [])],
+    brief: ['device', 'name', 'cable'],
+    display: (r) => r.name,
+    ordering: ['device', 'name'],
+    filters: {
+      site_id: deviceIdsFilter('site_id'),
+      rack_id: deviceIdsFilter('rack_id'),
+      role_id: deviceIdsFilter('role_id'),
+      cabled: cabledFilter,
+    },
+    validate(rec, errors, ctx, info) {
+      if (info.existing && info.existing.device_id !== rec.device_id) addError(errors, 'device', 'Components cannot be moved to another device.');
+      def.validate?.(rec, errors, ctx, info);
+    },
+    beforeDelete: removeCable,
+    serializeExtra: (r, ctx) => ({ ...connectionFields(ctx, def.type, r), ...def.serializeExtra?.(r, ctx) }),
+  };
+}
+
+function templateModel(def: { type: string; path: string; table: string; verbose: string; verbosePlural: string; fields: FieldDef[]; validate?: ModelDef['validate'] }): ModelDef {
+  return {
+    app: 'dcim',
+    ...def,
+    fields: [
+      { name: 'device_type', kind: 'fk', ref: 'dcim.devicetype', required: true, onDelete: 'cascade' },
+      nameF(64),
+      { name: 'label', kind: 'string', maxLength: 64 },
+      ...def.fields,
+      descriptionF,
+    ],
+    unique: [['device_type', 'name']],
+    brief: ['name'],
+    display: (r) => r.name,
+    ordering: ['device_type', 'name'],
+    taggable: false,
+    customFields: false,
+  };
+}
+
+const sameParent = (ctx: Ctx, errors: Errors, field: string, type: string, id: number | null, parentCol: string, parentId: number, what: string) => {
+  if (id == null) return null;
+  const o = ctx.get(type, id);
+  if (o && o[parentCol] !== parentId) addError(errors, field, `The ${what} must belong to the same ${parentCol === 'device_id' ? 'device' : 'device type'}.`);
+  return o;
+};
+
+function componentModels(): ModelDef[] {
+  const rearPositions: FieldDef = { name: 'positions', kind: 'int', min: 1, max: 1024, default: 1, required: true };
+  const frontFields = (rearRef: string): FieldDef[] => [
+    { name: 'type', kind: 'choice', choices: PORT_TYPES, required: true },
+    colorF(''),
+    { name: 'rear_port', kind: 'fk', ref: rearRef, required: true, onDelete: 'cascade' },
+    { name: 'rear_port_position', kind: 'int', min: 1, max: 1024, default: 1, required: true },
+  ];
+  const checkFront = (rearType: string, parentCol: string) => (rec: Row, errors: Errors, ctx: Ctx) => {
+    if (rec.color === '') rec.color = null;
+    const rear = sameParent(ctx, errors, 'rear_port', rearType, rec.rear_port_id, parentCol, rec[parentCol], 'rear port');
+    if (rear && rec.rear_port_position != null && rec.rear_port_position > rear.positions) {
+      addError(errors, 'rear_port_position', `Invalid rear port position (${rec.rear_port_position}): rear port ${rear.name} has only ${rear.positions} positions.`);
+    }
+  };
+  const checkRear = (frontTable: string) => (rec: Row, errors: Errors, ctx: Ctx, info: { existing: Row | null }) => {
+    if (rec.color === '') rec.color = null;
+    if (!info.existing || rec.positions == null) return;
+    const max = (ctx.db.prepare(`SELECT MAX(rear_port_position) m FROM ${frontTable} WHERE rear_port_id = ?`).get(rec.id) as { m: number | null }).m;
+    if (max != null && rec.positions < max) addError(errors, 'positions', `The number of positions cannot be less than the number of mapped front ports (${max}).`);
+  };
+  const drawFields: FieldDef[] = [
+    { name: 'type', kind: 'choice', choices: POWERPORT_TYPES },
+    { name: 'maximum_draw', kind: 'int', min: 1, max: 32767 },
+    { name: 'allocated_draw', kind: 'int', min: 1, max: 32767 },
+  ];
+  const checkDraw = (rec: Row, errors: Errors) => {
+    if (rec.maximum_draw != null && rec.allocated_draw != null && rec.allocated_draw > rec.maximum_draw) {
+      addError(errors, 'allocated_draw', `Allocated draw cannot exceed the maximum draw (${rec.maximum_draw}W).`);
+    }
+  };
+  const outletFields = (portRef: string): FieldDef[] => [
+    { name: 'type', kind: 'choice', choices: POWEROUTLET_TYPES },
+    { name: 'power_port', kind: 'fk', ref: portRef, onDelete: 'setnull' },
+    { name: 'feed_leg', kind: 'choice', choices: choices('A', 'B', 'C') },
+  ];
+  return [
+    componentModel({
+      type: 'dcim.rearport',
+      path: 'rear-ports',
+      table: 'nb_rear_ports',
+      verbose: 'rear port',
+      verbosePlural: 'rear ports',
+      fields: [{ name: 'type', kind: 'choice', choices: PORT_TYPES, required: true }, colorF(''), rearPositions],
+      validate: checkRear('nb_front_ports'),
+      serializeExtra: (r, ctx) => ({ front_port_count: count(ctx, 'SELECT COUNT(*) n FROM nb_front_ports WHERE rear_port_id = ?', r.id) }),
+    }),
+    componentModel({
+      type: 'dcim.frontport',
+      path: 'front-ports',
+      table: 'nb_front_ports',
+      verbose: 'front port',
+      verbosePlural: 'front ports',
+      fields: frontFields('dcim.rearport'),
+      unique: [['rear_port', 'rear_port_position']],
+      validate: checkFront('dcim.rearport', 'device_id'),
+    }),
+    componentModel({
+      type: 'dcim.powerport',
+      path: 'power-ports',
+      table: 'nb_power_ports',
+      verbose: 'power port',
+      verbosePlural: 'power ports',
+      fields: drawFields,
+      validate: checkDraw,
+      serializeExtra: (r, ctx) => ({ _power_draw: powerPortDraw(ctx, r) }),
+    }),
+    componentModel({
+      type: 'dcim.poweroutlet',
+      path: 'power-outlets',
+      table: 'nb_power_outlets',
+      verbose: 'power outlet',
+      verbosePlural: 'power outlets',
+      fields: outletFields('dcim.powerport'),
+      validate: (rec, errors, ctx) => void sameParent(ctx, errors, 'power_port', 'dcim.powerport', rec.power_port_id, 'device_id', rec.device_id, 'parent power port'),
+    }),
+    templateModel({
+      type: 'dcim.rearporttemplate',
+      path: 'rear-port-templates',
+      table: 'nb_rear_port_templates',
+      verbose: 'rear port template',
+      verbosePlural: 'rear port templates',
+      fields: [{ name: 'type', kind: 'choice', choices: PORT_TYPES, required: true }, colorF(''), rearPositions],
+      validate: checkRear('nb_front_port_templates'),
+    }),
+    templateModel({
+      type: 'dcim.frontporttemplate',
+      path: 'front-port-templates',
+      table: 'nb_front_port_templates',
+      verbose: 'front port template',
+      verbosePlural: 'front port templates',
+      fields: frontFields('dcim.rearporttemplate'),
+      validate: checkFront('dcim.rearporttemplate', 'device_type_id'),
+    }),
+    templateModel({
+      type: 'dcim.powerporttemplate',
+      path: 'power-port-templates',
+      table: 'nb_power_port_templates',
+      verbose: 'power port template',
+      verbosePlural: 'power port templates',
+      fields: drawFields,
+      validate: checkDraw,
+    }),
+    templateModel({
+      type: 'dcim.poweroutlettemplate',
+      path: 'power-outlet-templates',
+      table: 'nb_power_outlet_templates',
+      verbose: 'power outlet template',
+      verbosePlural: 'power outlet templates',
+      fields: outletFields('dcim.powerporttemplate'),
+      validate: (rec, errors, ctx) => void sameParent(ctx, errors, 'power_port', 'dcim.powerporttemplate', rec.power_port_id, 'device_type_id', rec.device_type_id, 'parent power port'),
+    }),
+  ];
+}
+
+/** Creates a new device's components from its device type's templates. */
+function instantiateComponents(ctx: Ctx, device: Row) {
+  const tpl = (table: string) => ctx.db.prepare(`SELECT * FROM ${table} WHERE device_type_id = ? ORDER BY id`).all(device.device_type_id) as Row[];
+  const base = (t: Row) => ({ device: device.id, name: t.name, label: t.label, description: t.description });
+  for (const t of tpl('nb_interface_templates')) ctx.create('dcim.interface', { ...base(t), type: t.type, enabled: !!t.enabled, mgmt_only: !!t.mgmt_only });
+  const rearMap = new Map<number, number>();
+  for (const t of tpl('nb_rear_port_templates')) rearMap.set(t.id, ctx.create('dcim.rearport', { ...base(t), type: t.type, color: t.color, positions: t.positions }).id);
+  for (const t of tpl('nb_front_port_templates')) {
+    ctx.create('dcim.frontport', { ...base(t), type: t.type, color: t.color, rear_port: rearMap.get(t.rear_port_id), rear_port_position: t.rear_port_position });
+  }
+  const portMap = new Map<number, number>();
+  for (const t of tpl('nb_power_port_templates')) {
+    portMap.set(t.id, ctx.create('dcim.powerport', { ...base(t), type: t.type, maximum_draw: t.maximum_draw, allocated_draw: t.allocated_draw }).id);
+  }
+  for (const t of tpl('nb_power_outlet_templates')) {
+    ctx.create('dcim.poweroutlet', { ...base(t), type: t.type, feed_leg: t.feed_leg, power_port: t.power_port_id != null ? (portMap.get(t.power_port_id) ?? null) : null });
+  }
+}
