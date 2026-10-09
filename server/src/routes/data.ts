@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { FilterGroup, ListQuery, Sort } from '../../../shared/src/index.js';
-import { requireTableRole, requireUser } from '../auth/plugin.js';
+import { requireTableAccess, requireUser } from '../auth/plugin.js';
 import {
   deleteRecords,
   getRecord,
@@ -64,86 +64,95 @@ function linkColumnOf(tableId: string, columnId: string) {
 
 export async function dataRoutes(app: FastifyInstance) {
   app.get<P<'tableId'>>('/api/v1/tables/:tableId/records', async (req) => {
-    requireTableRole(req, req.params.tableId, 'viewer');
-    return listRecords(req.params.tableId, parseListQuery(req.query));
+    const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
+    return listRecords(req.params.tableId, parseListQuery(req.query), { role });
   });
 
   app.get<P<'tableId' | 'id'>>('/api/v1/tables/:tableId/records/:id', async (req) => {
-    requireTableRole(req, req.params.tableId, 'viewer');
+    const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) throw notFound('Record');
-    return getRecord(req.params.tableId, id);
+    return getRecord(req.params.tableId, id, { role });
   });
 
   app.post<P<'tableId'>>('/api/v1/tables/:tableId/records', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
-    const ctx = { userId: requireUser(req).id };
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
+    const ctx = { userId: requireUser(req).id, access: { role } };
     if (Array.isArray(req.body)) return insertRecords(req.params.tableId, z.array(recordObj).parse(req.body), ctx);
     return insertRecords(req.params.tableId, [recordObj.parse(req.body ?? {})], ctx)[0];
   });
 
   app.patch<P<'tableId'>>('/api/v1/tables/:tableId/records', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
     const rows = z.array(recordObj).parse(req.body);
-    return updateRecords(req.params.tableId, rows, { userId: requireUser(req).id });
+    return updateRecords(req.params.tableId, rows, { userId: requireUser(req).id, access: { role } });
   });
 
   app.patch<P<'tableId' | 'id'>>('/api/v1/tables/:tableId/records/:id', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
     const body = recordObj.parse(req.body ?? {});
-    return updateRecords(req.params.tableId, [{ ...body, id: req.params.id }], { userId: requireUser(req).id })[0];
+    return updateRecords(req.params.tableId, [{ ...body, id: req.params.id }], { userId: requireUser(req).id, access: { role } })[0];
   });
 
   app.delete<P<'tableId'>>('/api/v1/tables/:tableId/records', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    requireTableAccess(req, req.params.tableId, 'editor');
     const { ids } = idsBody.parse(req.body);
     return { deleted: deleteRecords(req.params.tableId, ids, { userId: requireUser(req).id }) };
   });
 
   app.delete<P<'tableId' | 'id'>>('/api/v1/tables/:tableId/records/:id', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    requireTableAccess(req, req.params.tableId, 'editor');
     const deleted = deleteRecords(req.params.tableId, [req.params.id], { userId: requireUser(req).id });
     if (!deleted) throw notFound('Record');
     return { deleted };
   });
 
   app.get<P<'tableId'>>('/api/v1/tables/:tableId/groups', async (req) => {
-    requireTableRole(req, req.params.tableId, 'viewer');
+    const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
     const q = req.query;
     if (!q.columnId) throw badRequest('columnId is required');
-    return groupRecords(req.params.tableId, {
-      viewId: q.viewId || undefined,
-      columnId: q.columnId,
-      filter: parseJsonParam<FilterGroup>(q.filter, 'filter', filterGroup),
-      search: q.search || undefined,
-    });
+    return groupRecords(
+      req.params.tableId,
+      {
+        viewId: q.viewId || undefined,
+        columnId: q.columnId,
+        filter: parseJsonParam<FilterGroup>(q.filter, 'filter', filterGroup),
+        search: q.search || undefined,
+      },
+      { role },
+    );
   });
 
   app.get<P<'tableId' | 'id' | 'columnId'>>('/api/v1/tables/:tableId/records/:id/links/:columnId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'viewer');
+    const { role } = requireTableAccess(req, req.params.tableId, 'viewer');
     linkColumnOf(req.params.tableId, req.params.columnId);
     const q = req.query;
-    return listLinked(req.params.columnId, Number(req.params.id), {
-      offset: num(q.offset),
-      limit: num(q.limit),
-      search: q.search || undefined,
-      notLinked: q.notLinked === 'true' || q.notLinked === '1',
-    });
+    return listLinked(
+      req.params.columnId,
+      Number(req.params.id),
+      {
+        offset: num(q.offset),
+        limit: num(q.limit),
+        search: q.search || undefined,
+        notLinked: q.notLinked === 'true' || q.notLinked === '1',
+      },
+      { role },
+    );
   });
 
   app.post<P<'tableId' | 'id' | 'columnId'>>('/api/v1/tables/:tableId/records/:id/links/:columnId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
     linkColumnOf(req.params.tableId, req.params.columnId);
     const { ids } = idsBody.parse(req.body);
-    linkRecords(req.params.columnId, Number(req.params.id), ids as number[], { userId: requireUser(req).id });
+    linkRecords(req.params.columnId, Number(req.params.id), ids as number[], { userId: requireUser(req).id, access: { role } });
     return { ok: true };
   });
 
   app.delete<P<'tableId' | 'id' | 'columnId'>>('/api/v1/tables/:tableId/records/:id/links/:columnId', async (req) => {
-    requireTableRole(req, req.params.tableId, 'editor');
+    const { role } = requireTableAccess(req, req.params.tableId, 'editor');
     linkColumnOf(req.params.tableId, req.params.columnId);
     const { ids } = idsBody.parse(req.body);
-    unlinkRecords(req.params.columnId, Number(req.params.id), ids as number[], { userId: requireUser(req).id });
+    unlinkRecords(req.params.columnId, Number(req.params.id), ids as number[], { userId: requireUser(req).id, access: { role } });
     return { ok: true };
   });
 }

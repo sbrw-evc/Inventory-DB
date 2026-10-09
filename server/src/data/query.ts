@@ -3,7 +3,7 @@
  * Values are always bound as parameters; identifiers only come from metadata.
  */
 import type { FilterCondition, FilterGroup, FilterOp, Sort } from '../../../shared/src/index.js';
-import { FILTER_OPS, isFilterGroup } from '../../../shared/src/index.js';
+import { FILTER_OPS, formatGeo, isFilterGroup, parseGeo } from '../../../shared/src/index.js';
 import { dataColumnName, dataTableName, q } from '../db/index.js';
 import { badRequest } from '../errors.js';
 import { type ColumnMeta, findColumn, linkInfo, loadColumns } from '../meta/store.js';
@@ -359,6 +359,20 @@ function compileCondition(ctx: QueryContext, cond: FilterCondition, tableId: str
     return op === 'neq' ? sql`(${e} IS NULL OR ${c})` : c;
   }
 
+  if (t === 'GeoData') {
+    if (op !== 'eq' && op !== 'neq') {
+      if (strict) throw badRequest(`Operator ${op} is not supported for ${t} fields`);
+      return null;
+    }
+    const p = parseGeo(v);
+    if (!p) {
+      if (strict) throw badRequest(`Filter on "${col.title}" needs "latitude;longitude"`);
+      return null;
+    }
+    const c = sql`${e} = ${val(formatGeo(p))}`;
+    return op === 'eq' ? c : sql`(${e} IS NULL OR NOT ${c})`;
+  }
+
   // Text-like, SingleSelect, Formula, JSON, Attachment
   switch (op) {
     case 'eq':
@@ -428,12 +442,19 @@ export function compileSorts(ctx: QueryContext, sorts: Sort[], tableId: string, 
   return join(parts, ', ');
 }
 
-const SEARCHABLE = [...TEXT_TYPES, 'SingleSelect', 'MultiSelect', 'Formula', 'Lookup'];
+const SEARCHABLE = [...TEXT_TYPES, 'SingleSelect', 'MultiSelect', 'Formula', 'Lookup', 'GeoData'];
 
-export function compileSearch(ctx: QueryContext, tableId: string, alias: string, search: string, searchColumnId?: string): Frag | null {
+export function compileSearch(
+  ctx: QueryContext,
+  tableId: string,
+  alias: string,
+  search: string,
+  searchColumnId?: string,
+  exclude?: Set<string>,
+): Frag | null {
   const s = search.trim();
   if (!s) return null;
-  const cols = ctx.columns(tableId);
+  const cols = exclude?.size ? ctx.columns(tableId).filter((c) => !exclude.has(c.id)) : ctx.columns(tableId);
   let targets: ColumnMeta[];
   if (searchColumnId) {
     const c = cols.find((x) => x.id === searchColumnId);

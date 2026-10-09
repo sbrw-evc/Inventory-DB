@@ -187,7 +187,7 @@ export function planColumn(col: NocoColumn): ColumnPlan {
     case 'Collaborator':
       return { kind: 'stored', type: 'SingleLineText', options: {}, note: `${uidt} converted to text (user names/emails)` };
     case 'GeoData':
-      return { kind: 'stored', type: 'SingleLineText', options: {}, note: 'GeoData converted to text ("lat;lng")' };
+      return { kind: 'stored', type: 'GeoData', options: {} };
     case 'SpecificDBType':
       return { kind: 'stored', type: 'SingleLineText', options: {}, note: 'database-specific type converted to text' };
     case 'Barcode':
@@ -278,12 +278,15 @@ export function mapViewType(type: number | string | undefined): ViewType | null 
     case 6:
     case 'calendar':
       return 'calendar';
+    case 5:
+    case 'map':
+      return 'map';
     default:
       return null;
   }
 }
 
-const VIEW_TYPE_NAMES: Record<number, string> = { 5: 'map', 7: 'list', 8: 'timeline', 9: 'gantt' };
+const VIEW_TYPE_NAMES: Record<number, string> = { 7: 'list', 8: 'timeline', 9: 'gantt' };
 export const viewTypeName = (type: number | string | undefined) =>
   typeof type === 'number' ? (VIEW_TYPE_NAMES[type] ?? `type ${type}`) : String(type);
 

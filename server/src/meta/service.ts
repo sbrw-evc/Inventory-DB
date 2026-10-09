@@ -17,7 +17,7 @@ import type {
   ViewMeta,
   ViewType,
 } from '../../../shared/src/index.js';
-import { FIELD_TYPES, ROLLUP_FUNCTIONS, SQL_TYPE, isFilterGroup } from '../../../shared/src/index.js';
+import { FIELD_TYPES, RESTRICTABLE_ROLES, ROLLUP_FUNCTIONS, SQL_TYPE, VIEW_TYPES, isFilterGroup } from '../../../shared/src/index.js';
 import { dataColumnName, dataTableName, getDb, linkTableName, newId, now, q } from '../db/index.js';
 import { badRequest, notFound } from '../errors.js';
 import { asText, newChoice, toStored } from '../data/codec.js';
@@ -39,7 +39,6 @@ import {
   toColumnMeta,
 } from './store.js';
 
-const VIEW_TYPES: ViewType[] = ['grid', 'form', 'gallery', 'kanban', 'calendar'];
 const PRIMARY_INELIGIBLE: FieldType[] = ['Links', 'Attachment', 'JSON', 'Checkbox', 'Lookup'];
 const SYSTEM_TYPES: FieldType[] = ['ID', 'CreatedTime', 'LastModifiedTime'];
 
@@ -309,6 +308,9 @@ function prepareOptions(tableId: string, type: FieldType, input: ColumnOptions |
     if (prev?.type === type && prev.options[k] !== undefined) (o as Record<string, unknown>)[k] = prev.options[k];
     else delete o[k];
   }
+  // Field permissions survive type changes unless the patch sets them.
+  if (input?.permissions === undefined && prev?.options.permissions) o.permissions = prev.options.permissions;
+  normalizePermissions(o);
   switch (type) {
     case 'SingleSelect':
     case 'MultiSelect': {
@@ -374,6 +376,28 @@ function prepareOptions(tableId: string, type: FieldType, input: ColumnOptions |
     }
   }
   return o;
+}
+
+/** Validate `options.permissions`: role lists without owner, duplicates or unknown roles; empty → removed. */
+function normalizePermissions(o: ColumnMeta['options']) {
+  const p = o.permissions as unknown;
+  if (p === undefined) return;
+  if (p === null) {
+    delete o.permissions;
+    return;
+  }
+  if (typeof p !== 'object' || Array.isArray(p)) throw badRequest('options.permissions must be an object');
+  const list = (v: unknown, key: string) => {
+    if (v == null) return [];
+    if (!Array.isArray(v)) throw badRequest(`options.permissions.${key} must be an array of roles`);
+    for (const r of v) if (!RESTRICTABLE_ROLES.includes(r)) throw badRequest(`options.permissions.${key}: unknown or unrestrictable role ${JSON.stringify(r)}`);
+    return RESTRICTABLE_ROLES.filter((r) => v.includes(r));
+  };
+  const { hiddenFor, readOnlyFor } = p as { hiddenFor?: unknown; readOnlyFor?: unknown };
+  const h = list(hiddenFor, 'hiddenFor');
+  const r = list(readOnlyFor, 'readOnlyFor').filter((x) => !h.includes(x));
+  if (!h.length && !r.length) delete o.permissions;
+  else o.permissions = { ...(h.length ? { hiddenFor: h } : {}), ...(r.length ? { readOnlyFor: r } : {}) };
 }
 
 /** Compile a virtual column once in strict mode so bad formulas and circular references fail on save. */
@@ -653,11 +677,15 @@ function reconcileView(view: View, cols: ColumnMeta[]): View {
   return { ...view, columns: kept };
 }
 
-function defaultMeta(type: ViewType, cols: ColumnMeta[], meta: ViewMeta = {}): ViewMeta {
+function defaultMeta(type: ViewType, cols: ColumnMeta[], meta: ViewMeta = {}, creating = false): ViewMeta {
   const m = { ...meta };
   const valid = (id?: string) => !!id && cols.some((c) => c.id === id);
   if (type === 'kanban' && !valid(m.groupColumnId)) m.groupColumnId = cols.find((c) => c.type === 'SingleSelect')?.id;
-  if (type === 'calendar' && !valid(m.dateColumnId)) m.dateColumnId = cols.find((c) => c.type === 'Date' || c.type === 'DateTime')?.id;
+  const dates = cols.filter((c) => c.type === 'Date' || c.type === 'DateTime');
+  if ((type === 'calendar' || type === 'timeline') && !valid(m.dateColumnId)) m.dateColumnId = dates[0]?.id;
+  if (type === 'timeline' && creating && !valid(m.endDateColumnId)) m.endDateColumnId = dates.find((c) => c.id !== m.dateColumnId)?.id;
+  if (type === 'timeline') m.timelineScale ??= 'week';
+  if (type === 'map' && !valid(m.geoColumnId)) m.geoColumnId = cols.find((c) => c.type === 'GeoData')?.id;
   if ((type === 'gallery' || type === 'kanban') && !valid(m.coverColumnId)) m.coverColumnId = cols.find((c) => c.type === 'Attachment')?.id;
   for (const k of Object.keys(m) as (keyof ViewMeta)[]) if (m[k] === undefined) delete m[k];
   return m;
@@ -682,7 +710,7 @@ function insertView(tableId: string, title: string, type: ViewType, from?: View)
       from?.filter ? JSON.stringify(from.filter) : null,
       JSON.stringify(from?.sorts ?? []),
       JSON.stringify(columns),
-      JSON.stringify(defaultMeta(type, cols, from?.meta)),
+      JSON.stringify(defaultMeta(type, cols, from?.meta, true)),
       now(),
     );
   return getView(id);
@@ -803,7 +831,7 @@ function stripFilter(g: FilterGroup, columnId: string): FilterGroup {
 function removeColumnFromViews(tableId: string, columnId: string) {
   for (const v of loadViewRows(tableId)) {
     const meta: ViewMeta = { ...v.meta };
-    for (const k of ['groupColumnId', 'coverColumnId', 'dateColumnId', 'endDateColumnId'] as const) if (meta[k] === columnId) delete meta[k];
+    for (const k of ['groupColumnId', 'coverColumnId', 'dateColumnId', 'endDateColumnId', 'geoColumnId'] as const) if (meta[k] === columnId) delete meta[k];
     if (meta.groupBy) meta.groupBy = meta.groupBy.filter((s) => s.columnId !== columnId);
     getDb()
       .prepare('UPDATE nc_views SET columns = ?, filter = ?, sorts = ?, meta = ? WHERE id = ?')

@@ -61,6 +61,17 @@ export interface ColumnOptions {
   formula?: string;
   /** Checkbox */
   checkedIcon?: string;
+  /**
+   * Field-level permissions (NocoDB-style). Owners always have full access. A role in `hiddenFor` can't read
+   * the field at all (it is left out of records, table meta, exports and shared views); a role in `readOnlyFor`
+   * sees it but can't write it. Only owners may change this.
+   */
+  permissions?: FieldPermissions;
+}
+
+export interface FieldPermissions {
+  hiddenFor?: Role[];
+  readOnlyFor?: Role[];
 }
 
 export interface Column {
@@ -100,7 +111,8 @@ export interface Table {
   views?: View[];
 }
 
-export type ViewType = 'grid' | 'form' | 'gallery' | 'kanban' | 'calendar';
+export type ViewType = 'grid' | 'form' | 'gallery' | 'kanban' | 'calendar' | 'timeline' | 'map';
+export const VIEW_TYPES: readonly ViewType[] = ['grid', 'form', 'gallery', 'kanban', 'calendar', 'timeline', 'map'];
 
 export interface ViewColumn {
   columnId: string;
@@ -135,13 +147,17 @@ export interface Sort {
 }
 
 export interface ViewMeta {
-  /** kanban: SingleSelect column used for stacks */
+  /** kanban: SingleSelect column used for stacks; timeline: SingleSelect or Links column used for swimlanes */
   groupColumnId?: string;
   /** gallery/kanban: Attachment column used as cover */
   coverColumnId?: string;
-  /** calendar: Date/DateTime column(s) */
+  /** calendar / timeline: Date/DateTime start column and optional end column (multi-day spans) */
   dateColumnId?: string;
   endDateColumnId?: string;
+  /** timeline: zoom level */
+  timelineScale?: 'day' | 'week' | 'month';
+  /** map: GeoData column used to place markers */
+  geoColumnId?: string;
   /** grid: group by columns (max 3) */
   groupBy?: Sort[];
   rowHeight?: 'short' | 'medium' | 'tall';

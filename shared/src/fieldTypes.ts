@@ -24,6 +24,7 @@ export const FIELD_TYPES = [
   'Lookup',
   'Rollup',
   'Formula',
+  'GeoData',
 ] as const;
 
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -56,6 +57,7 @@ export const SQL_TYPE: Partial<Record<FieldType, 'TEXT' | 'INTEGER' | 'REAL'>> =
   MultiSelect: 'TEXT', // JSON array of option titles
   Attachment: 'TEXT', // JSON array of Attachment
   JSON: 'TEXT',
+  GeoData: 'TEXT', // "lat;lng" like NocoDB
 };
 
 export const ROLLUP_FUNCTIONS = ['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'sumDistinct'] as const;
@@ -107,6 +109,8 @@ export function opsForType(t: FieldType): FilterOp[] {
       return ['eq', 'neq', 'gt', 'lt', 'gte', 'lte', 'isWithin', 'blank', 'notblank'];
     case 'Links':
       return ['blank', 'notblank'];
+    case 'GeoData':
+      return ['eq', 'blank', 'notblank'];
     default:
       return ['eq', 'neq', 'like', 'nlike', 'blank', 'notblank'];
   }

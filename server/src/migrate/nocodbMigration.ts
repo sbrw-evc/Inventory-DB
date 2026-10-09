@@ -592,7 +592,7 @@ class Migration {
       this.client.getSorts(v.id).catch(() => []),
       this.client.getViewColumns(v.id).catch((): NocoViewColumn[] => []),
     ]);
-    const detailKind = ({ kanban: 'kanbans', gallery: 'galleries', form: 'forms', calendar: 'calendars', grid: null } as const)[type];
+    const detailKind = ({ kanban: 'kanbans', gallery: 'galleries', form: 'forms', calendar: 'calendars', map: 'maps', grid: null, timeline: null } as const)[type];
     const details = { ...(v.view ?? {}), ...((detailKind ? await this.client.getViewDetails(detailKind, v.id) : null) ?? {}) } as Record<string, unknown>;
 
     const f = mapFilters(filters, this.colMap);
@@ -661,6 +661,11 @@ class Migration {
       if (from) meta.dateColumnId = from;
       else this.skip(where, 'calendar date field was not migrated');
       if (to) meta.endDateColumnId = to;
+    }
+    if (type === 'map') {
+      const geo = ref(details.fk_geo_data_col_id);
+      if (geo) meta.geoColumnId = geo;
+      else this.skip(where, 'map location field was not migrated');
     }
     if (type === 'form') {
       if (typeof details.heading === 'string') meta.formHeading = details.heading;
