@@ -278,7 +278,7 @@ export function ObjectListPage({ app }: { app: string }) {
   const count = list.data?.count ?? 0;
   return (
     <Layout panel={panel}>
-      <div className="nb-title">
+      <div className="nb-title nb-list-title">
         <h1>{typeLabel(`${app}/${path}`, model.verbose_name_plural)}</h1>
         <span className="nb-muted">{list.data ? count : ''}</span>
       </div>

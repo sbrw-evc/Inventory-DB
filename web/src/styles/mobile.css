@@ -3,6 +3,10 @@
 .route-view > * { flex: 1; min-height: 0; }
 .side-tree { padding-left: 6px; }
 .sb-more.sb-new-inline { display: inline-flex; background: transparent; }
+
+/* The title of a page is already in the phone top bar (as in Umbrella's mobile.css). */
+.m-shell .page-head h1,
+.m-shell .nb-list-title { display: none; }
 .sb-more.sb-new-inline:hover { background: var(--surface); }
 
 /* ---------- Phone shell (Umbrella mobile.css) ---------- */

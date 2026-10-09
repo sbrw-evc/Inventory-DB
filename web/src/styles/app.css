@@ -1002,10 +1002,10 @@ body.side-resizing .app-body { transition: none; }
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 32px max(24px, calc((100% - 1100px) / 2)) 40px;
+  padding: 24px max(24px, calc((100% - 1052px) / 2)) 40px;
 }
 .page > * { flex-shrink: 0; }
-.page.page-wide { padding-left: max(24px, calc((100% - 1400px) / 2)); padding-right: max(24px, calc((100% - 1400px) / 2)); }
+.page.page-wide { padding-left: max(24px, calc((100% - 1352px) / 2)); padding-right: max(24px, calc((100% - 1352px) / 2)); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .page-head h1 { display: inline-flex; align-items: center; gap: 10px; }
 .page-head .muted { margin-top: 4px; }
