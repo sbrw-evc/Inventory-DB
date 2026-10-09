@@ -15,6 +15,8 @@ import { SharedFormPage, SharedViewPage } from './pages/SharedPages';
 const DcimRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.DcimRoutes })));
 const IpamRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.IpamRoutes })));
 const TenancyRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.TenancyRoutes })));
+const CircuitsRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.CircuitsRoutes })));
+const VirtualizationRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.VirtualizationRoutes })));
 const ExtrasRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.ExtrasRoutes })));
 const lazyPage = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
 
@@ -36,6 +38,8 @@ export function App() {
           <Route path="/dcim/*" element={lazyPage(<DcimRoutes />)} />
           <Route path="/ipam/*" element={lazyPage(<IpamRoutes />)} />
           <Route path="/tenancy/*" element={lazyPage(<TenancyRoutes />)} />
+          <Route path="/circuits/*" element={lazyPage(<CircuitsRoutes />)} />
+          <Route path="/virtualization/*" element={lazyPage(<VirtualizationRoutes />)} />
           <Route path="/extras/*" element={lazyPage(<ExtrasRoutes />)} />
           <Route path="/integrations/*" element={<NetboxPlaceholder section="Integrations" />} />
           <Route path="/admin/*" element={<AdminPage />} />
