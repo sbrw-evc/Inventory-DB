@@ -1,6 +1,9 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from './Icon';
+import { X } from 'lucide-react';
+import { motion } from 'motion/react';
+import { t } from '../i18n';
+import { spring } from './shell/Brand';
 
 interface ModalProps {
   title?: ReactNode;
@@ -35,7 +38,10 @@ export function Modal({ title, onClose, children, footer, width = 520, className
   }, []);
 
   return createPortal(
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.16 }}
       className={`modal-backdrop ${variant === 'drawer' ? 'modal-backdrop-drawer' : ''}`}
       onMouseDown={(e) => {
         e.stopPropagation();
@@ -47,8 +53,11 @@ export function Modal({ title, onClose, children, footer, width = 520, className
       onKeyDown={(e) => e.stopPropagation()}
       onDragStart={(e) => e.stopPropagation()}
     >
-      <div
+      <motion.div
         ref={panelRef}
+        initial={variant === 'drawer' ? { x: 48, opacity: 0.4 } : { opacity: 0, y: 16, scale: 0.97 }}
+        animate={variant === 'drawer' ? { x: 0, opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+        transition={variant === 'drawer' ? { type: 'spring', stiffness: 380, damping: 38 } : spring}
         className={`modal ${variant === 'drawer' ? 'modal-drawer' : ''} ${className ?? ''}`}
         style={{ width }}
         role="dialog"
@@ -57,15 +66,15 @@ export function Modal({ title, onClose, children, footer, width = 520, className
         {title !== undefined && (
           <div className="modal-header">
             <div className="modal-title">{title}</div>
-            <button className="icon-btn" onClick={onClose} aria-label="Close">
-              <Icon name="x" />
+            <button type="button" className="icon-btn" onClick={onClose} aria-label={t('Close')}>
+              <X size={18} />
             </button>
           </div>
         )}
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body,
   );
 }

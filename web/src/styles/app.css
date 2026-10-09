@@ -1148,6 +1148,9 @@ button.tile:hover { border-color: var(--accent); }
 .signin .field-label { margin: 0; }
 .auth-switch { text-align: center; color: var(--muted); }
 .prefs { display: flex; gap: 8px; align-items: center; }
+.password { position: relative; }
+.password .input { padding-right: 42px; }
+.password .icon-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
 
 .public-page { display: flex; flex-direction: column; height: 100%; background: var(--chrome); }
 .public-page > .public-body { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 8px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }

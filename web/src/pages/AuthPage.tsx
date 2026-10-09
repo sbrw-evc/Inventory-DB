@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Icon } from '../components/Icon';
-import { LANGS, setLang, t, useLang } from '../i18n';
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Brand, Preferences } from '../components/shell/Brand';
+import { t } from '../i18n';
 import { useAuth } from '../lib/auth';
 
 export function AuthPage({ mode }: { mode: 'signin' | 'signup' }) {
   const { token, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const lang = useLang();
+  const [shown, setShown] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -34,47 +36,54 @@ export function AuthPage({ mode }: { mode: 'signin' | 'signup' }) {
   };
 
   return (
-    <div className="auth-page">
-      <header className="app-header">
-        <span className="brand">
-          <Icon name="database" size={18} />
-          <span>Inventory DB</span>
-        </span>
-        <span className="spacer" />
-        <select className="lang-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('Language')}>
-          {LANGS.map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.label}
-            </option>
-          ))}
-        </select>
-      </header>
-      <div className="auth-center">
-        <form className="auth-card" onSubmit={submit}>
-          <h1>{mode === 'signin' ? t('Sign in') : t('Create your account')}</h1>
-          <p className="muted">{t('Spreadsheet-style database for your inventory.')}</p>
-          {mode === 'signup' && (
-            <>
-              <label className="field-label">{t('Name')}</label>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-            </>
+    <div className="center-page">
+      <motion.div className="card signin" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 30 }}>
+        <div className="signin-top">
+          <Brand />
+          <Preferences />
+        </div>
+        <form onSubmit={submit} noValidate={false}>
+          <div>
+            <h1>{mode === 'signin' ? t('Sign in') : t('Create your account')}</h1>
+            <p className="muted" style={{ marginTop: 6 }}>{t('Spreadsheet-style database for your inventory.')}</p>
+          </div>
+          {error && (
+            <div className="notice notice-error" role="alert">
+              <b>{error}</b>
+            </div>
           )}
-          <label className="field-label">{t('Email')}</label>
-          <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus />
-          <label className="field-label">{t('Password')}</label>
-          <input
-            className="input"
-            type="password"
-            required
-            minLength={mode === 'signup' ? 8 : 1}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-          />
-          {mode === 'signup' && <div className="muted small">{t('At least 8 characters.')}</div>}
-          {error && <div className="notice notice-error">{error}</div>}
-          <button className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? t('Please wait…') : mode === 'signin' ? t('Sign in') : t('Sign up')}
+          {mode === 'signup' && (
+            <div className="field">
+              <label className="field-label" htmlFor="auth-name">{t('Name')}</label>
+              <input id="auth-name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+            </div>
+          )}
+          <div className="field">
+            <label className="field-label" htmlFor="auth-email">{t('Email')}</label>
+            <input id="auth-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus />
+          </div>
+          <div className="field">
+            <label className="field-label" htmlFor="auth-password">{t('Password')}</label>
+            <div className="password">
+              <input
+                id="auth-password"
+                className="input"
+                type={shown ? 'text' : 'password'}
+                required
+                minLength={mode === 'signup' ? 8 : 1}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              />
+              <button type="button" className="icon-btn" onClick={() => setShown(!shown)} aria-label={shown ? t('Hide') : t('Show')}>
+                {shown ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {mode === 'signup' && <div className="hint">{t('At least 8 characters.')}</div>}
+          </div>
+          <button className="btn btn-primary btn-block" disabled={busy || !email || !password}>
+            {busy && <LoaderCircle className="spin" size={16} aria-hidden />}
+            {mode === 'signin' ? t('Sign in') : t('Sign up')}
           </button>
           <div className="auth-switch">
             {mode === 'signin' ? (
@@ -88,7 +97,8 @@ export function AuthPage({ mode }: { mode: 'signin' | 'signup' }) {
             )}
           </div>
         </form>
-      </div>
+      </motion.div>
+      <p className="hint">Inventory DB</p>
     </div>
   );
 }

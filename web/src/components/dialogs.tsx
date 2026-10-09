@@ -1,4 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
+import { TriangleAlert } from 'lucide-react';
+import { t } from '../i18n';
 import { Modal } from './Modal';
 
 type Pending =
@@ -54,10 +56,10 @@ function PromptBody({ p }: { p: Extract<Pending, { kind: 'prompt' }> }) {
       footer={
         <>
           <button className="btn" onClick={cancel}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button className="btn btn-primary" onClick={submit} disabled={!value.trim()}>
-            {p.confirmLabel ?? 'Save'}
+            {p.confirmLabel ?? t('Save')}
           </button>
         </>
       }
@@ -95,7 +97,8 @@ export function DialogHost() {
           <Modal
             key={p.id}
             title={p.title}
-            width={420}
+            width={460}
+            className="confirm"
             onClose={() => {
               p.resolve(false);
               close(p.id);
@@ -109,7 +112,7 @@ export function DialogHost() {
                     close(p.id);
                   }}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   className={`btn ${p.danger ? 'btn-danger' : 'btn-primary'}`}
@@ -119,12 +122,15 @@ export function DialogHost() {
                     close(p.id);
                   }}
                 >
-                  {p.confirmLabel ?? 'Confirm'}
+                  {p.confirmLabel ?? t('Confirm')}
                 </button>
               </>
             }
           >
-            {p.message && <p className="muted">{p.message}</p>}
+            <div className={`confirm-text ${p.danger ? 'confirm-danger' : ''}`}>
+              {p.danger && <TriangleAlert size={20} aria-hidden />}
+              <p>{p.message ?? (p.danger ? t('This cannot be undone.') : t('Confirm the action'))}</p>
+            </div>
           </Modal>
         ),
       )}

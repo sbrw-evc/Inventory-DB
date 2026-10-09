@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { platformApi } from '../api/endpoints';
 import { qk } from '../api/hooks';
 import { confirmDialog } from '../components/dialogs';
@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { ImportDialog } from '../components/ImportDialog';
 import { MigrateDialog } from '../components/MigrateDialog';
 import { copyText } from '../components/ShareDialog';
+import { PageHead } from '../components/shell/PageHead';
 import { t } from '../i18n';
 import { relativeTime } from '../lib/format';
 import { toastError } from '../lib/toast';
@@ -36,13 +37,17 @@ function Tokens() {
 
   return (
     <section className="settings-section">
-      <h2>{t('API tokens')}</h2>
-      <p className="muted">
-        {t('Use a token to call the REST API: send it in the')} <code>xc-token</code> {t('header.')}{' '}
-        <a href="/api/v1/docs" target="_blank" rel="noreferrer">
-          {t('API documentation')}
-        </a>
-      </p>
+      <PageHead
+        title={t('API tokens')}
+        subtitle={
+          <>
+            {t('Use a token to call the REST API: send it in the')} <code>xc-token</code> {t('header.')}{' '}
+            <a href="/api/v1/docs" target="_blank" rel="noreferrer">
+              {t('API documentation')}
+            </a>
+          </>
+        }
+      />
       <form className="invite-row" onSubmit={create}>
         <input className="input" required placeholder={t('What is this token for?')} value={description} onChange={(e) => setDescription(e.target.value)} />
         <button className="btn btn-primary" disabled={busy || !description.trim()}>
@@ -62,6 +67,7 @@ function Tokens() {
           </div>
         </div>
       )}
+      <div className="table-card">
       <table className="data-table">
         <thead>
           <tr>
@@ -98,7 +104,8 @@ function Tokens() {
           ))}
         </tbody>
       </table>
-      {tokens.data && !tokens.data.length && <div className="empty-hint">{t('No tokens yet')}</div>}
+      {tokens.data && !tokens.data.length && <div className="empty-state-sm">{t('No tokens yet')}</div>}
+      </div>
     </section>
   );
 }
@@ -107,15 +114,15 @@ function DataTools() {
   const [dialog, setDialog] = useState<'import' | 'migrate' | null>(null);
   return (
     <section className="settings-section">
-      <h2>{t('Data import & migration')}</h2>
+      <PageHead title={t('Data import & migration')} subtitle={t('Bring spreadsheets and NocoDB bases into Inventory DB.')} />
       <div className="quick-actions">
         <button className="quick-card" onClick={() => setDialog('import')}>
-          <Icon name="upload" size={22} />
+          <Icon name="upload" size={20} />
           <b>{t('Import CSV / Excel')}</b>
           <span className="muted small">{t('Turn a spreadsheet into a table.')}</span>
         </button>
         <button className="quick-card" onClick={() => setDialog('migrate')}>
-          <Icon name="migrate" size={22} />
+          <Icon name="migrate" size={20} />
           <b>{t('Migrate from NocoDB')}</b>
           <span className="muted small">{t('Copy a base with its tables, records, links and views.')}</span>
         </button>
@@ -126,27 +133,15 @@ function DataTools() {
   );
 }
 
+/** Administration pages; their menu entries are in the Administration and Integrations groups of the sidebar. */
 export function AdminPage() {
   return (
-    <div className="admin-layout">
-      <aside className="sidebar admin-nav">
-        <div className="sb-head">
-          <span className="sb-title">{t('Administration')}</span>
-        </div>
-        <NavLink to="/admin/tokens" className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}>
-          <Icon name="key" size={14} /> {t('API tokens')}
-        </NavLink>
-        <NavLink to="/admin/data" className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}>
-          <Icon name="migrate" size={14} /> {t('Import & migration')}
-        </NavLink>
-      </aside>
-      <main className="content page">
-        <Routes>
-          <Route index element={<Navigate to="tokens" replace />} />
-          <Route path="tokens" element={<Tokens />} />
-          <Route path="data" element={<DataTools />} />
-        </Routes>
-      </main>
+    <div className="page">
+      <Routes>
+        <Route index element={<Navigate to="tokens" replace />} />
+        <Route path="tokens" element={<Tokens />} />
+        <Route path="data" element={<DataTools />} />
+      </Routes>
     </div>
   );
 }

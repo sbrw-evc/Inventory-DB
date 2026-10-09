@@ -6,7 +6,8 @@ import { ApiRequestError } from '../api/client';
 import { publicApi, type PublicViewData } from '../api/endpoints';
 import { ExpandedRecord } from '../components/ExpandedRecord';
 import { Icon, ViewIcon } from '../components/Icon';
-import { LANGS, setLang, t, useLang } from '../i18n';
+import { Brand, Preferences } from '../components/shell/Brand';
+import { t } from '../i18n';
 import { BaseDataContext, type BaseData } from '../lib/baseContext';
 import { publicSource } from '../lib/records';
 import { PUBLIC_PERMISSIONS } from '../lib/roles';
@@ -49,29 +50,22 @@ function usePublicView(uuid: string) {
 }
 
 function PublicShell({ title, type, children }: { title?: string; type?: PublicViewData['view']['type']; children: React.ReactNode }) {
-  const lang = useLang();
   return (
     <div className="public-page">
-      <header className="app-header">
-        <span className="brand">
-          <Icon name="database" size={18} />
-          <span>Inventory DB</span>
-        </span>
-        {title && (
-          <span className="header-public-title">
-            {type && <ViewIcon type={type} />} {title}
-          </span>
-        )}
-        <span className="spacer" />
-        <select className="lang-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('Language')}>
-          {LANGS.map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.label}
-            </option>
-          ))}
-        </select>
+      <header className="topbar">
+        <div className="topbar-start">
+          <Brand />
+          {title && (
+            <span className="header-public-title">
+              {type && <ViewIcon type={type} />} {title}
+            </span>
+          )}
+        </div>
+        <div className="topbar-end">
+          <Preferences />
+        </div>
       </header>
-      {children}
+      <div className="public-body">{children}</div>
     </div>
   );
 }

@@ -52,6 +52,21 @@ export function textOn(bg: string): string {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#222222' : '#ffffff';
 }
 
+/** Theme tones the palette colours are drawn in: soft fill and strong text, as Umbrella's pills. */
+const TONES: Record<string, [string, string]> = {
+  info: ['var(--info-soft)', 'var(--info)'],
+  ok: ['var(--ok-soft)', 'var(--ok)'],
+  warning: ['var(--warn-soft)', 'var(--warn)'],
+  error: ['var(--orange-soft)', 'var(--orange)'],
+  critical: ['var(--error-soft)', 'var(--error)'],
+  neutral: ['var(--surface-2)', 'var(--muted)'],
+  purple: ['var(--purple-soft)', 'var(--purple)'],
+};
+
 export function chipStyle(bg: string): { background: string; borderColor: string; color: string } {
-  return { background: bg, borderColor: chipBorder(bg), color: textOn(bg) };
+  const known = CHIP_PALETTE.find((c) => c.bg.toLowerCase() === bg.toLowerCase());
+  const tone = known && TONES[known.name];
+  // Palette colours follow the theme (light and dark); a custom colour is shown as stored.
+  if (tone) return { background: tone[0], borderColor: 'transparent', color: tone[1] };
+  return { background: bg, borderColor: 'transparent', color: textOn(bg) };
 }
