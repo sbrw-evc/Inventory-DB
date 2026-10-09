@@ -298,7 +298,7 @@ export function RefSelect({
       {open && (
         <div
           role="listbox"
-          style={{ position: 'absolute', zIndex: 40, left: 0, right: 0, maxHeight: 240, overflowY: 'auto', background: '#fff', border: '1px solid var(--nb-border)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,.15)' }}
+          className="nb-options"
         >
           {options.length === 0 && <div className="nb-empty">{t('noResults')}</div>}
           {options.map((r) => (
@@ -310,7 +310,7 @@ export function RefSelect({
                 e.preventDefault();
                 pick(r);
               }}
-              style={{ padding: '4px 8px', cursor: 'pointer', background: ids.includes(r.id) ? 'var(--nb-row-hover)' : undefined }}
+              className="nb-option"
             >
               {label(r)}
             </div>
