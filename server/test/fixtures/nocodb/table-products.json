@@ -1,0 +1,101 @@
+{
+  "id": "mdprod01",
+  "source_id": "bsrc0001",
+  "base_id": "pinv0001",
+  "table_name": "nc_inv___Products",
+  "title": "Products",
+  "type": "table",
+  "meta": null,
+  "enabled": true,
+  "mm": false,
+  "order": 1,
+  "columns": [
+    { "id": "clpid001", "fk_model_id": "mdprod01", "title": "Id", "column_name": "id", "uidt": "ID", "dt": "int4", "pk": true, "pv": false, "rqd": true, "ai": true, "system": false, "order": 1, "meta": null, "colOptions": null },
+    { "id": "clptit02", "fk_model_id": "mdprod01", "title": "Title", "column_name": "title", "uidt": "SingleLineText", "dt": "text", "pk": false, "pv": true, "rqd": false, "system": false, "order": 2, "meta": null, "description": "Product name" },
+    { "id": "clppri03", "fk_model_id": "mdprod01", "title": "Price", "column_name": "price", "uidt": "Decimal", "dt": "decimal", "pk": false, "pv": false, "system": false, "order": 3, "meta": { "precision": 2, "isLocaleString": false } },
+    {
+      "id": "clpcat04",
+      "fk_model_id": "mdprod01",
+      "title": "Category",
+      "column_name": "category",
+      "uidt": "SingleSelect",
+      "dt": "text",
+      "system": false,
+      "order": 4,
+      "meta": null,
+      "colOptions": {
+        "options": [
+          { "id": "sl_hw", "fk_column_id": "clpcat04", "title": "Hardware", "color": "#cfdffe", "order": 1 },
+          { "id": "sl_sw", "fk_column_id": "clpcat04", "title": "Software", "color": "#d0f1fd", "order": 2 }
+        ]
+      }
+    },
+    {
+      "id": "clptag05",
+      "fk_model_id": "mdprod01",
+      "title": "Tags",
+      "column_name": "tags",
+      "uidt": "MultiSelect",
+      "dt": "text",
+      "system": false,
+      "order": 5,
+      "colOptions": {
+        "options": [
+          { "id": "sl_new", "title": "new", "color": "#c2f5e9", "order": 1 },
+          { "id": "sl_sale", "title": "sale", "color": "#ffdaf6", "order": 2 },
+          { "id": "sl_eco", "title": "eco", "order": 3 }
+        ]
+      }
+    },
+    { "id": "clpstk06", "fk_model_id": "mdprod01", "title": "InStock", "column_name": "in_stock", "uidt": "Checkbox", "dt": "bool", "system": false, "order": 6, "meta": { "icon": { "checked": "mdi-check-bold", "unchecked": "mdi-crop-square" }, "color": "#777" } },
+    { "id": "clppho07", "fk_model_id": "mdprod01", "title": "Photo", "column_name": "photo", "uidt": "Attachment", "dt": "text", "system": false, "order": 7, "meta": null },
+    { "id": "clpqty08", "fk_model_id": "mdprod01", "title": "Quantity", "column_name": "quantity", "uidt": "Number", "dt": "bigint", "system": false, "order": 8, "meta": null },
+    {
+      "id": "clpsup09",
+      "fk_model_id": "mdprod01",
+      "title": "Supplier",
+      "column_name": "suppliers_id_rel",
+      "uidt": "LinkToAnotherRecord",
+      "system": false,
+      "order": 9,
+      "meta": { "singular": "Supplier", "plural": "Suppliers" },
+      "colOptions": {
+        "id": "ln_bt_1",
+        "type": "bt",
+        "virtual": false,
+        "fk_column_id": "clpsup09",
+        "fk_child_column_id": "clpsfk10",
+        "fk_parent_column_id": "clsid001",
+        "fk_related_model_id": "mdsupp02",
+        "fk_mm_model_id": null,
+        "fk_mm_child_column_id": null,
+        "fk_mm_parent_column_id": null
+      }
+    },
+    { "id": "clpsfk10", "fk_model_id": "mdprod01", "title": "suppliers_id", "column_name": "suppliers_id", "uidt": "ForeignKey", "dt": "int4", "system": true, "order": 10, "meta": null },
+    {
+      "id": "clptot11",
+      "fk_model_id": "mdprod01",
+      "title": "Total",
+      "column_name": "Total",
+      "uidt": "Formula",
+      "system": false,
+      "order": 11,
+      "colOptions": { "id": "fm_1", "fk_column_id": "clptot11", "formula": "{{clppri03}} * {{clpqty08}}", "formula_raw": "{Price} * {Quantity}", "error": null, "parsed_tree": null }
+    },
+    {
+      "id": "clpsnm12",
+      "fk_model_id": "mdprod01",
+      "title": "Supplier Name",
+      "column_name": "Supplier Name",
+      "uidt": "Lookup",
+      "system": false,
+      "order": 12,
+      "colOptions": { "id": "lk_1", "fk_column_id": "clpsnm12", "fk_relation_column_id": "clpsup09", "fk_lookup_column_id": "clsnam02" }
+    },
+    { "id": "clpbar13", "fk_model_id": "mdprod01", "title": "Barcode", "column_name": "Barcode", "uidt": "Barcode", "system": false, "order": 13, "meta": { "barcodeFormat": "CODE128" }, "colOptions": { "fk_barcode_value_column_id": "clptit02" } },
+    { "id": "clpcrt14", "fk_model_id": "mdprod01", "title": "CreatedAt", "column_name": "created_at", "uidt": "CreatedTime", "dt": "timestamp", "system": true, "order": 14, "meta": null },
+    { "id": "clpupd15", "fk_model_id": "mdprod01", "title": "UpdatedAt", "column_name": "updated_at", "uidt": "LastModifiedTime", "dt": "timestamp", "system": true, "order": 15, "meta": null }
+  ],
+  "views": []
+}

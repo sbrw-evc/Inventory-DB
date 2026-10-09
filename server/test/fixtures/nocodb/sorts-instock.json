@@ -1,0 +1,7 @@
+{
+  "list": [
+    { "id": "srtpri01", "fk_view_id": "vwpstk02", "fk_column_id": "clppri03", "direction": "desc", "order": 1 },
+    { "id": "srttit02", "fk_view_id": "vwpstk02", "fk_column_id": "clptit02", "direction": "asc", "order": 2 }
+  ],
+  "pageInfo": { "totalRows": 2, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}

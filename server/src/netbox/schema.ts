@@ -1,0 +1,67 @@
+import { q, type DB } from '../db/index.js';
+import { models } from './registry.js';
+import { colOf, type FieldDef } from './types.js';
+
+const sqlType = (f: FieldDef) => {
+  switch (f.kind) {
+    case 'int':
+    case 'fk':
+    case 'bool':
+      return 'INTEGER';
+    case 'float':
+      return 'REAL';
+    default:
+      return 'TEXT';
+  }
+};
+
+/**
+ * Creates the `nb_*` tables for DCIM/IPAM (idempotent). Tables are generated from the model registry; columns
+ * added to a model later are added to existing tables. Referential rules (protect/cascade/set null) are enforced
+ * by the engine so they go through the change log, hence no SQL foreign keys here.
+ */
+export function ensureNetboxSchema(db: DB) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nb_roles (
+      user_id TEXT PRIMARY KEY,
+      role TEXT NOT NULL CHECK (role IN ('admin','editor','viewer'))
+    );
+    CREATE TABLE IF NOT EXISTS nb_tagged (
+      object_type TEXT NOT NULL,
+      object_id INTEGER NOT NULL,
+      tag_id INTEGER NOT NULL,
+      PRIMARY KEY (object_type, object_id, tag_id)
+    );
+    CREATE INDEX IF NOT EXISTS nb_tagged_tag ON nb_tagged(tag_id);
+    CREATE TABLE IF NOT EXISTS nb_m2m (
+      field TEXT NOT NULL,
+      src_id INTEGER NOT NULL,
+      dst_id INTEGER NOT NULL,
+      PRIMARY KEY (field, src_id, dst_id)
+    );
+    CREATE INDEX IF NOT EXISTS nb_m2m_dst ON nb_m2m(field, dst_id);
+  `);
+
+  for (const m of models) {
+    const cols = new Map<string, string>();
+    for (const f of m.fields) if (f.kind !== 'm2m') cols.set(colOf(f), sqlType(f));
+    for (const [name, type] of Object.entries(m.extraColumns ?? {})) cols.set(name, type);
+    db.exec(`CREATE TABLE IF NOT EXISTS ${q(m.table)} (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created TEXT NOT NULL,
+      last_updated TEXT NOT NULL,
+      custom_fields TEXT NOT NULL DEFAULT '{}'
+      ${[...cols].map(([c, t]) => `, ${q(c)} ${t}`).join('')}
+    )`);
+    const existing = new Set((db.prepare(`PRAGMA table_info(${q(m.table)})`).all() as { name: string }[]).map((r) => r.name));
+    for (const [c, t] of cols) if (!existing.has(c)) db.exec(`ALTER TABLE ${q(m.table)} ADD COLUMN ${q(c)} ${t}`);
+    for (const f of m.fields) {
+      if (f.kind === 'fk') db.exec(`CREATE INDEX IF NOT EXISTS ${q(`${m.table}_${colOf(f)}`)} ON ${q(m.table)}(${q(colOf(f))})`);
+    }
+    for (const [i, idx] of (m.indexes ?? []).entries()) {
+      db.exec(`CREATE INDEX IF NOT EXISTS ${q(`${m.table}_x${i}`)} ON ${q(m.table)}(${idx})`);
+    }
+  }
+  // Prefixes created before scopes existed are scoped to their site.
+  db.exec("UPDATE nb_prefixes SET scope_type = 'dcim.site', scope_id = site_id WHERE site_id IS NOT NULL AND scope_type IS NULL");
+}

@@ -1,0 +1,7 @@
+{
+  "list": [
+    { "id": "vwsgrid1", "fk_model_id": "mdsupp02", "title": "Suppliers", "type": 3, "is_default": true, "lock_type": "collaborative", "order": 1, "meta": {} },
+    { "id": "vwsfrm02", "fk_model_id": "mdsupp02", "title": "New supplier", "type": 1, "is_default": false, "lock_type": "collaborative", "order": 2, "meta": {} }
+  ],
+  "pageInfo": { "totalRows": 2, "page": 1, "pageSize": 25, "isFirstPage": true, "isLastPage": true }
+}
