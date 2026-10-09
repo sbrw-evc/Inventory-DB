@@ -1,11 +1,13 @@
 # DCIM / IPAM (NetBox core)
 
-Inventory DB includes the core of NetBox: data-centre infrastructure (DCIM) and IP address management (IPAM).
+Inventory DB includes the core of NetBox: data-centre infrastructure (DCIM: sites, racks, devices, interfaces,
+front/rear ports, cables, power), IP address management (IPAM), circuits and virtualization.
 The REST API follows NetBox's URL layout, object shapes and filter syntax, so NetBox clients, scripts and the
 Umbrella CMDB integration can use it with few or no changes.
 
 - Server code: `server/src/netbox/` (models in `models/*.ts`, generic engine in `engine.ts`, filters in `query.ts`,
-  CIDR toolkit in `cidr.ts`, IPAM/DCIM helpers in `ipam.ts`/`dcim.ts`, routes in `routes.ts`).
+  CIDR toolkit in `cidr.ts`, IPAM/DCIM helpers in `ipam.ts`/`dcim.ts`, cables and paths in `cabling.ts`, power
+  calculations in `power.ts`, routes in `routes.ts`).
 - Tables: `nb_*`, created idempotently by `ensureNetboxSchema()` when the routes are registered.
 - Web UI: `web/src/netbox/` (routes exported from `NetboxRoutes.tsx`).
 - Tests: `server/test/netbox-*.test.ts`, `web/src/netbox/format.test.ts`.
@@ -51,7 +53,7 @@ Every object has:
 }
 ```
 
-(`tags` and `custom_fields` are absent on tags, custom fields, interface templates and change-log entries.)
+(`tags` and `custom_fields` are absent on tags, custom fields, component templates and change-log entries.)
 
 - **References** are nested objects `{id, url, display, ...brief fields}`, e.g. a site is `{id, url, display, name, slug}`.
   One more level is nested where useful (a device type's `manufacturer`, an interface's `device`).
@@ -117,15 +119,36 @@ All paths below are under `/api/v1`. "Computed" fields are read-only.
 | `sites` | name, slug, status (planned/staging/active/decommissioning/retired), region, tenant, facility, time_zone, description, physical_address, shipping_address, latitude, longitude, comments | location_count, rack_count, device_count, prefix_count, vlan_count | `region_id` includes child regions |
 | `locations` | name, slug, site, parent, status, tenant, description | `_depth`, rack_count, device_count | |
 | `rack-roles` | name, slug, color, description | rack_count | |
-| `racks` | name, facility_id, site, location, tenant, status (reserved/available/planned/active/deprecated), role, serial, asset_tag, form_factor, width (10/19/21/23), u_height (default 42), desc_units, description, comments | device_count, `_utilization` (% units used) | |
+| `racks` | name, facility_id, site, location, tenant, status (reserved/available/planned/active/deprecated), role, serial, asset_tag, form_factor, width (10/19/21/23), u_height (default 42), desc_units, description, comments | device_count, powerfeed_count, `_utilization` (% units used), `_power_utilization` (% of feed power allocated) | |
 | `manufacturers` | name, slug, description | devicetype_count, platform_count | |
-| `device-types` | manufacturer, model, slug, part_number, u_height, is_full_depth, description, comments | device_count, interface_template_count | |
+| `device-types` | manufacturer, model, slug, part_number, u_height, is_full_depth, description, comments | device_count, interface_template_count, front_port_template_count, rear_port_template_count, power_port_template_count, power_outlet_template_count | |
 | `interface-templates` | device_type, name, label, type, enabled, mgmt_only, description | | |
+| `rear-port-templates` | device_type, name, label, type, color, positions (1-1024), description | | |
+| `front-port-templates` | device_type, name, label, type, color, rear_port (template), rear_port_position, description | | |
+| `power-port-templates` | device_type, name, label, type, maximum_draw, allocated_draw (W), description | | |
+| `power-outlet-templates` | device_type, name, label, type, power_port (template), feed_leg (A/B/C), description | | |
 | `device-roles` | name, slug, color, vm_role, description | device_count | |
 | `platforms` | name, slug, manufacturer, description | device_count | |
-| `devices` | name, device_type, role, tenant, platform, serial, asset_tag, site, location, rack, position, face (front/rear), status (offline/active/planned/staged/failed/inventory/decommissioning), primary_ip4, primary_ip6, description, comments | primary_ip, interface_count, u_height | `has_primary_ip`, `manufacturer_id` |
+| `devices` | name, device_type, role, tenant, platform, serial, asset_tag, site, location, rack, cluster, position, face (front/rear), status (offline/active/planned/staged/failed/inventory/decommissioning), primary_ip4, primary_ip6, description, comments | primary_ip, interface_count, front_port_count, rear_port_count, power_port_count, power_outlet_count, u_height | `has_primary_ip`, `manufacturer_id` |
 | `interfaces` | device, name, label, type, enabled, parent, lag, mtu, mac_address, speed, mgmt_only, description, mode (access/tagged/tagged-all), untagged_vlan, tagged_vlans, mark_connected | cable, cable_end, link_peers, link_peers_type, connected_endpoints, connected_endpoints_type, connected_endpoints_reachable, `_occupied`, count_ipaddresses | `site_id`, `rack_id`, `role_id` (of the device), `cabled`, `vlan_id` (untagged or tagged) |
-| `cables` | a_terminations, b_terminations, type, status (connected/planned/decommissioning), tenant, label, color, length, length_unit, description, comments | | `device_id`, `site_id`, `interface_id` |
+| `rear-ports` | device, name, label, type, color, positions (1-1024), description, mark_connected | cable, cable_end, link_peers…, `_occupied`, front_port_count | `site_id`, `rack_id`, `role_id`, `cabled` |
+| `front-ports` | device, name, label, type, color, rear_port, rear_port_position, description, mark_connected | cable, cable_end, link_peers…, `_occupied` | as rear ports |
+| `power-ports` | device, name, label, type, maximum_draw, allocated_draw (W), description, mark_connected | cable, cable_end, link_peers…, `_occupied`, `_power_draw` `{allocated, maximum, outlet_count, connected}` | as rear ports |
+| `power-outlets` | device, name, label, type, power_port, feed_leg (A/B/C), description, mark_connected | cable, cable_end, link_peers…, `_occupied` | as rear ports |
+| `power-panels` | site, location, name, description, comments | powerfeed_count | |
+| `power-feeds` | power_panel, rack, name, status (offline/active/planned/failed), type (primary/redundant), supply (ac/dc), phase (single-phase/three-phase), voltage (default 230), amperage (default 16), max_utilization (%, default 80), tenant, description, comments, mark_connected | site, available_power (VA), allocated_draw, maximum_draw, `_utilization`, cable, link_peers…, `_occupied` | `site_id`, `cabled` |
+| `cables` | a_terminations, b_terminations, type, status (connected/planned/decommissioning), tenant, label, color, length, length_unit, description, comments | | `device_id`, `rack_id`, `site_id`, `circuit_id`, `interface_id`, `frontport_id`, `rearport_id`, `powerport_id`, `poweroutlet_id`, `powerfeed_id`, `circuittermination_id`, `termination_type` (e.g. `dcim.powerfeed`) |
+
+"link_peers…" means the connection fields every cable termination has (interfaces, front/rear ports, power ports,
+outlets and feeds, circuit terminations): `link_peers` (the objects on the far end of its own cable) and
+`link_peers_type`, `connected_endpoints` / `connected_endpoints_type` (the end of the whole path, through patch panels
+and circuits; `null` while the path is incomplete) and `connected_endpoints_reachable` (every cable on the path is
+`connected`).
+
+Port types (front/rear): `8p8c`, `8p6c`, `110-punch`, `bnc`, `f`, `n`, `mrj21`, `fc`, `lc`, `lc-pc`, `lc-upc`, `lc-apc`,
+`lsh`, `mpo`, `mtrj`, `sc`, `sc-pc`, `sc-upc`, `sc-apc`, `st`, `cs`, `sn`, `splice`, `other`. Power port types include
+`iec-60320-c14`, `iec-60320-c20`, `iec-60309-p-n-e-6h`, `nema-5-15p`, `cee-7-7`, `dc-terminal`, `hardwired`; outlet types
+`iec-60320-c13`, `iec-60320-c19`, `nema-5-15r`, `cee-7-3`, … (full lists in `/netbox/schema`).
 
 Interface types: `virtual`, `bridge`, `lag`, `100base-tx`, `1000base-t`, `2.5gbase-t`, `5gbase-t`, `10gbase-t`, `1000base-x-sfp`,
 `10gbase-x-sfpp`, `25gbase-x-sfp28`, `40gbase-x-qsfpp`, `100gbase-x-qsfp28`, `400gbase-x-qsfpdd`, `ieee802.11ac`, `ieee802.11ax`, `other`.
@@ -136,20 +159,41 @@ Rules:
 - `position` needs a rack and a face; the device (device type `u_height`) must fit in the rack and must not overlap a
   device on the same face. Full-depth device types occupy both faces. 0U device types can't take a position.
   Racks can't shrink below installed devices; device types can't grow if a racked device would stop fitting.
-- Creating a device copies its device type's interface templates into interfaces.
+- Creating a device copies its device type's templates into components: interfaces, rear ports, front ports (mapped
+  to the new rear ports), power ports and power outlets (mapped to the new power ports).
+- A device's `cluster` must be at the device's site when the cluster has a site.
+- Components can't move to another device; names are unique per device. A front port's rear port must be on the same
+  device, `rear_port_position` must be ≤ the rear port's `positions` and unique per rear port; a rear port can't get
+  fewer positions than its mapped front ports. `allocated_draw` can't exceed `maximum_draw`. A power outlet's
+  `power_port` must be on the same device. The same rules apply to templates within a device type.
+- Power feeds: the rack must be at the panel's site; DC can't be three-phase; AC voltage can't be negative; names are
+  unique per panel. `available_power` = voltage × amperage × max_utilization %, × √3 for three-phase AC (NetBox formula).
+- Power draw: a power port that feeds outlets (a PDU inlet) draws the sum of the ports plugged into those outlets;
+  other ports draw their own `allocated_draw`/`maximum_draw`. A feed's load is the draw of the power ports cabled to it;
+  a rack's `_power_utilization` is the allocated draw on its feeds over their available power.
 - `primary_ip4`/`primary_ip6` must be an IP of that family assigned to one of the device's interfaces. Moving the IP
   to another device clears it.
 - LAG members must be on the same device and the LAG interface must have type `lag`. VLAN modes: `untagged_vlan` needs
   a mode, `tagged_vlans` only with `tagged` (cleared otherwise). VLANs with a site must match the device's site.
-- Cables: each side is a list of `{"object_type": "dcim.interface", "object_id": n}` (bare ids accepted). An interface
-  can be on one cable only; virtual/bridge/LAG interfaces can't be cabled; `length` needs `length_unit`.
+- Cables: each side is a list of `{"object_type": "...", "object_id": n}` (bare ids mean interfaces). Types:
+  `dcim.interface`, `dcim.frontport`, `dcim.rearport`, `circuits.circuittermination`, `dcim.powerport`,
+  `dcim.poweroutlet`, `dcim.powerfeed`. All terminations on a side have the same type and parent (device / circuit /
+  panel). Compatible pairs follow NetBox: interfaces, front/rear ports and circuit terminations connect to each other;
+  power ports to power outlets or power feeds. A termination can be on one cable only; virtual/bridge/LAG interfaces and
+  circuit terminations on a provider network can't be cabled; `length` needs `length_unit`. Deleting a termination
+  deletes its cable.
+- Paths: from a front port the path continues at its rear port; from a rear port with several positions it returns to
+  the front port at the position it entered with (a stack, so nested trunks work); a circuit termination continues at
+  the circuit's other termination. A rear port reached without a position (e.g. tracing from the rear port itself)
+  ends the path, as in NetBox.
 
 Special endpoints:
 
 | Method | Path | Returns |
 |---|---|---|
 | GET | `/dcim/racks/:id/elevation?face=front\|rear` | `{count, next, previous, results}` of units top-down (bottom-up with `desc_units`): `{id, name: "U42", face, occupied, device}`; `device` is the device reference plus `position`, `u_height`, `face`, `is_full_depth`, `role`, `role_color`, `status` |
-| GET | `/dcim/interfaces/:id/trace` | Cable path as NetBox segments `[[near_end_interfaces[], cable, far_end_interfaces[]]]` (full serialized objects); `[]` when not cabled. Front/rear pass-through ports aren't modelled, so a path has one segment. |
+| GET | `/dcim/racks/:id/power` | `{feeds: [{feed, status, type, available_power, allocated_draw, maximum_draw, utilization}], available_power, allocated_draw, maximum_draw, utilization, device_power_ports, device_allocated_draw, device_maximum_draw}` (device_* = end-consumer ports of devices in the rack) |
+| GET | `/dcim/{interfaces,front-ports,rear-ports,power-ports,power-outlets,power-feeds}/:id/trace`, `/circuits/circuit-terminations/:id/trace` | Cable path as NetBox segments `[[near_ends[], cable, far_ends[]], …]` (full serialized objects), one segment per cable; `[]` when not cabled. A path that stops at an uncabled pass-through port ends with `[[port], null, []]`. Front/rear ports and circuit terminations also answer at `…/:id/paths`. |
 
 ### IPAM — `/ipam/…`
 
@@ -160,9 +204,9 @@ Special endpoints:
 | `rirs` | name, slug, is_private, description | aggregate_count | |
 | `aggregates` | prefix, rir, tenant, date_added, description, comments | family, `_utilization` | `family`, `prefix` (within) |
 | `roles` | name, slug, weight, description | prefix_count, vlan_count | |
-| `prefixes` | prefix, vrf, site, tenant, vlan, status (container/active/reserved/deprecated), role, is_pool, mark_utilized, description, comments | family, `_depth`, `_children`, `_utilization` | `family`, `mask_length` (`__gte`, `__lte`), `within`, `parent` (same as within: strictly inside), `within_include`, `contains` (prefix or IP), `depth` |
+| `prefixes` | prefix, vrf, scope_type, scope_id, site, tenant, vlan, status (container/active/reserved/deprecated), role, is_pool, mark_utilized, description, comments | family, scope, `_depth`, `_children`, `_utilization` | `family`, `mask_length` (`__gte`, `__lte`), `within`, `parent` (same as within: strictly inside), `within_include`, `contains` (prefix or IP), `depth`, `location_id`, `region_id` (region scope in the subtree, or a site in it) |
 | `ip-ranges` | start_address, end_address, vrf, tenant, status, role, mark_populated, mark_utilized, description, comments | family, size | `family`, `parent` |
-| `ip-addresses` | address, vrf, tenant, status (active/reserved/deprecated/dhcp/slaac), role (loopback/secondary/anycast/vip/vrrp/hsrp/glbp/carp), assigned_object_type, assigned_object_id, nat_inside, dns_name, description, comments | family, assigned_object | `family`, `mask_length`, `parent` (prefix), `interface_id`, `device_id`, `device` (name), `site_id`, `assigned_to_interface` |
+| `ip-addresses` | address, vrf, tenant, status (active/reserved/deprecated/dhcp/slaac), role (loopback/secondary/anycast/vip/vrrp/hsrp/glbp/carp), assigned_object_type, assigned_object_id, nat_inside, dns_name, description, comments | family, assigned_object | `family`, `mask_length`, `parent` (prefix), `interface_id`, `device_id`, `device` (name), `site_id`, `vminterface_id`, `virtual_machine_id`, `virtual_machine` (name), `assigned_to_interface` (device or VM interface) |
 | `vlan-groups` | name, slug, site, min_vid, max_vid, description | vlan_count, utilization | |
 | `vlans` | site, group, vid (1-4094), name, tenant, status, role, description, comments | prefix_count | |
 
@@ -181,8 +225,15 @@ Rules:
   Aggregates may not overlap; IP ranges may not overlap within a VRF; range ends must share family and mask.
 - VLAN `vid` is 1–4094 and within its group's `min_vid`–`max_vid`; unique per group (and name unique per group);
   without a group, unique per site (or globally when there's no site).
-- IP assignment: `assigned_object_type: "dcim.interface"` (defaulted when only `assigned_object_id` is given) and
-  `assigned_object_id`. `assigned_object` is `{id, url, display, name, device: {id, url, display, name}, cable}`.
+- IP assignment: `assigned_object_type` is `"dcim.interface"` (defaulted when only `assigned_object_id` is given) or
+  `"virtualization.vminterface"`, with `assigned_object_id`. `assigned_object` is
+  `{id, url, display, name, device: {id, url, display, name}, cable}` for device interfaces and
+  `{id, url, display, name, virtual_machine: {id, url, display, name}}` for VM interfaces. Moving an IP away clears it
+  as the old device's/VM's primary IP.
+- Prefix scope (NetBox 4): `scope_type` is `dcim.region`, `dcim.site` or `dcim.location`, with `scope_id`; `scope` is the
+  nested object. `site` stays for compatibility: writing `site` scopes the prefix to that site, a site or location scope
+  fills `site` (a region scope clears it), giving both must agree, and clearing the scope clears `site`. Prefixes created
+  before scopes existed are scoped to their site at startup. Deleting a scoped region/location clears the scope.
 
 Allocation endpoints (NetBox compatible):
 
@@ -195,6 +246,41 @@ Allocation endpoints (NetBox compatible):
 | GET/POST | `/ipam/ip-ranges/:id/available-ips` | as above, within the range | |
 
 Available IPs skip existing IPs (same VRF) and IP ranges marked `mark_populated`.
+
+### Circuits — `/circuits/…`
+
+| Path | Fields | Computed | Extra filters |
+|---|---|---|---|
+| `providers` | name, slug, description, comments | circuit_count, account_count | |
+| `provider-accounts` | provider, account, name, description, comments | | |
+| `provider-networks` | provider, name, service_id, description, comments | | |
+| `circuit-types` | name, slug, color, description | circuit_count | |
+| `circuits` | cid, provider, provider_account, type, status (planned/provisioning/active/offline/deprovisioning/decommissioned), tenant, install_date, termination_date, commit_rate (Kbps), description, comments | termination_a, termination_z (`{id, url, display, site, provider_network, port_speed, upstream_speed, xconnect_id, description, cable}`) | `site_id`, `provider_network_id` (of a termination) |
+| `circuit-terminations` | circuit, term_side (A/Z), site, provider_network, port_speed, upstream_speed (Kbps), xconnect_id, pp_info, description, mark_connected | cable, cable_end, link_peers… , `_occupied` | `provider_id`, `cabled` |
+
+Rules: `cid` is unique per provider; account unique per provider (and name, when set); provider networks unique by
+name per provider; `provider_account` must belong to the provider; `termination_date` ≥ `install_date`. A circuit has
+at most one A and one Z termination, each attached to exactly one of `site` or `provider_network`; terminations can't
+move to another circuit and are deleted with it. Providers, types and sites in use are protected. References to a
+circuit accept its `cid` (`"circuit": "CID-1"`).
+
+### Virtualization — `/virtualization/…`
+
+| Path | Fields | Computed | Extra filters |
+|---|---|---|---|
+| `cluster-types` | name, slug, description | cluster_count | |
+| `cluster-groups` | name, slug, description | cluster_count | |
+| `clusters` | name, type, group, status (planned/staging/active/decommissioning/offline), tenant, site, description, comments | device_count, virtualmachine_count | |
+| `virtual-machines` | name, status (offline/active/planned/staged/failed/decommissioning), site, cluster, device (host), role, tenant, platform, primary_ip4, primary_ip6, vcpus, memory (MB), disk (MB), serial, description, comments | primary_ip, interface_count | `has_primary_ip`, `cluster_group_id`, `cluster_type_id` |
+| `interfaces` (VM interfaces, `virtualization.vminterface`) | virtual_machine, name, enabled, parent, bridge, mtu, mac_address, description, mode, untagged_vlan, tagged_vlans, vrf | count_ipaddresses | `cluster_id`, `vlan_id` |
+
+Rules: cluster names are unique within their group, within their site, or globally when they have neither; a cluster
+can't move to another site while its devices/VMs are elsewhere. A VM needs a site or cluster; the site comes from the
+cluster when omitted and must match it; the host `device` must be in the VM's cluster; the role must have `vm_role`;
+names are unique (case-insensitive) per cluster and tenant (per site without a cluster). VM primary IPs must be
+assigned to the VM's interfaces. VM interface parent/bridge must be on the same VM; VLANs must be global or at the
+VM's site. Deleting a VM deletes its interfaces; deleting a VM interface unassigns its IPs. Clusters with VMs are
+protected; deleting a cluster clears `cluster` on its devices.
 
 ### Tenancy and extras
 
@@ -226,8 +312,13 @@ Body: CSV text with `Content-Type: text/csv`, or JSON `{"csv": "..."}`.
 - Header row = field names. References by id, slug or name (`site=hq`, `device_type=C9300-48P`).
 - `tags`: comma-separated slugs. `cf_<name>`: custom field values. m2m fields: comma-separated.
 - Scoped names: devices resolve `rack`/`location` within the row's site; interfaces resolve `lag`/`parent` within the
-  row's device; IP addresses take `device` + `interface` and are assigned to that interface; cables take
-  `side_a_device, side_a_name, side_b_device, side_b_name` (interface names).
+  row's device; front ports resolve `rear_port` and power outlets `power_port` within the row's device; VM interfaces
+  resolve `parent`/`bridge` within the row's `virtual_machine`; IP addresses take `device` + `interface` (or
+  `virtual_machine` + `vminterface`) and are assigned to that interface; power feeds resolve `power_panel` within `site`
+  (when given) and `rack` within the panel's site; circuit terminations take `circuit` by cid.
+- Cables take `side_a_type` (default `dcim.interface`; any termination type), `side_a_device`, `side_a_name` and the
+  same for side B. For circuit terminations use `side_a_circuit` (cid) and `side_a_name` = `A`/`Z`; for power feeds
+  `side_a_power_panel` (optional) and the feed name.
 - All rows are created in one transaction. If any row fails, nothing is imported and the response is
   `400 {"details": [{"row": 2, "errors": {"device_type": ["…"]}}]}` (row numbers are 1-based data rows).
 - Success: `201 {"created": n, "results": [objects]}`.
@@ -277,6 +368,11 @@ These shapes are stable:
   ```
 - IP address: `assigned_object_type: "dcim.interface"`, `assigned_object_id`, `assigned_object: {id, url, display, name, device: {id, url, display, name}, cable}`.
 - Cable: `a_terminations` / `b_terminations` = `[{object_type: "dcim.interface", object_id, object: {id, url, display, name, device: {id, url, display, name}, cable}}]`.
+  Cables may now also end on front/rear ports and power ports/outlets (same `object.device` shape), power feeds
+  (`object.power_panel` instead of `device`) and circuit terminations (`object.circuit`); consumers that only want
+  device-to-device links can keep reading `object.device.id` and skip ends without it.
+- IP addresses on VM interfaces have `assigned_object_type: "virtualization.vminterface"` and
+  `assigned_object.virtual_machine` instead of `assigned_object.device`. Devices gained a `cluster` reference.
 
 **Monitoring status in the UI.** The device list (column "Monitoring") and the device page (chip next to the status)
 call `GET /api/v1/integrations/umbrella/status?object_type=dcim.device&ids=1,2,3`, served by the integration module.
@@ -292,31 +388,41 @@ Accepted response shapes (any of):
 
 ## Web UI
 
-`web/src/netbox/NetboxRoutes.tsx` exports `DcimRoutes`, `IpamRoutes`, `TenancyRoutes`, `ExtrasRoutes` and `NetboxRoutes`.
-Mount them in the main router (react-router-dom v7):
+`web/src/netbox/NetboxRoutes.tsx` exports `DcimRoutes`, `IpamRoutes`, `CircuitsRoutes`, `VirtualizationRoutes`,
+`TenancyRoutes`, `ExtrasRoutes` and `NetboxRoutes`. Mount them in the main router (react-router-dom v7):
 
 ```tsx
 <Route path="/dcim/*" element={<DcimRoutes />} />
 <Route path="/ipam/*" element={<IpamRoutes />} />
+<Route path="/circuits/*" element={<CircuitsRoutes />} />
+<Route path="/virtualization/*" element={<VirtualizationRoutes />} />
 <Route path="/tenancy/*" element={<TenancyRoutes />} />
 <Route path="/extras/*" element={<ExtrasRoutes />} />
 ```
+
+The left navigation groups types like NetBox's menu: Organization, Racks, Devices, Component templates, Connections
+(interfaces, front/rear ports, cables), Circuits, Power, Virtualization, IPAM, VLANs, Other.
 
 Pages (styled per `docs/design.md`; the navy header comes from the main layout):
 
 | Route | Page |
 |---|---|
-| `/dcim`, `/ipam` | Section overview with counters per type |
+| `/dcim`, `/ipam`, `/circuits`, `/virtualization` | Section overview with counters per type |
+| `/circuits/circuits/:id` | Circuit details and the A/Z terminations (site or provider network, speeds, cross-connect, cable, connected endpoint, trace link; "Add termination" when missing) |
+| `/virtualization/clusters/:id` | Cluster details, host devices, virtual machines |
+| `/virtualization/virtual-machines/:id` | VM details, IP addresses, interfaces with their IPs |
+| `/<app>/<type>/:id/trace` | Cable trace of any termination (interfaces, front/rear ports, power ports/outlets/feeds, circuit terminations), one row per cable through patch panels and circuits |
 | `/<app>/<type>` | Generic list: left type navigation, toolbar (search, Add, Import CSV, Export CSV, Copy link with filters, live-update indicator), filter row (`Field: value ▾`, kept in the URL), status counters, bulk bar (Selected: N · Delete), table with gray header, sortable columns and status chips, paging; right side panel with Details · Edit · History tabs (`?_sel=<id>`, `?_sel=new`, `?_sel=import`) |
-| `/<app>/<type>/<id>` | Dedicated page for sites, racks, devices and prefixes; for other types the list with the panel open |
+| `/<app>/<type>/<id>` | Dedicated page for sites, racks, devices, prefixes, circuits, clusters and VMs; for other types the list with the panel open |
 | `/dcim/sites/:id` | Site counters (locations, racks, devices, prefixes, VLANs), details, racks and devices |
-| `/dcim/racks/:id` | Front and rear SVG elevation (devices coloured by role colour, click → device), devices without a position |
-| `/dcim/devices/:id` | Details, monitoring chip, IP addresses, interfaces with IPs, cable (→ trace) and connected endpoint |
-| `/dcim/interfaces/:id/trace` | Cable trace |
+| `/dcim/racks/:id` | Front and rear SVG elevation (devices coloured by role colour, click → device), devices without a position, power utilisation card (feeds with capacity, allocated draw and bars) |
+| `/dcim/devices/:id` | Details (incl. cluster), monitoring chip, IP addresses, interfaces with IPs, cable (→ trace) and connected endpoint; front ports, rear ports, power ports and power outlets cards when the device has them |
 | `/ipam/prefixes/:id` | Details and utilisation bar, child prefix tree with available blocks, next available IP / allocate prefix, child IPs |
 | `/dcim/search?q=` | Global DCIM/IPAM search |
 
-The prefix list is a tree (indentation by `_depth`) with utilisation bars.
+The prefix list is a tree (indentation by `_depth`) with utilisation bars and a Scope column. The cable form picks a
+termination type per side (interface, front/rear port, circuit termination, power port/outlet/feed); the IP address
+form picks a device interface or a VM interface.
 
 - API client: `web/src/netbox/api.ts`, reads the JWT from `localStorage.token`.
 - Strings: `web/src/netbox/i18n.ts`, English and Russian; the language comes from `localStorage.lang` (`en` default).

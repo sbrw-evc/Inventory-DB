@@ -67,7 +67,7 @@ export function DetailShell({ objectType, extra, children }: { objectType: strin
       }
     >
       <div className="nb-breadcrumb">
-        <Link to={objectRoute(model.app, model.path)}>{typeLabel(model.path, model.verbose_name_plural)}</Link> / {obj.display}
+        <Link to={objectRoute(model.app, model.path)}>{typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural)}</Link> / {obj.display}
       </div>
       <div className="nb-title">
         <h1>{obj.display}</h1>

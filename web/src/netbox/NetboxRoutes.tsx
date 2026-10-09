@@ -3,16 +3,19 @@
  *
  *   <Route path="/dcim/*" element={<DcimRoutes />} />
  *   <Route path="/ipam/*" element={<IpamRoutes />} />
+ *   <Route path="/circuits/*" element={<CircuitsRoutes />} />
+ *   <Route path="/virtualization/*" element={<VirtualizationRoutes />} />
  *   <Route path="/tenancy/*" element={<TenancyRoutes />} />
  *   <Route path="/extras/*" element={<ExtrasRoutes />} />
  *
- * or, equivalently, `<Route path="/*" element={<NetboxRoutes />} />` for the four prefixes. Object links use
- * `/<app>/<path>/<id>` (the `display_url` the API returns), so all four prefixes must be mounted.
+ * or, equivalently, `<Route path="/*" element={<NetboxRoutes />} />` for all prefixes. Object links use
+ * `/<app>/<path>/<id>` (the `display_url` the API returns), so every prefix must be mounted.
  */
 import { Route, Routes } from 'react-router-dom';
 import './netbox.css';
 import { ObjectListPage } from './ObjectListPage';
-import { DevicePage, PrefixPage, RackPage, SearchPage, SectionHome, SitePage, TracePage } from './pages';
+import { CircuitPage, ClusterPage, TracePage, VirtualMachinePage } from './morePages';
+import { DevicePage, PrefixPage, RackPage, SearchPage, SectionHome, SitePage } from './pages';
 
 export function DcimRoutes() {
   return (
@@ -22,7 +25,7 @@ export function DcimRoutes() {
       <Route path="sites/:id" element={<SitePage />} />
       <Route path="racks/:id" element={<RackPage />} />
       <Route path="devices/:id" element={<DevicePage />} />
-      <Route path="interfaces/:id/trace" element={<TracePage />} />
+      <Route path=":path/:id/trace" element={<TracePage app="dcim" />} />
       <Route path=":path" element={<ObjectListPage app="dcim" />} />
       <Route path=":path/:id" element={<ObjectListPage app="dcim" />} />
     </Routes>
@@ -37,6 +40,30 @@ export function IpamRoutes() {
       <Route path="prefixes/:id" element={<PrefixPage />} />
       <Route path=":path" element={<ObjectListPage app="ipam" />} />
       <Route path=":path/:id" element={<ObjectListPage app="ipam" />} />
+    </Routes>
+  );
+}
+
+export function CircuitsRoutes() {
+  return (
+    <Routes>
+      <Route index element={<SectionHome section="circuits" />} />
+      <Route path="circuits/:id" element={<CircuitPage />} />
+      <Route path=":path/:id/trace" element={<TracePage app="circuits" />} />
+      <Route path=":path" element={<ObjectListPage app="circuits" />} />
+      <Route path=":path/:id" element={<ObjectListPage app="circuits" />} />
+    </Routes>
+  );
+}
+
+export function VirtualizationRoutes() {
+  return (
+    <Routes>
+      <Route index element={<SectionHome section="virtualization" />} />
+      <Route path="clusters/:id" element={<ClusterPage />} />
+      <Route path="virtual-machines/:id" element={<VirtualMachinePage />} />
+      <Route path=":path" element={<ObjectListPage app="virtualization" />} />
+      <Route path=":path/:id" element={<ObjectListPage app="virtualization" />} />
     </Routes>
   );
 }
@@ -60,6 +87,8 @@ export function NetboxRoutes() {
     <Routes>
       <Route path="dcim/*" element={<DcimRoutes />} />
       <Route path="ipam/*" element={<IpamRoutes />} />
+      <Route path="circuits/*" element={<CircuitsRoutes />} />
+      <Route path="virtualization/*" element={<VirtualizationRoutes />} />
       <Route path="tenancy/*" element={<TenancyRoutes />} />
       <Route path="extras/*" element={<ExtrasRoutes />} />
     </Routes>
@@ -67,4 +96,4 @@ export function NetboxRoutes() {
 }
 
 /** Paths the main app should route to the components above. */
-export const NETBOX_MOUNTS = ['/dcim/*', '/ipam/*', '/tenancy/*', '/extras/*'] as const;
+export const NETBOX_MOUNTS = ['/dcim/*', '/ipam/*', '/circuits/*', '/virtualization/*', '/tenancy/*', '/extras/*'] as const;

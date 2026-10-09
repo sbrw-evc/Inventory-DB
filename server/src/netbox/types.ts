@@ -90,7 +90,7 @@ export interface WriteInfo {
 
 export interface ModelDef {
   type: string;
-  app: 'dcim' | 'ipam' | 'tenancy' | 'extras';
+  app: 'dcim' | 'ipam' | 'tenancy' | 'extras' | 'circuits' | 'virtualization';
   path: string;
   table: string;
   verbose: string;

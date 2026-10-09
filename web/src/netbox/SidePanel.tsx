@@ -127,7 +127,7 @@ export function SidePanel({
   ];
 
   return (
-    <aside className="nb-panel" aria-label={typeLabel(model.path, model.verbose_name_plural)}>
+    <aside className="nb-panel" aria-label={typeLabel(`${model.app}/${model.path}`, model.verbose_name_plural)}>
       <div className="nb-panel-title">
         <span>{id === 'new' ? `${t('add')}: ${model.verbose_name}` : (obj?.display ?? '…')}</span>
         <span className="nb-spacer" />

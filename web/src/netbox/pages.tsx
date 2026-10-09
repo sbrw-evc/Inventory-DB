@@ -7,13 +7,14 @@ import { DetailShell, type DetailContext } from './DetailShell';
 import { compareAddr, contrastText, elevationBlocks, isRef, type ElevationUnit } from './format';
 import { findModel, useAsync, useMonitoring, useSchema } from './hooks';
 import { fieldLabel, t, typeLabel } from './i18n';
+import { DeviceComponents, RackPowerCard } from './morePages';
 
 type SearchHit = Awaited<ReturnType<typeof nb.search>>['results'][number];
 
-const fetchList = (path: string, params: Record<string, string | number | undefined>) => request<Page>('GET', `${path}${toQuery({ limit: 1000, ...params })}`);
+export const fetchList = (path: string, params: Record<string, string | number | undefined>) => request<Page>('GET', `${path}${toQuery({ limit: 1000, ...params })}`);
 
 /** Compact table of objects with the first column linking to the object. */
-function MiniTable({ rows, columns, link, empty }: { rows: NbObject[]; columns: string[]; link?: (o: NbObject) => string; empty?: ReactNode }) {
+export function MiniTable({ rows, columns, link, empty }: { rows: NbObject[]; columns: string[]; link?: (o: NbObject) => string; empty?: ReactNode }) {
   if (!rows.length) return <div className="nb-muted">{empty ?? t('noResults')}</div>;
   return (
     <div className="nb-table-wrap">
@@ -40,7 +41,7 @@ function MiniTable({ rows, columns, link, empty }: { rows: NbObject[]; columns: 
 }
 
 /** KV rows for the given fields of an object (skips empty values). */
-const kvRows = (obj: NbObject, keys: string[]): [string, ReactNode][] =>
+export const kvRows = (obj: NbObject, keys: string[]): [string, ReactNode][] =>
   keys.filter((k) => obj[k] != null && obj[k] !== '' && !(Array.isArray(obj[k]) && !(obj[k] as unknown[]).length)).map((k) => [fieldLabel(k), <Value key={k} v={obj[k]} name={k} />]);
 
 // --------------------------------------------------------------------------------------------------------------
@@ -148,6 +149,7 @@ export function RackPage() {
                 <KV rows={[...kvRows(obj, ['site', 'location', 'facility_id', 'tenant', 'role', 'serial', 'asset_tag', 'form_factor', 'width', 'u_height', 'description', 'tags']), [t('utilization'), <UtilBar key="u" value={obj._utilization as number} />]]} />
               </Card>
               <NonRacked rack={obj} />
+              <RackPowerCard rack={obj} />
             </div>
             <Card
               title={t('elevation')}
@@ -220,7 +222,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
             rows={[
               ...kvRows(obj, ['site', 'location', 'rack']),
               ...(rack && obj.position != null ? ([[fieldLabel('position'), `U${String(obj.position)} · ${(obj.face as { label: string } | null)?.label ?? ''}`]] as [string, ReactNode][]) : []),
-              ...kvRows(obj, ['role', 'device_type', 'platform', 'tenant', 'serial', 'asset_tag', 'primary_ip4', 'primary_ip6', 'description', 'comments', 'tags']),
+              ...kvRows(obj, ['role', 'device_type', 'platform', 'cluster', 'tenant', 'serial', 'asset_tag', 'primary_ip4', 'primary_ip6', 'description', 'comments', 'tags']),
             ]}
           />
         </Card>
@@ -298,6 +300,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
           </div>
         </Card>
       </div>
+      <DeviceComponents device={obj} canWrite={canWrite} openCreate={openCreate} />
     </>
   );
 }
@@ -350,7 +353,7 @@ function PrefixBody({ ctx }: { ctx: DetailContext }) {
         <Card title={t('details')}>
           <KV
             rows={[
-              ...kvRows(obj, ['family', 'vrf', 'site', 'vlan', 'role', 'tenant', 'is_pool', 'mark_utilized', 'description', 'tags']),
+              ...kvRows(obj, ['family', 'vrf', 'scope', 'site', 'vlan', 'role', 'tenant', 'is_pool', 'mark_utilized', 'description', 'tags']),
               [t('utilization'), <UtilBar key="u" value={obj._utilization as number} />],
               [fieldLabel('_children'), String(obj._children ?? 0)],
             ]}
@@ -453,75 +456,6 @@ function PrefixBody({ ctx }: { ctx: DetailContext }) {
 }
 
 // --------------------------------------------------------------------------------------------------------------
-// Cable trace
-
-type TraceSegment = [NbObject[], NbObject | null, NbObject[]];
-
-function TraceEnd({ ends }: { ends: NbObject[] }) {
-  return (
-    <div className="end">
-      {ends.map((e) => (
-        <div key={e.id}>
-          <div className="dev">{isRef(e.device) ? <Link to={uiHref(e.device.url)}>{e.device.display}</Link> : '—'}</div>
-          <div>
-            <Link to={`/dcim/interfaces/${e.id}`}>{e.display}</Link> <span className="nb-muted">{(e.type as { label?: string } | null)?.label}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function TracePage() {
-  const { id = '' } = useParams();
-  const iface = useAsync(() => request<NbObject>('GET', `/dcim/interfaces/${id}`), [id]);
-  const trace = useAsync(() => request<TraceSegment[]>('GET', `/dcim/interfaces/${id}/trace`), [id]);
-  return (
-    <Layout>
-      <div className="nb-breadcrumb">
-        <Link to="/dcim/interfaces">{typeLabel('interfaces')}</Link> / {iface.data && <RefLink value={iface.data} />}
-      </div>
-      <div className="nb-title">
-        <h1>{t('cableTrace')}</h1>
-      </div>
-      <ErrorBox error={iface.error ?? trace.error} />
-      {trace.data && trace.data.length === 0 && iface.data && (
-        <div className="nb-trace">
-          <TraceEnd ends={[iface.data]} />
-          <div className="nb-muted" style={{ marginTop: 12 }}>
-            {t('notConnected')}
-          </div>
-        </div>
-      )}
-      {trace.data?.map(([near, cable, far], i) => {
-        const color = cable?.color ? `#${String(cable.color)}` : undefined;
-        return (
-          <div key={i} className="nb-trace">
-            <TraceEnd ends={near} />
-            <div className="cable" style={color ? { borderLeftColor: color } : undefined}>
-              {cable ? (
-                <div>
-                  <Link to={`/dcim/cables/${cable.id}`}>
-                    {fieldLabel('cable')} {cable.display}
-                  </Link>{' '}
-                  <StatusChip value={cable.status as never} />
-                  <div className="nb-muted">
-                    {[(cable.type as { label?: string } | null)?.label, cable.length != null ? `${String(cable.length)} ${(cable.length_unit as { value?: string } | null)?.value ?? ''}` : null].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-              ) : (
-                t('notConnected')
-              )}
-            </div>
-            <TraceEnd ends={far} />
-          </div>
-        );
-      })}
-    </Layout>
-  );
-}
-
-// --------------------------------------------------------------------------------------------------------------
 // Search and overview
 
 export function SearchPage() {
@@ -557,7 +491,7 @@ export function SearchPage() {
         {[...groups].map(([type, results]) => {
           const m = findModel(schema, type);
           return (
-            <Card key={type} title={`${m ? typeLabel(m.path, m.verbose_name_plural) : type} (${results.length})`} actions={m && <Link to={`${objectRoute(m.app, m.path)}?q=${encodeURIComponent(q)}`}>{t('objects')} →</Link>}>
+            <Card key={type} title={`${m ? typeLabel(`${m.app}/${m.path}`, m.verbose_name_plural) : type} (${results.length})`} actions={m && <Link to={`${objectRoute(m.app, m.path)}?q=${encodeURIComponent(q)}`}>{t('objects')} →</Link>}>
               {results.map((r) => (
                 <div key={r.id} style={{ padding: '2px 0' }}>
                   <RefLink value={r} />
@@ -572,11 +506,13 @@ export function SearchPage() {
 }
 
 const SECTION_TYPES: Record<string, string[]> = {
-  dcim: ['dcim/sites', 'dcim/locations', 'dcim/racks', 'dcim/devices', 'dcim/interfaces', 'dcim/cables', 'dcim/device-types', 'dcim/manufacturers', 'tenancy/tenants'],
+  dcim: ['dcim/sites', 'dcim/locations', 'dcim/racks', 'dcim/devices', 'dcim/interfaces', 'dcim/front-ports', 'dcim/rear-ports', 'dcim/cables', 'dcim/power-panels', 'dcim/power-feeds', 'dcim/device-types', 'dcim/manufacturers', 'tenancy/tenants'],
+  circuits: ['circuits/circuits', 'circuits/circuit-terminations', 'circuits/providers', 'circuits/provider-networks', 'circuits/circuit-types'],
+  virtualization: ['virtualization/virtual-machines', 'virtualization/interfaces', 'virtualization/clusters', 'virtualization/cluster-groups', 'virtualization/cluster-types'],
   ipam: ['ipam/aggregates', 'ipam/prefixes', 'ipam/ip-ranges', 'ipam/ip-addresses', 'ipam/vrfs', 'ipam/vlans', 'ipam/vlan-groups'],
 };
 
-export function SectionHome({ section }: { section: 'dcim' | 'ipam' }) {
+export function SectionHome({ section }: { section: 'dcim' | 'ipam' | 'circuits' | 'virtualization' }) {
   const { data: schema } = useSchema();
   const types = SECTION_TYPES[section];
   const counts = useAsync(async () => {
@@ -601,7 +537,7 @@ export function SectionHome({ section }: { section: 'dcim' | 'ipam' }) {
         {types.map((k) => (
           <Link key={k} to={`/${k}`} className="nb-counter info" style={{ color: 'inherit', textDecoration: 'none', minWidth: 140 }}>
             <b>{counts.data?.[k] ?? '…'}</b>
-            {typeLabel(k.split('/')[1])}
+            {typeLabel(k)}
           </Link>
         ))}
       </div>
