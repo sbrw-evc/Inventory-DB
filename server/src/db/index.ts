@@ -79,7 +79,11 @@ export class DB {
   private cache = new Map<string, Compiled>();
   private depth = 0;
 
-  constructor(readonly conn: PgSync) {}
+  constructor(
+    readonly conn: PgSync,
+    /** Where this connection points (shown on the settings pages; the password is part of the URL). */
+    readonly target: { url: string; schema?: string } = { url: '' },
+  ) {}
 
   prepare(sql: string): Statement {
     let c = this.cache.get(sql);
@@ -142,17 +146,29 @@ let db: DB | null = null;
 
 export const DEFAULT_DATABASE_URL = 'postgres://inventory:inventory@localhost:5432/inventory';
 
-/** Opens (or returns) the app database configured by `DATABASE_URL`. */
+let configuredUrl: string | null = null;
+
+/** The database URL from the settings (config file); takes precedence over `DATABASE_URL`. */
+export function configureDatabase(url: string | null) {
+  configuredUrl = url;
+}
+
+/** Opens (or returns) the app database configured by the settings or `DATABASE_URL`. */
 export function getDb(): DB {
-  if (!db) db = openDb(process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
+  if (!db) db = openDb(configuredUrl ?? process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
   return db;
 }
 
 /** Connects and applies pending migrations. `schema` isolates a database inside its own schema (tests). */
 export function openDb(connectionString: string, opts: { schema?: string } = {}): DB {
-  const conn = new DB(new PgSync({ connectionString, schema: opts.schema }));
+  const conn = new DB(new PgSync({ connectionString, schema: opts.schema }), { url: connectionString, schema: opts.schema });
   migrate(conn);
   return conn;
+}
+
+/** Connects without migrating (copying a database: the migration ledger comes with the data). */
+export function connectDb(connectionString: string, opts: { schema?: string; connectTimeoutMs?: number } = {}): DB {
+  return new DB(new PgSync({ connectionString, schema: opts.schema, connectTimeoutMs: opts.connectTimeoutMs }), { url: connectionString, schema: opts.schema });
 }
 
 /** Replace the shared connection (tests). */

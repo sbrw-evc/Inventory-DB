@@ -1,0 +1,76 @@
+/* Settings section, drawn like Umbrella's settings and status pages. */
+.settings-page { gap: 16px; }
+.settings-page .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.settings-stack { display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
+
+.status-card { padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.status-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.status-card > header h2 { font-size: 16px; margin: 0; }
+.status-card .notice { margin: 0; }
+.notice-body { margin-top: 4px; color: var(--text); font-weight: 400; }
+.notice-body p { margin: 0 0 4px; }
+.span-all { grid-column: 1 / -1; }
+.card-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; align-items: center; }
+.card-actions .hint { margin-right: auto; }
+
+.rows { margin: 0; display: grid; gap: 8px; }
+.rows > div { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: 12px; }
+.rows dt { color: var(--muted); }
+.rows dd { margin: 0; overflow-wrap: anywhere; }
+.rows.rows-end { gap: 0; }
+.rows.rows-end > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 16px; padding: 8px 0; border-top: 1px solid var(--border); }
+.rows.rows-end > div:first-child { border-top: 0; }
+.rows.rows-end dd { margin-left: auto; overflow-wrap: break-word; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+.pill-off { background: var(--surface-2); color: var(--muted); }
+
+.switch-row { display: flex; align-items: flex-start; gap: 12px; }
+.switch-row .switch { margin-top: 1px; }
+.switch-text { display: flex; flex-direction: column; gap: 2px; cursor: pointer; font-weight: 600; }
+.switch-text .hint { font-weight: 400; }
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 0 14px; }
+@media (max-width: 720px) {
+  .grid-2,
+  .grid-3 { grid-template-columns: 1fr; }
+  .rows > div { grid-template-columns: 1fr; gap: 2px; }
+}
+.field-optional { font-weight: 400; color: var(--muted); }
+.plain-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.plain-fieldset:disabled { opacity: 0.75; }
+textarea.input { min-height: 96px; font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 12.5px; resize: vertical; }
+.reveal-box { overflow: hidden; padding: 4px; margin: -4px; }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; color: var(--muted); }
+.checklist li { display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+.checklist li.ok { color: var(--ok); }
+
+.status-summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status-logs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.status-logs li { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); }
+.status-log-head { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.status-log-msg { font-weight: 600; overflow-wrap: anywhere; }
+.status-log-attrs { display: flex; flex-wrap: wrap; gap: 6px; }
+.status-log-attrs code,
+.rows code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); }
+
+.conn-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+/* PostgreSQL statistics */
+.pg-sub { margin: 0; font-size: 14px; }
+.pg-sub-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pg-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pg-tile { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pg-tile-label { color: var(--muted); font-size: 12.5px; }
+.pg-tile-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pg-tile-note { color: var(--muted); font-size: 12px; }
+.settings-table { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.settings-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.settings-table th,
+.settings-table td { padding: 8px 10px; text-align: left; border-top: 1px solid var(--border); vertical-align: top; }
+.settings-table thead th { border-top: 0; color: var(--muted); font-weight: 600; background: var(--surface-2); white-space: nowrap; }
+.settings-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.settings-table .wide { min-width: 240px; }
+.pg-query { display: block; max-width: 520px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.pg-who { display: flex; flex-direction: column; gap: 2px; }

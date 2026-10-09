@@ -29,9 +29,9 @@ beforeAll(async () => {
 
 describe('postgres storage', () => {
   it('signs in with any letter case of the email and rejects a duplicate that differs only in case', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/signin', payload: { email: 'mixed.case@example.com', password: 'password123' } });
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/signin', payload: { email: 'mixed.case@example.com', password: 'Password-123!' } });
     expect(res.statusCode).toBe(200);
-    const dup = await app.inject({ method: 'POST', url: '/api/v1/auth/signup', payload: { email: 'MIXED.case@example.com', password: 'password123' } });
+    const dup = await app.inject({ method: 'POST', url: '/api/v1/auth/signup', payload: { email: 'MIXED.case@example.com', password: 'Password-123!' } });
     expect(dup.statusCode).toBe(409);
   });
 

@@ -12,6 +12,10 @@ import {
   Globe,
   HardDrive,
   KeyRound,
+  Activity,
+  LockKeyhole,
+  ShieldCheck,
+  Vault,
   Layers,
   ListTree,
   MapPin,
@@ -119,7 +123,21 @@ function nbGroup(id: Section, title: string, icon: LucideIcon, extra: NavPage[] 
   return pages.length ? [{ id, title, icon, pages }] : [];
 }
 
-export function navGroups(): NavGroup[] {
+/** System settings (Umbrella's Settings group), for DCIM/IPAM administrators only. */
+const SETTINGS: NavGroup = {
+  id: 'settings',
+  title: 'Settings',
+  icon: SlidersHorizontal,
+  pages: [
+    { id: 'settings/status', to: '/settings/status', label: 'System status', icon: Activity },
+    { id: 'settings/directory', to: '/settings/directory', label: 'Sign-in', icon: ShieldCheck },
+    { id: 'settings/password-policy', to: '/settings/password-policy', label: 'Password policy', icon: LockKeyhole },
+    { id: 'settings/postgresql', to: '/settings/postgresql', label: 'PostgreSQL', icon: Database },
+    { id: 'settings/openbao', to: '/settings/openbao', label: 'OpenBao', icon: Vault },
+  ],
+};
+
+export function navGroups(admin = false): NavGroup[] {
   return [
     { id: 'bases', title: 'Bases', icon: Database, pages: [], tree: 'bases' },
     ...nbGroup('dcim', 'DCIM', Server, [{ id: 'dcim/search', to: '/dcim/search', label: 'search', icon: Search, netbox: true }]),
@@ -141,6 +159,7 @@ export function navGroups(): NavGroup[] {
       icon: Settings,
       pages: [{ id: 'admin/tokens', to: '/admin/tokens', label: 'API tokens', icon: KeyRound }, ...netboxPages('admin')],
     },
+    ...(admin ? [SETTINGS] : []),
   ];
 }
 

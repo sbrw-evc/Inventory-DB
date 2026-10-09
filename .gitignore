@@ -7,3 +7,4 @@ server/data/
 .env
 coverage/
 .claude/worktrees/
+/secrets/

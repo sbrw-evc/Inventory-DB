@@ -18,7 +18,7 @@ export async function createTestApp(): Promise<FastifyInstance> {
 let n = 0;
 /** Signs up a new user and returns auth headers for `app.inject`. */
 export async function signUpUser(app: FastifyInstance, email = `user${++n}@example.com`) {
-  const res = await app.inject({ method: 'POST', url: '/api/v1/auth/signup', payload: { email, password: 'password123' } });
+  const res = await app.inject({ method: 'POST', url: '/api/v1/auth/signup', payload: { email, password: 'Password-123!' } });
   const body = res.json() as { user: { id: string }; token: string };
   return { userId: body.user.id, headers: { authorization: `Bearer ${body.token}` } };
 }

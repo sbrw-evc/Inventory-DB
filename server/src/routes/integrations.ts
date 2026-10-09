@@ -88,8 +88,9 @@ export async function integrationRoutes(app: FastifyInstance) {
 
   app.post('/api/v1/integrations', async (req, reply) => {
     const user = requireUser(req);
+    const created = await createIntegration(user.id, createSchema.parse(req.body));
     reply.status(201);
-    return createIntegration(user.id, createSchema.parse(req.body));
+    return created;
   });
 
   app.get('/api/v1/integrations/:id', async (req) => owned(req));
@@ -97,12 +98,12 @@ export async function integrationRoutes(app: FastifyInstance) {
   app.patch('/api/v1/integrations/:id', async (req) => updateIntegration(owned(req).id, patchSchema.parse(req.body ?? {})));
 
   app.delete('/api/v1/integrations/:id', async (req) => {
-    deleteIntegration(owned(req).id);
+    await deleteIntegration(owned(req).id);
     identityCache.delete((req.params as { id: string }).id);
     return { ok: true };
   });
 
-  app.post('/api/v1/integrations/:id/rotate-secret', async (req) => ({ secret: rotateSecret(owned(req).id) }));
+  app.post('/api/v1/integrations/:id/rotate-secret', async (req) => ({ secret: await rotateSecret(owned(req).id) }));
 
   app.get('/api/v1/integrations/:id/umbrella/unmatched', async (req) => listUnmatched(owned(req).id));
 
@@ -145,7 +146,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     const ok =
       integration.active &&
       verifySignature(
-        getSecret(id),
+        await getSecret(id),
         req.headers['x-umbrella-timestamp'] as string | undefined,
         req.headers['x-umbrella-signature'] as string | undefined,
         req.rawBody ?? '',

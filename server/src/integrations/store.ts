@@ -1,7 +1,8 @@
 import type { Integration, IntegrationInput } from '../../../shared/src/index.js';
 import { getDb, json, newId, now } from '../db/index.js';
 import { notFound } from '../errors.js';
-import { decryptSecret, encryptSecret, newSecret } from './secrets.js';
+import { deleteSecret, getSecret as readSecret, setSecret } from '../system/secrets.js';
+import { decryptSecret, newSecret } from './secrets.js';
 
 interface IntegrationRow {
   id: string;
@@ -63,8 +64,12 @@ export function getOwnedIntegration(id: string, userId: string): Integration {
   return integration;
 }
 
+/** Where an integration's signing secret is kept in the secret store (OpenBao). */
+export const secretPath = (id: string) => `integrations/${id}`;
+const SECRET_KEY = 'signing_secret';
+
 /** Returns the integration and its signing secret; the secret is shown to the user only here. */
-export function createIntegration(userId: string, input: IntegrationInput): { integration: Integration; secret: string } {
+export async function createIntegration(userId: string, input: IntegrationInput): Promise<{ integration: Integration; secret: string }> {
   const secret = newSecret();
   const row: IntegrationRow = {
     id: newId('int'),
@@ -72,10 +77,12 @@ export function createIntegration(userId: string, input: IntegrationInput): { in
     title: input.title,
     active: input.active === false ? 0 : 1,
     config: JSON.stringify({ umbrellaUrl: input.umbrellaUrl ?? null, inventoryUrl: input.inventoryUrl ?? null }),
-    secret_enc: encryptSecret(secret),
+    // Kept in the secret store; the column only holds secrets of older versions until they are moved.
+    secret_enc: '',
     created_by: userId,
     created_at: now(),
   };
+  await setSecret(secretPath(row.id), { [SECRET_KEY]: secret });
   getDb()
     .prepare(
       `INSERT INTO nc_integrations (id, kind, title, active, config, secret_enc, created_by, created_at)
@@ -105,18 +112,39 @@ export function updateIntegration(id: string, patch: Partial<Omit<IntegrationInp
   return getIntegration(id);
 }
 
-export function deleteIntegration(id: string) {
+export async function deleteIntegration(id: string) {
   getDb().prepare('DELETE FROM nc_integrations WHERE id = ?').run(id);
+  await deleteSecret(secretPath(id));
 }
 
-export function rotateSecret(id: string): string {
+export async function rotateSecret(id: string): Promise<string> {
   const secret = newSecret();
-  getDb().prepare('UPDATE nc_integrations SET secret_enc = ? WHERE id = ?').run(encryptSecret(secret), id);
+  await setSecret(secretPath(id), { [SECRET_KEY]: secret });
+  getDb().prepare("UPDATE nc_integrations SET secret_enc = '' WHERE id = ?").run(id);
   return secret;
 }
 
-export function getSecret(id: string): string {
+export async function getSecret(id: string): Promise<string> {
   const row = getRow(id);
   if (!row) throw notFound('Integration');
+  const stored = await readSecret(secretPath(id), SECRET_KEY);
+  if (stored) return stored;
+  if (!row.secret_enc) throw notFound('Integration secret');
   return decryptSecret(row.secret_enc);
+}
+
+/** Moves signing secrets that older versions kept in the integrations table into the secret store. */
+export async function moveLegacySecrets(): Promise<number> {
+  const rows = getDb().prepare("SELECT id, secret_enc FROM nc_integrations WHERE secret_enc <> ''").all() as { id: string; secret_enc: string }[];
+  for (const r of rows) {
+    await setSecret(secretPath(r.id), { [SECRET_KEY]: decryptSecret(r.secret_enc) });
+    getDb().prepare("UPDATE nc_integrations SET secret_enc = '' WHERE id = ?").run(r.id);
+  }
+  return rows.length;
+}
+
+/** Titles of integrations by id (the secrets page names what each secret belongs to). */
+export function integrationTitles(): Record<string, string> {
+  const rows = getDb().prepare('SELECT id, title FROM nc_integrations').all() as { id: string; title: string }[];
+  return Object.fromEntries(rows.map((r) => [r.id, r.title]));
 }
