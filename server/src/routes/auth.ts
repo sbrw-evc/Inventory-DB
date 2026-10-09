@@ -7,7 +7,7 @@ import { authorizeUrl, completeSignIn, pkce } from '../auth/entra.js';
 import { requireUser } from '../auth/plugin.js';
 import { getPolicy } from '../auth/policy.js';
 import { accountInfo, changePassword, issueJwt, signIn, signUp, signValue, verifyValue } from '../auth/service.js';
-import { getNetboxRole } from '../netbox/access.js';
+import { bootstrapAdmin, getNetboxRole } from '../netbox/access.js';
 import { logEvent } from '../system/logbuf.js';
 
 const signUpBody = z.object({ email: z.string().email(), password: z.string().min(1), name: z.string().optional() });
@@ -36,7 +36,8 @@ const safeReturn = (r: unknown) => (typeof r === 'string' && r.startsWith('/') &
 const sha = (v: string) => createHash('sha256').update(v).digest('base64url');
 
 export async function authRoutes(app: FastifyInstance) {
-  app.get('/api/v1/auth/providers', async () => ({ ldap: getLdapConfig().enabled, entra: !!activeEntra() }));
+  // Public: the sign-in page shows the directory options, and the sign-up form checks passwords against the policy.
+  app.get('/api/v1/auth/providers', async () => ({ ldap: getLdapConfig().enabled, entra: !!activeEntra(), password_policy: getPolicy() }));
 
   app.post('/api/v1/auth/signup', async (req) => {
     const body = signUpBody.parse(req.body);
@@ -59,6 +60,8 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.get('/api/v1/auth/me', async (req) => {
     const user = requireUser(req);
+    // Like GET /netbox/me: while nobody is admin yet, the first signed-in user becomes admin and can open the settings.
+    bootstrapAdmin(user);
     const info = accountInfo(user.id);
     const policy = getPolicy();
     const expires = info.source === 'local' ? passwordExpiresAt(info.passwordChangedAt, policy) : null;

@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, KeyRound, Languages, LogOut, Moon, Sun } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, KeyRound, Languages, LockKeyhole, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LANGS, setLang, useLang, useT } from '../../i18n';
 import { useAuth } from '../../lib/auth';
+import { formatDate } from '../../lib/format';
+import { ChangePasswordDialog } from '../../settings/ChangePassword';
 import { setTheme, useTheme, type Theme } from '../../lib/theme';
 import { spring } from './Brand';
 
@@ -28,7 +30,8 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 /** The user menu of the top bar (Umbrella UserMenu): account, language and theme accordions, sign out. */
 export function UserMenu({ compact }: { compact?: boolean }) {
   const t = useT();
-  const { user, signOut } = useAuth();
+  const { user, account, signOut } = useAuth();
+  const [changing, setChanging] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -106,10 +109,35 @@ export function UserMenu({ compact }: { compact?: boolean }) {
                 {user?.name && <small>{user.email}</small>}
               </div>
             </div>
+            {account?.passwordExpiresSoon && account.passwordExpiresAt && (
+              <div className="um-warn" role="note">
+                {t('Your password expires {at}.', { at: formatDate(account.passwordExpiresAt, true) })}
+              </div>
+            )}
             <button type="button" role="menuitem" className="um-item" onClick={() => navigate('/admin/tokens')}>
               <KeyRound size={18} />
               {t('API tokens')}
             </button>
+            {account?.source === 'local' && (
+              <button
+                type="button"
+                role="menuitem"
+                className="um-item"
+                onClick={() => {
+                  setOpen(false);
+                  setChanging(true);
+                }}
+              >
+                <LockKeyhole size={18} />
+                {t('Change password')}
+              </button>
+            )}
+            {account?.admin && (
+              <button type="button" role="menuitem" className="um-item" onClick={() => navigate('/settings')}>
+                <Settings size={18} />
+                {t('Settings')}
+              </button>
+            )}
             <Accordion
               icon={<Languages size={18} />}
               label={t('Language')}
@@ -140,6 +168,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
+      {changing && user && <ChangePasswordDialog login={user.email} onClose={() => setChanging(false)} />}
     </div>
   );
 }

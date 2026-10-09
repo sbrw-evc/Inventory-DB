@@ -101,7 +101,7 @@ describe('Entra ID', () => {
     const res = (await inject('PUT', '/settings/entra', { config: config(), client_secret: 'right-secret' })).json();
     expect(res).toMatchObject({ client_secret_set: true, config: { enabled: true, tenant_id: TENANT } });
     expect(await getSecret('directory/entra', 'client_secret')).toBe('right-secret');
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/providers' })).json()).toEqual({ ldap: false, entra: true });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/providers' })).json()).toMatchObject({ ldap: false, entra: true, password_policy: { min_length: 12 } });
   });
 
   it('signs in a member of the users group and makes admin group members admins', async () => {

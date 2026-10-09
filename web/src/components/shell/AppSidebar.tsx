@@ -4,6 +4,7 @@ import { ChevronDown, House } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Link, useLocation } from 'react-router-dom';
 import { useT } from '../../i18n';
+import { useAuth } from '../../lib/auth';
 import { t as nbT, typeLabel } from '../../netbox/i18n';
 import { BasesTree } from '../Sidebar';
 import { spring } from './Brand';
@@ -243,7 +244,7 @@ function GroupAccordion({ group, first, path, onNavigate }: { group: NavGroup; f
 export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const t = useT();
   const { pathname: path } = useLocation();
-  const groups = navGroups();
+  const groups = navGroups(!!useAuth().account?.admin);
   return (
     <nav id="app-sidebar" className={`sidebar ${collapsed ? 'collapsed' : ''}`} aria-label={t('Sections')}>
       {collapsed

@@ -15,6 +15,40 @@ services:
       timeout: 5s
       retries: 20
 
+  # Secret store: every Inventory DB secret (directory passwords, integration keys, the session signing key) lives here.
+  openbao:
+    image: ${OPENBAO_IMAGE:-openbao/openbao:2.7.1}
+    restart: unless-stopped
+    entrypoint: ["bao", "server", "-config=/openbao/config/openbao.hcl"]
+    volumes:
+      - ./deploy/openbao/openbao.hcl:/openbao/config/openbao.hcl:ro
+      - openbao-data:/openbao/file
+    ports:
+      # The OpenBao UI and API; only on this host unless OPENBAO_BIND says otherwise.
+      - "${OPENBAO_BIND:-127.0.0.1}:${OPENBAO_PORT:-8200}:8200"
+
+  # Initialises OpenBao once, unseals it (also after restarts) and hands Inventory DB its AppRole credentials.
+  openbao-init:
+    image: ${OPENBAO_IMAGE:-openbao/openbao:2.7.1}
+    restart: unless-stopped
+    user: "0"
+    entrypoint: ["/bin/sh", "-c", "tr -d '\\r' < /config/init.sh > /tmp/init.sh && exec /bin/sh /tmp/init.sh"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      WATCH: ${OPENBAO_AUTO_UNSEAL:-true}
+    volumes:
+      - ./deploy/openbao/init.sh:/config/init.sh:ro
+      - ./deploy/openbao/inventory-policy.hcl:/config/inventory-policy.hcl:ro
+      # Unseal keys and the root token (init.txt): back this folder up and keep it private.
+      - ./secrets/openbao:/state
+      - openbao-approle:/approle
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/openbao-ready"]
+      interval: 3s
+      retries: 100
+      start_period: 5s
+    depends_on: [openbao]
+
   inventory-db:
     build: .
     image: inventory-db:latest
@@ -22,17 +56,27 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      openbao-init:
+        condition: service_healthy
     ports:
       - "${INVENTORY_PORT:-8080}:8080"
     environment:
       DATABASE_URL: postgres://inventory:${POSTGRES_PASSWORD}@postgres:5432/inventory
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+      # Optional: without it the session signing key is generated and kept in OpenBao.
+      JWT_SECRET: ${JWT_SECRET:-}
       INTEGRATION_KEY: ${INTEGRATION_KEY:-}
+      OPENBAO_ADDR: http://openbao:8200
+      OPENBAO_MOUNT: inventory
+      OPENBAO_ROLE_ID_FILE: /run/openbao/role_id
+      OPENBAO_SECRET_ID_FILE: /run/openbao/secret_id
       WEBHOOK_ALLOW_PRIVATE: ${WEBHOOK_ALLOW_PRIVATE:-0}
     volumes:
-      # Uploaded attachments.
+      # Uploaded attachments and the settings file (config/inventory.json) written by the Settings pages.
       - inventory-data:/data
+      - openbao-approle:/run/openbao:ro
 
 volumes:
   postgres-data:
   inventory-data:
+  openbao-data:
+  openbao-approle:

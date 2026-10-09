@@ -22,7 +22,8 @@ FROM node:22-bookworm-slim
 ENV NODE_ENV=production \
     PORT=8080 \
     HOST=0.0.0.0 \
-    UPLOAD_DIR=/data/uploads
+    UPLOAD_DIR=/data/uploads \
+    CONFIG_DIR=/data/config
 WORKDIR /app
 COPY --from=deps /app/node_modules node_modules
 COPY --from=build /app/server/package.json server/

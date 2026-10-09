@@ -13,6 +13,7 @@ import type {
   Job,
   ListQuery,
   ListResult,
+  PasswordPolicy,
   RecordData,
   Role,
   Sort,
@@ -84,8 +85,24 @@ export const authApi = {
     http.post<{ user: User; token: string }>('/auth/signup', body, { anonymous: true }),
   signIn: (body: { email: string; password: string }) =>
     http.post<{ user: User; token: string }>('/auth/signin', body, { anonymous: true }),
-  me: () => http.get<{ user: User }>('/auth/me'),
+  me: () => http.get<{ user: User; account?: Account }>('/auth/me'),
+  providers: () => http.get<AuthProviders>('/auth/providers', { anonymous: true }),
+  changePassword: (body: { email: string; password: string; newPassword: string }) =>
+    http.post<{ user: User; token: string }>('/auth/password', body, { anonymous: true }),
 };
+
+/** How the signed-in user signs in, whether they may open the settings, and when their password expires. */
+export interface Account {
+  source: 'local' | 'ldap' | 'entra';
+  admin: boolean;
+  passwordExpiresAt: string | null;
+  passwordExpiresSoon: boolean;
+}
+export interface AuthProviders {
+  ldap: boolean;
+  entra: boolean;
+  password_policy: PasswordPolicy;
+}
 
 export const metaApi = {
   listBases: () => http.get<Base[]>('/bases'),

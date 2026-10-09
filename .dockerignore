@@ -11,3 +11,5 @@ server/data
 .claude
 docs
 **/*.md
+secrets
+deploy

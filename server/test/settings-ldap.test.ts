@@ -74,7 +74,7 @@ describe('LDAP / AD sign-in', () => {
     expect(await getSecret('directory/ldap', 'bind_password')).toBe('svc-pass');
     expect(JSON.stringify(getDb().prepare("SELECT value FROM nc_settings WHERE key = 'directory.ldap'").get())).not.toContain('svc-pass');
     expect((await inject('PUT', '/settings/ldap', { config: { ...config, admin_group_dn: ADMINS } })).statusCode).toBe(200);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/providers' })).json()).toEqual({ ldap: true, entra: false });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/providers' })).json()).toMatchObject({ ldap: true, entra: false });
   });
 
   it('signs directory users in, creates their accounts and makes admin group members admins', async () => {

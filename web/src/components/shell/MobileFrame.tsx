@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Link, useLocation } from 'react-router-dom';
 import { useBases } from '../../api/hooks';
 import { useT } from '../../i18n';
+import { useAuth } from '../../lib/auth';
 import { AppSidebar, pageLabel } from './AppSidebar';
 import { spring } from './Brand';
 import { basesOwn, navGroups, owns } from './nav';
@@ -25,7 +26,7 @@ function useTitle() {
   const baseId = /^\/base\/([^/]+)/.exec(pathname)?.[1];
   if (baseId) return bases.data?.find((b) => b.id === baseId)?.title ?? t('Bases');
   if (pathname === '/') return t('Bases');
-  for (const g of navGroups()) {
+  for (const g of navGroups(true)) {
     const page = [...g.pages].sort((a, b) => b.to.length - a.to.length).find((p) => owns(p, pathname));
     if (page) return pageLabel(page, t);
   }

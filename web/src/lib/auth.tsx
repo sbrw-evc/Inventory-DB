@@ -2,15 +2,21 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { User } from '@shared';
 import { getToken, setToken } from '../api/client';
-import { authApi } from '../api/endpoints';
+import { authApi, type Account } from '../api/endpoints';
 import { qk } from '../api/hooks';
 
 interface AuthState {
   token: string | null;
   user: User | null;
+  /** Sign-in source, admin flag and password expiry; null until /auth/me answers. */
+  account: Account | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
+  /** Replace the password of a local account (also an expired one) and sign in with the new one. */
+  changePassword: (email: string, password: string, newPassword: string) => Promise<void>;
+  /** Use a session issued elsewhere (Entra ID sign-in). */
+  adoptSession: (token: string) => void;
   signOut: () => void;
 }
 
@@ -37,17 +43,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const me = useQuery({ queryKey: [...qk.me, token], queryFn: authApi.me, enabled: !!token, retry: false, staleTime: 5 * 60_000 });
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const res = await authApi.signIn({ email, password });
+  // The full /auth/me answer (with the account) is fetched right after; the user is known already.
+  const start = useCallback((res: { user: User; token: string }) => {
     qc.setQueryData([...qk.me, res.token], { user: res.user });
     setToken(res.token);
+    void qc.invalidateQueries({ queryKey: qk.me });
   }, [qc]);
 
-  const signUp = useCallback(async (email: string, password: string, name?: string) => {
-    const res = await authApi.signUp({ email, password, name });
-    qc.setQueryData([...qk.me, res.token], { user: res.user });
-    setToken(res.token);
-  }, [qc]);
+  const signIn = useCallback(async (email: string, password: string) => start(await authApi.signIn({ email, password })), [start]);
+
+  const signUp = useCallback(
+    async (email: string, password: string, name?: string) => start(await authApi.signUp({ email, password, name })),
+    [start],
+  );
+
+  const changePassword = useCallback(
+    async (email: string, password: string, newPassword: string) => start(await authApi.changePassword({ email, password, newPassword })),
+    [start],
+  );
+
+  const adoptSession = useCallback((next: string) => setToken(next), []);
 
   const signOut = useCallback(() => {
     setToken(null);
@@ -58,12 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       token,
       user: me.data?.user ?? null,
+      account: me.data?.account ?? null,
       loading: !!token && me.isLoading,
       signIn,
       signUp,
+      changePassword,
+      adoptSession,
       signOut,
     }),
-    [token, me.data, me.isLoading, signIn, signUp, signOut],
+    [token, me.data, me.isLoading, signIn, signUp, changePassword, adoptSession, signOut],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

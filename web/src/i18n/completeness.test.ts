@@ -8,6 +8,7 @@ import { TYPE_CONFIG } from '../netbox/config';
 import { dictionaries } from '../netbox/i18n';
 import { ru } from './ru';
 import { ruFeatures } from './ruFeatures';
+import { ruSettings } from './ruSettings';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 
@@ -31,7 +32,7 @@ function translationKeys(file: string): string[] {
 const isNetbox = (f: string) => relative(SRC, f).startsWith('netbox');
 const files = sourceFiles(SRC).filter((f) => !isNetbox(f));
 const netboxFiles = sourceFiles(SRC).filter(isNetbox);
-const ruDict = { ...ruFeatures, ...ru };
+const ruDict = { ...ruSettings, ...ruFeatures, ...ru };
 
 describe('i18n completeness', () => {
   it('every t() key used by the app has a Russian translation', () => {

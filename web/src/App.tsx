@@ -17,6 +17,7 @@ const VirtualizationRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m)
 const ExtrasRoutes = lazy(() => import('./netbox/NetboxRoutes').then((m) => ({ default: m.ExtrasRoutes })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage })));
+const SettingsPage = lazy(() => import('./settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const SharedViewPage = lazy(() => import('./pages/SharedPages').then((m) => ({ default: m.SharedViewPage })));
 const SharedFormPage = lazy(() => import('./pages/SharedPages').then((m) => ({ default: m.SharedFormPage })));
 const lazyPage = (node: ReactNode) => <Suspense fallback={null}>{node}</Suspense>;
@@ -44,6 +45,7 @@ export function App() {
           <Route path="/extras/*" element={lazyPage(<ExtrasRoutes />)} />
           <Route path="/integrations/*" element={lazyPage(<IntegrationsPage />)} />
           <Route path="/admin/*" element={lazyPage(<AdminPage />)} />
+          <Route path="/settings/*" element={lazyPage(<SettingsPage />)} />
           <Route path="/account/tokens" element={<Navigate to="/admin/tokens" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

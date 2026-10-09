@@ -16,6 +16,9 @@ const JWT_SECRET_PATH = 'system/jwt';
 export async function initSystem(log: (msg: string) => void = console.log) {
   const file = readConfig();
   const bao = configuredOpenBao();
+  // Without OpenBao, secrets are encrypted in the database under INTEGRATION_KEY / JWT_SECRET; never under the built-in key.
+  if (!bao && process.env.NODE_ENV === 'production' && !process.env.INTEGRATION_KEY && !process.env.JWT_SECRET)
+    throw new Error('Configure OpenBao (OPENBAO_ADDR) or set JWT_SECRET: secrets need a store or an encryption key');
   if (bao) {
     const waitMs = Number(process.env.OPENBAO_WAIT_SECONDS ?? 120) * 1000;
     log(`Connecting to OpenBao at ${bao.addr} (mount ${bao.mount})`);
