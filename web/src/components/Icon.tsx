@@ -72,6 +72,10 @@ const PATHS: Record<string, string> = {
   sigma: 'M18 5H6l6 7-6 7h12',
   function: 'M14 4c-3 0-3 3-3.5 6S9 20 6 20M7 10h8M14 14l5 5M19 14l-5 5',
   idKey: 'M4 6h16v12H4zM8 10v4M12 10v4h2a2 2 0 0 0 0-4z',
+  mapPin: 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  timeline: 'M4 5h9M8 10h10M6 15h8M10 20h10',
+  map: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14',
+  plug: 'M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4',
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {
@@ -121,6 +125,7 @@ const FIELD_ICONS: Record<FieldType, string> = {
   Lookup: 'lookup',
   Rollup: 'sigma',
   Formula: 'function',
+  GeoData: 'mapPin',
 };
 
 export const FIELD_LABELS: Record<FieldType, string> = {
@@ -148,6 +153,7 @@ export const FIELD_LABELS: Record<FieldType, string> = {
   Lookup: 'Lookup',
   Rollup: 'Rollup',
   Formula: 'Formula',
+  GeoData: 'Geo data',
 };
 
 export function FieldIcon({ type, size = 14 }: { type: FieldType; size?: number }) {
@@ -160,6 +166,8 @@ export const VIEW_ICONS: Record<ViewType, string> = {
   gallery: 'gallery',
   kanban: 'kanban',
   calendar: 'calendar',
+  timeline: 'timeline',
+  map: 'map',
 };
 
 export const VIEW_LABELS: Record<ViewType, string> = {
@@ -168,6 +176,8 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   gallery: 'Gallery',
   kanban: 'Kanban',
   calendar: 'Calendar',
+  timeline: 'Timeline',
+  map: 'Map',
 };
 
 export function ViewIcon({ type, size = 15 }: { type: ViewType; size?: number }) {

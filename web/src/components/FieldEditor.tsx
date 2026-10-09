@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import type { Column, ColumnOptions, FieldType, SelectOption, Table } from '@shared';
-import { FIELD_TYPES, ROLLUP_FUNCTIONS } from '@shared';
+import type { Column, ColumnOptions, FieldPermissions, FieldType, Role, SelectOption, Table } from '@shared';
+import { FIELD_TYPES, RESTRICTABLE_ROLES, ROLLUP_FUNCTIONS } from '@shared';
 import { type ColumnInput, metaApi } from '../api/endpoints';
 import { t } from '../i18n';
 import { useBaseData } from '../lib/baseContext';
@@ -8,6 +8,7 @@ import { CHIP_PALETTE, chipStyle, nextChoiceColor } from '../lib/colors';
 import { FIELD_LABELS, FieldIcon, Icon } from './Icon';
 import { Modal } from './Modal';
 import { Popover } from './Popover';
+import '../styles/fieldPermissions.css';
 
 const CREATABLE: FieldType[] = FIELD_TYPES.filter((f) => f !== 'ID');
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'RUB', 'JPY', 'CNY', 'INR', 'CAD', 'AUD', 'CHF', 'SEK', 'BRL', 'KZT', 'UAH', 'TRY'];
@@ -86,9 +87,59 @@ function ChoicesEditor({ choices, onChange }: { choices: SelectOption[]; onChang
   );
 }
 
+type Access = 'edit' | 'read' | 'hidden';
+
+/** Owner-only: per-role access to this field (NocoDB-style field permissions). */
+function PermissionsEditor({ value, onChange }: { value: FieldPermissions; onChange: (p: FieldPermissions) => void }) {
+  const accessOf = (r: Role): Access => (value.hiddenFor?.includes(r) ? 'hidden' : value.readOnlyFor?.includes(r) ? 'read' : 'edit');
+  const set = (r: Role, a: Access) => {
+    const hiddenFor = (value.hiddenFor ?? []).filter((x) => x !== r);
+    const readOnlyFor = (value.readOnlyFor ?? []).filter((x) => x !== r);
+    if (a === 'hidden') hiddenFor.push(r);
+    if (a === 'read') readOnlyFor.push(r);
+    onChange({ hiddenFor, readOnlyFor });
+  };
+  return (
+    <div className="field-permissions">
+      <table className="field-permissions-table">
+        <thead>
+          <tr>
+            <th>{t('Role')}</th>
+            <th>{t('Can edit')}</th>
+            <th>{t('Read only')}</th>
+            <th>{t('Hidden')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="muted">
+            <td>{t('owner')}</td>
+            <td>
+              <input type="radio" checked readOnly disabled aria-label={t('Can edit')} />
+            </td>
+            <td />
+            <td />
+          </tr>
+          {RESTRICTABLE_ROLES.map((r) => (
+            <tr key={r}>
+              <td>{t(r)}</td>
+              {(['edit', 'read', 'hidden'] as Access[]).map((a) => (
+                <td key={a}>
+                  <input type="radio" name={`perm-${r}`} checked={accessOf(r) === a} onChange={() => set(r, a)} aria-label={`${t(r)}: ${a}`} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="muted small">{t('Owners always see and edit every field. Hidden fields are left out of records, exports and shared views for that role.')}</div>
+    </div>
+  );
+}
+
 /** Create or edit a field, with options for every supported type. */
 export function FieldEditor({ table, column, onClose, onSaved }: Props) {
-  const { tables } = useBaseData();
+  const { tables, perms } = useBaseData();
+  const [permissions, setPermissions] = useState<FieldPermissions>(column?.options.permissions ?? {});
   const [title, setTitle] = useState(column?.title ?? '');
   const [type, setType] = useState<FieldType>(column?.type ?? 'SingleLineText');
   const [options, setOptions] = useState<ColumnOptions>(column?.options ?? {});
@@ -176,6 +227,11 @@ export function FieldEditor({ table, column, onClose, onSaved }: Props) {
         break;
       default:
         break;
+    }
+    if (perms.isOwner) {
+      // Always sent by owners so clearing every restriction removes them (null = none).
+      const hasAny = !!(permissions.hiddenFor?.length || permissions.readOnlyFor?.length);
+      (o as Record<string, unknown>).permissions = hasAny ? permissions : null;
     }
     return o;
   };
@@ -396,6 +452,13 @@ export function FieldEditor({ table, column, onClose, onSaved }: Props) {
           <label className="checkbox-label">
             <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /> {t('Required')}
           </label>
+        )}
+
+        {perms.isOwner && (
+          <>
+            <label className="field-label">{t('Permissions')}</label>
+            <PermissionsEditor value={permissions} onChange={setPermissions} />
+          </>
         )}
       </div>
       {error && <div className="notice notice-error">{error}</div>}

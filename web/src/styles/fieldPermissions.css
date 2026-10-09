@@ -1,0 +1,46 @@
+/* Field-level permissions: field editor table, read-only cells, GeoData editor. */
+.field-permissions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-permissions-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--font-size, 13px);
+}
+.field-permissions-table th,
+.field-permissions-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: center;
+}
+.field-permissions-table th {
+  background: var(--table-header);
+  font-weight: 600;
+}
+.field-permissions-table td:first-child,
+.field-permissions-table th:first-child {
+  text-align: left;
+}
+.grid-cell.cell-readonly {
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0, 0, 0, 0.025) 6px 12px);
+  cursor: default;
+}
+.geo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.geo-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.geo-input {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 120px;
+}

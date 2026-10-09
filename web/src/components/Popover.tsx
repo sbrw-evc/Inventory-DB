@@ -10,14 +10,18 @@ interface PopoverProps {
   /** Match the anchor's width at least. */
   matchWidth?: boolean;
   offset?: number;
+  /** Escape handler; defaults to onClose (editors use it to discard instead of saving). */
+  onEscape?: () => void;
 }
 
 /** A floating panel positioned below its anchor; closes on outside click and Escape. */
-export function Popover({ anchor, onClose, children, align = 'start', className, matchWidth, offset = 4 }: PopoverProps) {
+export function Popover({ anchor, onClose, children, align = 'start', className, matchWidth, offset = 4, onEscape }: PopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; minWidth?: number } | null>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const escRef = useRef(onEscape);
+  escRef.current = onEscape;
 
   useLayoutEffect(() => {
     const place = () => {
@@ -60,7 +64,7 @@ export function Popover({ anchor, onClose, children, align = 'start', className,
         if (all[all.length - 1] === ref.current) {
           e.preventDefault();
           e.stopPropagation();
-          closeRef.current();
+          (escRef.current ?? closeRef.current)();
         }
       }
     };

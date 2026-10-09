@@ -1,4 +1,5 @@
 import type { Attachment, Column, FieldType } from '@shared';
+import { formatGeo, parseGeo } from '@shared';
 import { t } from '../i18n';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -247,6 +248,11 @@ export function parseInputValue(column: Pick<Column, 'type' | 'options'>, text: 
     }
     case 'Attachment':
       return undefined;
+    case 'GeoData': {
+      if (!t) return null;
+      const p = parseGeo(t);
+      return p ? formatGeo(p) : undefined;
+    }
     default:
       return text === '' ? null : text;
   }
