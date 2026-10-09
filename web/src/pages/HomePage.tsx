@@ -6,7 +6,7 @@ import { PageHead } from '../components/shell/PageHead';
 import { Icon } from '../components/Icon';
 import { ImportDialog } from '../components/ImportDialog';
 import { MigrateDialog } from '../components/MigrateDialog';
-import { t } from '../i18n';
+import { getLang, t } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { permissionsFor } from '../lib/roles';
 
@@ -83,7 +83,7 @@ export function HomePage() {
                   <td>
                     <span className={`pill ${permissionsFor(b.role).isOwner ? 'pill-ok' : permissionsFor(b.role).canEdit ? 'pill-info' : ''}`}>{t(b.role ?? 'viewer')}</span>
                   </td>
-                  <td className="muted">{new Date(b.createdAt).toLocaleDateString()}</td>
+                  <td className="muted">{new Date(b.createdAt).toLocaleDateString(getLang())}</td>
                 </tr>
               ))}
             </tbody>

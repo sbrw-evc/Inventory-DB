@@ -265,7 +265,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
                   <tr key={i.id}>
                     <td>
                       <Link to={`/dcim/interfaces/${i.id}`}>{i.display}</Link>
-                      {i.mgmt_only ? <span className="nb-muted"> (mgmt)</span> : null}
+                      {i.mgmt_only ? <span className="nb-muted"> ({t('mgmt')})</span> : null}
                     </td>
                     <td>
                       <Value v={i.type} />

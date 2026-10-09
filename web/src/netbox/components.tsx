@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { nb, type ModelSchema, type Ref } from './api';
 import { isChoice, isRef, statusTone, utilTone, type MonitoringStatus, type Tone } from './format';
 import { useSchema } from './hooks';
-import { t, valueLabel } from './i18n';
+import { currentLang, t, valueLabel } from './i18n';
 
 /** API url (`/api/v1/dcim/devices/5/`) → UI route (`/dcim/devices/5`). */
 export const uiHref = (apiUrl: string) => apiUrl.replace(/^\/api\/v1/, '').replace(/\/$/, '');
@@ -106,7 +106,7 @@ export function Value({ v, name }: { v: unknown; name?: string }) {
     return <code style={{ fontSize: 11 }}>{JSON.stringify(v)}</code>;
   }
   if (typeof v === 'boolean') return <span>{v ? t('yes') : t('no')}</span>;
-  if (name === 'created' || name === 'last_updated' || name === 'time') return <span>{new Date(String(v)).toLocaleString()}</span>;
+  if (name === 'created' || name === 'last_updated' || name === 'time') return <span>{new Date(String(v)).toLocaleString(currentLang())}</span>;
   return <span>{String(v)}</span>;
 }
 

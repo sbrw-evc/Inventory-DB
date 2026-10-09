@@ -5,7 +5,7 @@ import { type BaseWithTables, platformApi } from '../api/endpoints';
 import { qk } from '../api/hooks';
 import { confirmDialog } from '../components/dialogs';
 import { Icon } from '../components/Icon';
-import { t } from '../i18n';
+import { getLang, t } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { relativeTime } from '../lib/format';
 import { permissionsFor, ROLES } from '../lib/roles';
@@ -168,7 +168,7 @@ function AuditLog({ base }: { base: BaseWithTables }) {
         <tbody>
           {rows.map((a) => (
             <tr key={a.id}>
-              <td className="muted nowrap" title={new Date(a.createdAt).toLocaleString()}>
+              <td className="muted nowrap" title={new Date(a.createdAt).toLocaleString(getLang())}>
                 {relativeTime(a.createdAt)}
               </td>
               <td>{a.userName ?? t('System')}</td>
