@@ -1,6 +1,8 @@
-/** DCIM helpers: rack placement/elevation and cable paths. */
+/** DCIM helpers: rack placement/elevation. Cables and paths are in cabling.ts, power in power.ts. */
 import { addError } from './models/common.js';
 import type { Ctx, Errors, Obj, Row } from './types.js';
+
+export { VIRTUAL_IFACE_TYPES } from './cabling.js';
 
 export type Face = 'front' | 'rear';
 
@@ -91,32 +93,6 @@ export function rackElevation(ctx: Ctx, rack: Row, face: Face): Obj[] {
   return units;
 }
 
-export const ifaceTermination = (ctx: Ctx, id: number): Obj => ({
-  object_type: 'dcim.interface',
-  object_id: id,
-  object: ctx.ref('dcim.interface', id),
-});
-
-/** Interfaces on the far side of an interface's cable. */
-export function linkPeers(ctx: Ctx, iface: Row): Row[] {
-  if (iface.cable_id == null) return [];
-  return ctx.db
-    .prepare('SELECT * FROM nb_interfaces WHERE cable_id = ? AND cable_end IS NOT ? ORDER BY id')
-    .all(iface.cable_id, iface.cable_end) as Row[];
-}
-
-/**
- * Cable path from an interface: a list of segments `[near_end[], cable, far_end[]]`, NetBox style.
- * Only interfaces terminate cables here (no front/rear pass-through ports), so a path has one segment.
- */
-export function traceInterface(ctx: Ctx, iface: Row): unknown[] {
-  if (iface.cable_id == null) return [];
-  const near = ctx.db.prepare('SELECT id FROM nb_interfaces WHERE cable_id = ? AND cable_end = ? ORDER BY id').all(iface.cable_id, iface.cable_end) as Row[];
-  const far = linkPeers(ctx, iface);
-  const cable = ctx.get('dcim.cable', iface.cable_id);
-  return [[near.map((r) => ctx.serialize('dcim.interface', ctx.get('dcim.interface', r.id)!)), cable ? ctx.serialize('dcim.cable', cable) : null, far.map((r) => ctx.serialize('dcim.interface', r))]];
-}
-
 export const INTERFACE_TYPES = [
   ['virtual', 'Virtual'],
   ['bridge', 'Bridge'],
@@ -137,5 +113,3 @@ export const INTERFACE_TYPES = [
   ['other', 'Other'],
 ] as const;
 
-/** Interface types that can't take a cable. */
-export const VIRTUAL_IFACE_TYPES = new Set(['virtual', 'bridge', 'lag']);

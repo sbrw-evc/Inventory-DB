@@ -62,4 +62,6 @@ export function ensureNetboxSchema(db: DB) {
       db.exec(`CREATE INDEX IF NOT EXISTS ${q(`${m.table}_x${i}`)} ON ${q(m.table)}(${idx})`);
     }
   }
+  // Prefixes created before scopes existed are scoped to their site.
+  db.exec("UPDATE nb_prefixes SET scope_type = 'dcim.site', scope_id = site_id WHERE site_id IS NOT NULL AND scope_type IS NULL");
 }
