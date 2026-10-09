@@ -29,3 +29,26 @@ npm run build && npm start   # serves the built web app from the API server
 
 Environment: `PORT` (8080), `DB_PATH` (`data/inventory.db`), `JWT_SECRET` (set in production),
 `UPLOAD_DIR` (`data/uploads`), `WEBHOOK_ALLOW_PRIVATE=1` (let webhooks call private/internal addresses; off by default).
+
+## Deployment (Docker Compose)
+
+```bash
+cp .env.example .env               # set JWT_SECRET (openssl rand -hex 32)
+docker compose up -d --build       # app on http://localhost:8080 (INVENTORY_PORT to change)
+docker compose logs -f inventory-db
+```
+
+The image builds the server and the web app and serves both from one container. The SQLite database
+(`/data/inventory.db` plus its WAL files) and uploaded attachments (`/data/uploads`) live in the named volume
+`inventory-data`, so they survive `docker compose down`, rebuilds and upgrades; only `docker compose down -v`
+deletes them.
+
+Upgrade: `git pull && docker compose up -d --build`.
+
+Backup (consistent copy while the app runs):
+
+```bash
+docker compose exec inventory-db node -e "new (require('better-sqlite3'))('/data/inventory.db').backup('/data/backup.db').then(()=>console.log('ok'))"
+docker compose cp inventory-db:/data/backup.db ./inventory-backup.db
+```
+

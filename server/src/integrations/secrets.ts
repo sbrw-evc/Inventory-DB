@@ -6,7 +6,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
  */
 const key = () =>
   createHash('sha256')
-    .update(process.env.INTEGRATION_KEY ?? process.env.JWT_SECRET ?? 'dev-only-secret-change-me')
+    .update(process.env.INTEGRATION_KEY || process.env.JWT_SECRET || 'dev-only-secret-change-me')
     .digest();
 
 export const newSecret = () => `whsec_${randomBytes(24).toString('base64url')}`;

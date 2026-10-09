@@ -1,0 +1,17 @@
+services:
+  inventory-db:
+    build: .
+    image: inventory-db:latest
+    restart: unless-stopped
+    ports:
+      - "${INVENTORY_PORT:-8080}:8080"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+      INTEGRATION_KEY: ${INTEGRATION_KEY:-}
+      WEBHOOK_ALLOW_PRIVATE: ${WEBHOOK_ALLOW_PRIVATE:-0}
+    volumes:
+      # SQLite database (inventory.db + WAL files) and uploaded attachments.
+      - inventory-data:/data
+
+volumes:
+  inventory-data:
