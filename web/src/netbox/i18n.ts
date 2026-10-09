@@ -291,6 +291,7 @@ const fields: Dict = {
   postchange_data: ['After', 'После изменения'],
   object_repr: ['Object', 'Объект'],
   _utilization: ['Utilization', 'Заполненность'],
+  power_feed: ['Power feed', 'Линия питания'],
   utilization: ['Utilization', 'Заполненность'],
   _children: ['Children', 'Дочерние'],
   _depth: ['Depth', 'Глубина'],
@@ -363,6 +364,17 @@ const fields: Dict = {
   power_port_count: ['Power ports', 'Порты питания'],
   power_outlet_count: ['Power outlets', 'Розетки'],
   connected_endpoints: ['Connected to', 'Подключено к'],
+  connected_endpoints_type: ['Connected object type', 'Тип подключённого объекта'],
+  connected_endpoints_reachable: ['Reachable', 'Доступен'],
+  link_peers_type: ['Link peer type', 'Тип соседа по кабелю'],
+  cabled: ['Cabled', 'Подключён кабель'],
+  _occupied: ['Occupied', 'Занят'],
+  within_include: ['Within prefix', 'Внутри префикса'],
+  tags: ['Tags', 'Теги'],
+  front_port_template_count: ['Front port templates', 'Шаблоны фронтальных портов'],
+  rear_port_template_count: ['Rear port templates', 'Шаблоны тыловых портов'],
+  power_port_template_count: ['Power port templates', 'Шаблоны портов питания'],
+  power_outlet_template_count: ['Power outlet templates', 'Шаблоны розеток'],
 };
 
 /** Choice values (statuses etc.). */

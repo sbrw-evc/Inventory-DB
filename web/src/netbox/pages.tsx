@@ -6,7 +6,7 @@ import { objectRoute } from './config';
 import { DetailShell, type DetailContext } from './DetailShell';
 import { compareAddr, contrastText, elevationBlocks, isRef, type ElevationUnit } from './format';
 import { findModel, useAsync, useMonitoring, useSchema } from './hooks';
-import { fieldLabel, t, typeLabel } from './i18n';
+import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
 import { DeviceComponents, RackPowerCard } from './morePages';
 
 type SearchHit = Awaited<ReturnType<typeof nb.search>>['results'][number];
@@ -110,7 +110,7 @@ export function RackElevation({ rackId, face, onPick }: { rackId: number; face: 
   return (
     <figure className="nb-rack" style={{ margin: 0 }}>
       <figcaption style={{ fontWeight: 'bold', marginBottom: 6, textAlign: 'center' }}>{face === 'front' ? t('front') : t('rear')}</figcaption>
-      <svg width={LABEL_W + RACK_W + 2} height={height} viewBox={`0 0 ${LABEL_W + RACK_W + 2} ${height}`} role="img" aria-label={`${t('elevation')} ${face}`}>
+      <svg width={LABEL_W + RACK_W + 2} height={height} viewBox={`0 0 ${LABEL_W + RACK_W + 2} ${height}`} role="img" aria-label={`${t('elevation')}: ${t(face)}`}>
         <rect x={LABEL_W} y={0} width={RACK_W + 2} height={height} fill="#555" rx={3} />
         {units.map((u, i) => (
           <text key={u.id} className="unit-label" x={LABEL_W - 4} y={i * UNIT_H + UNIT_H / 2 + 4} textAnchor="end">
@@ -221,7 +221,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
           <KV
             rows={[
               ...kvRows(obj, ['site', 'location', 'rack']),
-              ...(rack && obj.position != null ? ([[fieldLabel('position'), `U${String(obj.position)} · ${(obj.face as { label: string } | null)?.label ?? ''}`]] as [string, ReactNode][]) : []),
+              ...(rack && obj.position != null ? ([[fieldLabel('position'), `U${String(obj.position)} · ${obj.face ? valueLabel((obj.face as { value: string }).value, (obj.face as { label: string }).label) : ''}`]] as [string, ReactNode][]) : []),
               ...kvRows(obj, ['role', 'device_type', 'platform', 'cluster', 'tenant', 'serial', 'asset_tag', 'primary_ip4', 'primary_ip6', 'description', 'comments', 'tags']),
             ]}
           />

@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { models } from '../../../server/src/netbox/registry';
+import { TYPE_CONFIG } from '../netbox/config';
 import { dictionaries } from '../netbox/i18n';
 import { ru } from './ru';
 import { ruFeatures } from './ruFeatures';
@@ -72,5 +73,29 @@ describe('i18n completeness', () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it('every NetBox list column and filter has a field label', () => {
+    const { fields } = dictionaries;
+    const missing = Object.entries(TYPE_CONFIG).flatMap(([type, c]) =>
+      [...c.columns, ...(c.filters ?? [])]
+        .filter((k) => !['id', 'display', 'tag'].includes(k) && !fields[k] && !fields[k.replace(/_id$/, '')])
+        .map((k) => `${type}: ${k}`),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('every field name the NetBox pages label has a field label', () => {
+    const { fields, ui } = dictionaries;
+    const missing = netboxFiles.flatMap((f) => {
+      const code = readFileSync(f, 'utf8');
+      const keys = [...code.matchAll(/fieldLabel\('(\w+)'\)/g)].map((m) => m[1]);
+      // Field lists: kvRows(obj, [...]), columns: [...], and header arrays mapped to fieldLabel.
+      for (const m of code.matchAll(/(?:kvRows\(\w+, |columns: |\{)\[((?:\s*'\w+',?)+)\s*\]/g)) keys.push(...[...m[1].matchAll(/'(\w+)'/g)].map((x) => x[1]));
+      return keys
+        .filter((k) => k !== 'id' && k !== 'display' && !fields[k] && !fields[k.replace(/_id$/, '')] && !ui[k])
+        .map((k) => `${relative(SRC, f)}: ${k}`);
+    });
+    expect([...new Set(missing)]).toEqual([]);
   });
 });
