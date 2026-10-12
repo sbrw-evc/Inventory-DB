@@ -1,5 +1,20 @@
-/** Integrations with other systems. Today: Umbrella monitoring (github.com/sbrw-evc/Umbrella-Monitoring). */
-export type IntegrationKind = 'umbrella';
+/**
+ * Integrations with other systems: Umbrella monitoring (github.com/sbrw-evc/Umbrella-Monitoring) and Umbrella Flow
+ * (traffic analytics; contract in the Network repo's docs/integrations.md §2).
+ */
+export type IntegrationKind = 'umbrella' | 'flow';
+
+/** Result of the last change notification sent to Umbrella Flow. */
+export interface FlowDelivery {
+  at: string;
+  ok: boolean;
+  /** HTTP status Flow answered with (absent on network errors / timeouts). */
+  httpStatus?: number | null;
+  error?: string | null;
+  /** Events in the batch and attempts it took. */
+  events: number;
+  attempts: number;
+}
 
 export interface Integration {
   id: string;
@@ -15,6 +30,12 @@ export interface Integration {
   lastFeedCount?: number | null;
   /** When Umbrella last delivered a correctly signed alert batch. */
   lastAlertAt?: string | null;
+  /** Umbrella Flow base URL (kind `flow`). */
+  flowUrl?: string | null;
+  /** Whether a Flow API token is stored (the token itself never leaves the server). */
+  flowTokenSet?: boolean;
+  /** Last change notification sent to Flow (kind `flow`). */
+  lastDelivery?: FlowDelivery | null;
   createdBy: string;
   createdAt: string;
 }
@@ -25,6 +46,48 @@ export interface IntegrationInput {
   active?: boolean;
   umbrellaUrl?: string | null;
   inventoryUrl?: string | null;
+  /** Kind `flow`: Flow base URL and API token (stored in the secret store, write-only). */
+  flowUrl?: string | null;
+  flowToken?: string;
+}
+
+/** Object types Umbrella Flow reports traffic for. */
+export type FlowObjectType = 'dcim.device' | 'dcim.interface' | 'circuits.circuit';
+
+/** Traffic of one object as Flow reports it (`GET …/inventory-db/status`). */
+export interface FlowTraffic {
+  in_bps: number | null;
+  out_bps: number | null;
+  speed_bps?: number | null;
+  utilization_in?: number | null;
+  utilization_out?: number | null;
+  p95_month_bps?: number | null;
+  commit_bps?: number | null;
+  over_commit?: boolean | null;
+  sparkline?: { t: string[]; in: number[]; out: number[] } | null;
+  flow_url?: string | null;
+  last_seen?: string | null;
+}
+
+export interface FlowStatusResponse {
+  window: string;
+  results: Record<string, FlowTraffic>;
+}
+
+export interface FlowPrefixAddress {
+  address: string;
+  bytes: number;
+  flows: number;
+  last_seen: string | null;
+  /** In Inventory DB's IPAM (checked locally, so it is current even when Flow's snapshot lags). */
+  in_ipam: boolean;
+  /** Id of the matching IPAM address, when there is one. */
+  ip_address_id?: number | null;
+}
+
+export interface FlowPrefixAddressesResponse {
+  prefix: string;
+  results: FlowPrefixAddress[];
 }
 
 /** Umbrella severity levels (PagerDuty's four). */
