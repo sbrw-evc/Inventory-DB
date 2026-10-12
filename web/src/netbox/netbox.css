@@ -812,3 +812,104 @@
     width: 100%;
   }
 }
+
+/* Umbrella Flow traffic (flow.tsx): in = accent, out = purple, bars use the utilisation tones. */
+.nb-traffic {
+  display: inline-grid;
+  gap: 3px;
+  min-width: 150px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.nb-traffic-rates {
+  display: flex;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.nb-traffic-rates .in,
+.nb-spark-key.in::before {
+  color: var(--accent);
+}
+.nb-traffic-rates .out,
+.nb-spark-key.out::before {
+  color: var(--purple);
+}
+.nb-traffic .bar {
+  display: block;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.nb-traffic .fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ok);
+}
+.nb-traffic .fill.warning {
+  background: var(--warn);
+}
+.nb-traffic .fill.critical {
+  background: var(--error);
+}
+.nb-flow {
+  display: grid;
+  gap: 12px;
+}
+.nb-flow-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+}
+.nb-flow-rates > div {
+  display: grid;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.nb-flow-rates b {
+  font-size: 18px;
+  font-weight: 600;
+}
+.nb-spark svg {
+  display: block;
+  width: 100%;
+  height: 56px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.nb-spark polyline {
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+.nb-spark polyline.in {
+  stroke: var(--accent);
+}
+.nb-spark polyline.out {
+  stroke: var(--purple);
+}
+.nb-spark figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.nb-spark figcaption .nb-spacer {
+  flex: 1;
+}
+.nb-spark-key::before {
+  content: '●';
+  margin-right: 4px;
+}
+.nb-flow-commit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  font-variant-numeric: tabular-nums;
+}
+a.nb-btn {
+  text-decoration: none;
+}

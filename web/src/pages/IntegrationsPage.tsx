@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Integration } from "@shared";
+import type { Integration, IntegrationKind } from "@shared";
 import { apiUrl, integrationsApi } from "../api/integrations";
 import { confirmDialog } from "../components/dialogs";
 import { Icon } from "../components/Icon";
@@ -45,6 +45,13 @@ function When({ iso, never }: { iso?: string | null; never: string }) {
 /** Health of the link with Umbrella: inactive, never synced, stale (no feed read for 1 hour) or ok. */
 function syncState(i: Integration): { cls: string; label: string } {
   if (!i.active) return { cls: "", label: t("Inactive") };
+  if (i.kind === "flow") {
+    if (!i.lastDelivery)
+      return { cls: "info", label: t("No changes sent yet") };
+    return i.lastDelivery.ok
+      ? { cls: "ok", label: t("Connected") }
+      : { cls: "error", label: t("Last delivery failed") };
+  }
   if (!i.lastFeedAt && !i.lastAlertAt)
     return { cls: "info", label: t("Waiting for Umbrella") };
   const age = i.lastFeedAt
@@ -59,22 +66,29 @@ interface FormValue {
   title: string;
   umbrellaUrl: string;
   inventoryUrl: string;
+  flowUrl: string;
+  flowToken: string;
   active: boolean;
 }
 
 function IntegrationForm({
   initial,
+  kind = initial?.kind ?? "umbrella",
   onClose,
   onSaved,
 }: {
   initial?: Integration;
+  kind?: IntegrationKind;
   onClose: () => void;
   onSaved: (secret?: string, integration?: Integration) => void;
 }) {
+  const isFlow = kind === "flow";
   const [v, setV] = useState<FormValue>({
-    title: initial?.title ?? "Umbrella",
+    title: initial?.title ?? (isFlow ? "Umbrella Flow" : "Umbrella"),
     umbrellaUrl: initial?.umbrellaUrl ?? "",
     inventoryUrl: initial?.inventoryUrl ?? "",
+    flowUrl: initial?.flowUrl ?? "",
+    flowToken: "",
     active: initial?.active ?? true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +98,7 @@ function IntegrationForm({
 
   const save = async () => {
     if (!v.title.trim()) return setError(t("Name is required"));
+    if (isFlow) return saveFlow();
     for (const u of [v.umbrellaUrl, v.inventoryUrl]) {
       if (u.trim() && !/^https?:\/\/\S+$/i.test(u.trim()))
         return setError(t("URLs must start with http:// or https://"));
@@ -111,9 +126,43 @@ function IntegrationForm({
     }
   };
 
+  const saveFlow = async () => {
+    if (!/^https?:\/\/\S+$/i.test(v.flowUrl.trim()))
+      return setError(t("URLs must start with http:// or https://"));
+    if (!initial && !v.flowToken.trim())
+      return setError(t("The Flow API token is required"));
+    setBusy(true);
+    setError(null);
+    const body = {
+      title: v.title.trim(),
+      active: v.active,
+      flowUrl: v.flowUrl.trim(),
+      ...(v.flowToken.trim() ? { flowToken: v.flowToken.trim() } : {}),
+    };
+    try {
+      if (initial) {
+        onSaved(undefined, await integrationsApi.update(initial.id, body));
+      } else {
+        const res = await integrationsApi.create({ kind: "flow", ...body });
+        onSaved(res.secret, res.integration);
+      }
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Modal
-      title={initial ? t("Edit integration") : t("Connect Umbrella")}
+      title={
+        initial
+          ? t("Edit integration")
+          : isFlow
+            ? t("Connect Umbrella Flow")
+            : t("Connect Umbrella")
+      }
       onClose={onClose}
       width={520}
       footer={
@@ -139,28 +188,62 @@ function IntegrationForm({
           value={v.title}
           onChange={(e) => set("title", e.target.value)}
         />
-        <label className="field-label">{t("Umbrella URL")}</label>
-        <input
-          className="input"
-          placeholder="https://umbrella.corp"
-          value={v.umbrellaUrl}
-          onChange={(e) => set("umbrellaUrl", e.target.value)}
-        />
-        <div className="muted small">
-          {t("Used to build links back to Umbrella (optional).")}
-        </div>
-        <label className="field-label">{t("Inventory DB public URL")}</label>
-        <input
-          className="input"
-          placeholder={window.location.origin}
-          value={v.inventoryUrl}
-          onChange={(e) => set("inventoryUrl", e.target.value)}
-        />
-        <div className="muted small">
-          {t(
-            "Used for record links in the CMDB feed. Defaults to the address Umbrella calls.",
-          )}
-        </div>
+        {isFlow ? (
+          <>
+            <label className="field-label">{t("Umbrella Flow URL")}</label>
+            <input
+              className="input"
+              placeholder="https://flow.corp"
+              value={v.flowUrl}
+              onChange={(e) => set("flowUrl", e.target.value)}
+            />
+            <label className="field-label">{t("Flow API token")}</label>
+            <input
+              className="input mono"
+              type="password"
+              autoComplete="off"
+              placeholder={
+                initial?.flowTokenSet
+                  ? t("Stored — leave empty to keep it")
+                  : "flow_…"
+              }
+              value={v.flowToken}
+              onChange={(e) => set("flowToken", e.target.value)}
+            />
+            <div className="muted small">
+              {t(
+                "A Flow token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.",
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <label className="field-label">{t("Umbrella URL")}</label>
+            <input
+              className="input"
+              placeholder="https://umbrella.corp"
+              value={v.umbrellaUrl}
+              onChange={(e) => set("umbrellaUrl", e.target.value)}
+            />
+            <div className="muted small">
+              {t("Used to build links back to Umbrella (optional).")}
+            </div>
+            <label className="field-label">
+              {t("Inventory DB public URL")}
+            </label>
+            <input
+              className="input"
+              placeholder={window.location.origin}
+              value={v.inventoryUrl}
+              onChange={(e) => set("inventoryUrl", e.target.value)}
+            />
+            <div className="muted small">
+              {t(
+                "Used for record links in the CMDB feed. Defaults to the address Umbrella calls.",
+              )}
+            </div>
+          </>
+        )}
         <label className="checkbox-label">
           <input
             type="checkbox"
@@ -187,10 +270,11 @@ function IntegrationCard({
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [showUnmatched, setShowUnmatched] = useState(false);
+  const isFlow = i.kind === "flow";
   const unmatched = useQuery({
     queryKey: [...KEY, i.id, "unmatched"],
     queryFn: () => integrationsApi.unmatched(i.id),
-    enabled: showUnmatched,
+    enabled: showUnmatched && !isFlow,
   });
   const state = syncState(i);
   const feed = apiUrl(i, `/integrations/${i.id}/umbrella/ci`);
@@ -199,9 +283,13 @@ function IntegrationCard({
   const rotate = async () => {
     const ok = await confirmDialog({
       title: t("Issue a new signing secret?"),
-      message: t(
-        "Umbrella must be updated with the new secret; until then its alert deliveries are rejected.",
-      ),
+      message: isFlow
+        ? t(
+            "Paste the new secret into Flow within 24 hours; until then change notifications carry signatures with both secrets.",
+          )
+        : t(
+            "Umbrella must be updated with the new secret; until then its alert deliveries are rejected.",
+          ),
       confirmLabel: t("Rotate secret"),
       danger: true,
     });
@@ -215,9 +303,13 @@ function IntegrationCard({
   const remove = async () => {
     const ok = await confirmDialog({
       title: t("Delete integration “{name}”?", { name: i.title }),
-      message: t(
-        "Umbrella will no longer be able to read the feed or send alerts. Stored alert states are deleted.",
-      ),
+      message: isFlow
+        ? t(
+            "Traffic from Flow disappears from DCIM pages and Flow is no longer notified of changes. The stored Flow token is deleted.",
+          )
+        : t(
+            "Umbrella will no longer be able to read the feed or send alerts. Stored alert states are deleted.",
+          ),
       confirmLabel: t("Delete"),
       danger: true,
     });
@@ -256,125 +348,147 @@ function IntegrationCard({
         </button>
       </header>
 
-      <div className="counters integration-counters">
-        <div className="counter neutral">
-          <span className="counter-label">{t("Last CMDB sync")}</span>
-          <span className="counter-value">
-            <When iso={i.lastFeedAt} never={t("never")} />
-          </span>
-          {i.lastFeedCount != null && (
-            <span className="muted small">
-              {t("{n} configuration items", { n: i.lastFeedCount })}
-            </span>
+      {isFlow ? (
+        <FlowDetails integration={i} secret={secret} onRotate={rotate} />
+      ) : (
+        <>
+          <div className="counters integration-counters">
+            <div className="counter neutral">
+              <span className="counter-label">{t("Last CMDB sync")}</span>
+              <span className="counter-value">
+                <When iso={i.lastFeedAt} never={t("never")} />
+              </span>
+              {i.lastFeedCount != null && (
+                <span className="muted small">
+                  {t("{n} configuration items", { n: i.lastFeedCount })}
+                </span>
+              )}
+            </div>
+            <div className="counter neutral">
+              <span className="counter-label">{t("Last alert received")}</span>
+              <span className="counter-value">
+                <When iso={i.lastAlertAt} never={t("never")} />
+              </span>
+            </div>
+            <div className="counter neutral">
+              <span className="counter-label">{t("Created")}</span>
+              <span className="counter-value">
+                {formatDate(i.createdAt, false)}
+              </span>
+            </div>
+          </div>
+
+          {secret && (
+            <div className="notice notice-success token-once">
+              <b>
+                {t("Copy the signing secret now — it won’t be shown again.")}
+              </b>
+              <CopyField value={secret} />
+            </div>
           )}
-        </div>
-        <div className="counter neutral">
-          <span className="counter-label">{t("Last alert received")}</span>
-          <span className="counter-value">
-            <When iso={i.lastAlertAt} never={t("never")} />
-          </span>
-        </div>
-        <div className="counter neutral">
-          <span className="counter-label">{t("Created")}</span>
-          <span className="counter-value">
-            {formatDate(i.createdAt, false)}
-          </span>
-        </div>
-      </div>
 
-      {secret && (
-        <div className="notice notice-success token-once">
-          <b>{t("Copy the signing secret now — it won’t be shown again.")}</b>
-          <CopyField value={secret} />
-        </div>
-      )}
-
-      <dl className="integration-details">
-        <dt>{t("CMDB feed (Inventory connector)")}</dt>
-        <dd>
-          <CopyField value={feed} />
-          <div className="muted small">
-            {t(
-              "Umbrella pulls this every 15 minutes with an API token of a read-only user in the",
-            )}{" "}
-            <code>xc-token</code> {t("header, paging by")} <code>offset</code>{" "}
-            {t("until")} <code>next_offset</code> {t("is null.")}{" "}
-            <Link to="/admin/tokens">{t("Create an API token")}</Link>
-          </div>
-        </dd>
-        <dt>{t("Alert webhook (Status connector)")}</dt>
-        <dd>
-          <CopyField value={hook} />
-          <div className="muted small">
-            {t("Signed with the secret:")} <code>x-umbrella-timestamp</code>,{" "}
-            <code>
-              x-umbrella-signature: v1=HMAC-SHA256(secret, "timestamp.body")
-            </code>
-          </div>
-        </dd>
-        <dt>{t("Signing secret")}</dt>
-        <dd>
-          <span className="mono muted">••••••••••••</span>{" "}
-          <button className="btn btn-sm" onClick={rotate}>
-            <Icon name="refresh" size={13} /> {t("Rotate secret")}
-          </button>
-        </dd>
-        {i.umbrellaUrl && (
-          <>
-            <dt>{t("Umbrella")}</dt>
+          <dl className="integration-details">
+            <dt>{t("CMDB feed (Inventory connector)")}</dt>
             <dd>
-              <a href={i.umbrellaUrl} target="_blank" rel="noreferrer noopener">
-                {i.umbrellaUrl}
-              </a>
+              <CopyField value={feed} />
+              <div className="muted small">
+                {t(
+                  "Umbrella pulls this every 15 minutes with an API token of a read-only user in the",
+                )}{" "}
+                <code>xc-token</code> {t("header, paging by")}{" "}
+                <code>offset</code> {t("until")} <code>next_offset</code>{" "}
+                {t("is null.")}{" "}
+                <Link to="/admin/tokens">{t("Create an API token")}</Link>
+              </div>
             </dd>
-          </>
-        )}
-      </dl>
+            <dt>{t("Alert webhook (Status connector)")}</dt>
+            <dd>
+              <CopyField value={hook} />
+              <div className="muted small">
+                {t("Signed with the secret:")} <code>x-umbrella-timestamp</code>
+                ,{" "}
+                <code>
+                  x-umbrella-signature: v1=HMAC-SHA256(secret, "timestamp.body")
+                </code>
+              </div>
+            </dd>
+            <dt>{t("Signing secret")}</dt>
+            <dd>
+              <span className="mono muted">••••••••••••</span>{" "}
+              <button className="btn btn-sm" onClick={rotate}>
+                <Icon name="refresh" size={13} /> {t("Rotate secret")}
+              </button>
+            </dd>
+            {i.umbrellaUrl && (
+              <>
+                <dt>{t("Umbrella")}</dt>
+                <dd>
+                  <a
+                    href={i.umbrellaUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    {i.umbrellaUrl}
+                  </a>
+                </dd>
+              </>
+            )}
+          </dl>
 
-      <button className="link-btn" onClick={() => setShowUnmatched((s) => !s)}>
-        <Icon name={showUnmatched ? "chevronDown" : "chevronRight"} size={13} />{" "}
-        {t("Unmatched alerts")}
-      </button>
-      {showUnmatched && (
-        <div className="integration-unmatched">
-          {unmatched.isLoading && (
-            <div className="empty-hint">{t("Loading…")}</div>
+          {!isFlow && (
+            <button
+              className="link-btn"
+              onClick={() => setShowUnmatched((s) => !s)}
+            >
+              <Icon
+                name={showUnmatched ? "chevronDown" : "chevronRight"}
+                size={13}
+              />{" "}
+              {t("Unmatched alerts")}
+            </button>
           )}
-          {unmatched.data && !unmatched.data.length && (
-            <div className="empty-hint">
-              {t("Every alert matched a device.")}
+          {showUnmatched && (
+            <div className="integration-unmatched">
+              {unmatched.isLoading && (
+                <div className="empty-hint">{t("Loading…")}</div>
+              )}
+              {unmatched.data && !unmatched.data.length && (
+                <div className="empty-hint">
+                  {t("Every alert matched a device.")}
+                </div>
+              )}
+              {!!unmatched.data?.length && (
+                <div className="table-card">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>{t("Alert")}</th>
+                        <th>{t("Configuration item")}</th>
+                        <th>{t("Received")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unmatched.data.map((a) => (
+                        <tr key={a.alertId}>
+                          <td>{a.title}</td>
+                          <td className="mono small">
+                            {a.ci.name ??
+                              a.ci.identities?.hostname ??
+                              a.ci.source_refs?.join(", ") ??
+                              "—"}
+                          </td>
+                          <td>
+                            <When iso={a.receivedAt} never="" />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
-          {!!unmatched.data?.length && (
-            <div className="table-card">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>{t("Alert")}</th>
-                    <th>{t("Configuration item")}</th>
-                    <th>{t("Received")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unmatched.data.map((a) => (
-                    <tr key={a.alertId}>
-                      <td>{a.title}</td>
-                      <td className="mono small">
-                        {a.ci.name ??
-                          a.ci.identities?.hostname ??
-                          a.ci.source_refs?.join(", ") ??
-                          "—"}
-                      </td>
-                      <td>
-                        <When iso={a.receivedAt} never="" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        </>
       )}
 
       {editing && (
@@ -388,11 +502,115 @@ function IntegrationCard({
   );
 }
 
-/** Integrations section: connect Inventory DB with Umbrella monitoring (docs/integrations.md). */
+/** Kind `flow`: change notifications to Flow, the signing secret and the stored token. */
+function FlowDetails({
+  integration: i,
+  secret,
+  onRotate,
+}: {
+  integration: Integration;
+  secret?: string;
+  onRotate: () => void;
+}) {
+  const d = i.lastDelivery;
+  const hook = `${(i.flowUrl ?? "").replace(/\/+$/, "")}/api/integrations/inventory-db/hook`;
+  return (
+    <>
+      <div className="counters integration-counters">
+        <div className="counter neutral">
+          <span className="counter-label">{t("Last change notification")}</span>
+          <span className="counter-value">
+            <When iso={d?.at} never={t("never")} />
+          </span>
+          {d && (
+            <span className={`muted small ${d.ok ? "" : "text-error"}`}>
+              {d.ok
+                ? t("Delivered: {n} changes", { n: d.events })
+                : t("Failed after {n} attempts: {error}", {
+                    n: d.attempts,
+                    error: d.error ?? "",
+                  })}
+            </span>
+          )}
+        </div>
+        <div className="counter neutral">
+          <span className="counter-label">{t("Created")}</span>
+          <span className="counter-value">
+            {formatDate(i.createdAt, false)}
+          </span>
+        </div>
+      </div>
+
+      {secret && (
+        <div className="notice notice-success token-once">
+          <b>{t("Copy the signing secret now — it won’t be shown again.")}</b>
+          <CopyField value={secret} />
+          <div className="muted small">
+            {t("Store it in Flow (OpenBao) as the Inventory DB hook secret.")}
+          </div>
+        </div>
+      )}
+
+      <dl className="integration-details">
+        <dt>{t("Umbrella Flow")}</dt>
+        <dd>
+          {i.flowUrl && (
+            <a href={i.flowUrl} target="_blank" rel="noreferrer noopener">
+              {i.flowUrl}
+            </a>
+          )}
+          <div className="muted small">
+            {t(
+              "DCIM pages show traffic from Flow: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.",
+            )}
+          </div>
+        </dd>
+        <dt>{t("Change notifications")}</dt>
+        <dd>
+          <CopyField value={hook} />
+          <div className="muted small">
+            {t(
+              "Every DCIM, IPAM and circuits change is sent here, at most once every 5 seconds, signed with the secret:",
+            )}{" "}
+            <code>x-inventory-timestamp</code>,{" "}
+            <code>
+              x-inventory-signature: v1=HMAC-SHA256(secret, "timestamp.body")
+            </code>
+          </div>
+        </dd>
+        <dt>{t("Signing secret")}</dt>
+        <dd>
+          <span className="mono muted">••••••••••••</span>{" "}
+          <button className="btn btn-sm" onClick={onRotate}>
+            <Icon name="refresh" size={13} /> {t("Rotate secret")}
+          </button>
+        </dd>
+        <dt>{t("Flow API token")}</dt>
+        <dd>
+          {i.flowTokenSet ? (
+            <span className="muted">
+              {t("Stored in the secret store; never sent to browsers.")}
+            </span>
+          ) : (
+            <span className="status-chip warning">{t("Not set")}</span>
+          )}
+        </dd>
+        <dt>{t("Interface matching")}</dt>
+        <dd className="muted small">
+          {t(
+            "Fill the custom field snmp_index of interfaces with their ifIndex so Flow matches flow records to them.",
+          )}
+        </dd>
+      </dl>
+    </>
+  );
+}
+
+/** Integrations section: connect Inventory DB with Umbrella monitoring and Umbrella Flow (docs/integrations.md). */
 export function IntegrationsPage() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: KEY, queryFn: integrationsApi.list });
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<IntegrationKind | null>(null);
   // Secrets are shown once, right after creation or rotation; kept only in memory.
   const [secrets, setSecrets] = useState<Record<string, string>>({});
 
@@ -401,12 +619,20 @@ export function IntegrationsPage() {
       <PageHead
         title={t("Integrations")}
         subtitle={t(
-          "Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status.",
+          "Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Umbrella Flow shows traffic on devices, interfaces, circuits and prefixes.",
         )}
         actions={
-          <button className="btn btn-primary" onClick={() => setCreating(true)}>
-            <Icon name="plus" size={15} /> {t("Connect Umbrella")}
-          </button>
+          <>
+            <button className="btn" onClick={() => setCreating("flow")}>
+              <Icon name="plus" size={15} /> {t("Connect Umbrella Flow")}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => setCreating("umbrella")}
+            >
+              <Icon name="plus" size={15} /> {t("Connect Umbrella")}
+            </button>
+          </>
         }
       />
       {list.isLoading && <div className="empty-hint">{t("Loading…")}</div>}
@@ -436,7 +662,8 @@ export function IntegrationsPage() {
       ))}
       {creating && (
         <IntegrationForm
-          onClose={() => setCreating(false)}
+          kind={creating}
+          onClose={() => setCreating(null)}
           onSaved={(secret, integration) => {
             if (secret && integration)
               setSecrets((p) => ({ ...p, [integration.id]: secret }));

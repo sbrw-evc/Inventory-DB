@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { request, type NbObject, type Ref } from './api';
 import { Card, ErrorBox, KV, Layout, parentRef, RefLink, StatusChip, uiHref, UtilBar, Value } from './components';
 import { DetailShell, type DetailContext } from './DetailShell';
+import { CommitChip, FlowTrafficCard } from './flow';
 import { useAsync } from './hooks';
 import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
 import { fetchList, kvRows, MiniTable } from './pages';
@@ -132,7 +133,11 @@ export function DeviceComponents({ device, canWrite, openCreate }: { device: NbO
 // Circuits
 
 export function CircuitPage() {
-  return <DetailShell objectType="circuits.circuit">{(ctx) => <CircuitBody ctx={ctx} />}</DetailShell>;
+  return (
+    <DetailShell objectType="circuits.circuit" extra={({ obj }) => <CommitChip id={obj.id} />}>
+      {(ctx) => <CircuitBody ctx={ctx} />}
+    </DetailShell>
+  );
 }
 
 function CircuitBody({ ctx }: { ctx: DetailContext }) {
@@ -176,6 +181,7 @@ function CircuitBody({ ctx }: { ctx: DetailContext }) {
           </Card>
         );
       })}
+      <FlowTrafficCard objectType="circuits.circuit" id={obj.id} commit />
     </div>
   );
 }

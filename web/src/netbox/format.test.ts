@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { apiParams, changedKeys, compareAddr, contrastText, elevationBlocks, normalizeMonitoring, plainText, statusTone, toCsv, type ElevationUnit } from './format';
+import { apiParams, changedKeys, compareAddr, contrastText, elevationBlocks, formatBps, formatBytes, normalizeMonitoring, plainText, sparkPoints, statusTone, toCsv, utilPct, type ElevationUnit } from './format';
 import { dictionaries, fieldLabel, t, typeLabel } from './i18n';
 
 describe('netbox format helpers', () => {
+  it('formats Flow traffic values', () => {
+    expect(formatBps(7.2e9)).toBe('7.2 Gb/s');
+    expect(formatBps(950)).toBe('950 b/s');
+    expect(formatBps(125_000_000)).toBe('125 Mb/s');
+    expect(formatBps(1.5e6, 'ru')).toBe('1,5 Мбит/с');
+    expect(formatBps(null)).toBe('—');
+    expect(formatBytes(123456)).toBe('120.6 KiB');
+    expect(utilPct(0.725)).toBe(73);
+    expect(utilPct(null)).toBeNull();
+    expect(sparkPoints([0, 2, 4], 4, 100, 22)).toBe('0.0,21.0 50.0,11.0 100.0,1.0');
+    expect(sparkPoints([], 1, 10, 10)).toBe('');
+  });
+
   it('maps statuses to design tones', () => {
     expect(statusTone('active')).toBe('ok');
     expect(statusTone('planned')).toBe('info');

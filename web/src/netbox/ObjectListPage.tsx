@@ -4,7 +4,8 @@ import { ApiError, nb, type ModelSchema, type NbObject, type Ref } from './api';
 import { ErrorBox, Layout, MonitoringChip, Value } from './components';
 import { configFor, objectRoute } from './config';
 import { apiParams, statusTone, toCsv } from './format';
-import { findModel, useAsync, useInterval, useMe, useMonitoring, useSchema } from './hooks';
+import { TrafficCell } from './flow';
+import { findModel, useAsync, useFlowTraffic, useInterval, useMe, useMonitoring, useSchema } from './hooks';
 import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
 import { SidePanel } from './SidePanel';
 
@@ -198,7 +199,10 @@ export function ObjectListPage({ app }: { app: string }) {
 
   const rows = list.data?.results ?? [];
   const monitoring = useMonitoring('dcim.device', model?.object_type === 'dcim.device' ? rows.map((r) => r.id) : []);
-  const columns = cfg.columns.filter((c) => c !== 'monitoring' || monitoring);
+  const trafficType = model?.object_type === 'dcim.device' || model?.object_type === 'dcim.interface' ? model.object_type : null;
+  // Hidden (null) unless a Flow integration is active and answers.
+  const traffic = useFlowTraffic((trafficType ?? 'dcim.device') as 'dcim.device', trafficType ? rows.map((r) => r.id) : []);
+  const columns = cfg.columns.filter((c) => (c !== 'monitoring' || monitoring) && (c !== 'traffic' || traffic));
 
   const update = (changes: Record<string, string | null>, resetPage = true) => {
     const next = new URLSearchParams(sp);
@@ -228,6 +232,7 @@ export function ObjectListPage({ app }: { app: string }) {
 
   const cell = (o: NbObject, c: string, first: boolean): ReactNode => {
     if (c === 'monitoring') return <MonitoringChip status={monitoring?.get(o.id)} />;
+    if (c === 'traffic') return <TrafficCell traffic={traffic?.get(o.id)} />;
     if (first) {
       const label = c === 'id' ? `#${o.id}` : o[c] != null && typeof o[c] !== 'object' ? String(o[c]) : o.display;
       const to = cfg.page ? objectRoute(app, path, o.id) : `?${new URLSearchParams({ ...Object.fromEntries(sp), _sel: String(o.id) })}`;
@@ -246,7 +251,7 @@ export function ObjectListPage({ app }: { app: string }) {
   async function exportCsv() {
     if (!model) return;
     const all = await nb.list(model, { ...params, limit: 1000, offset: 0 });
-    const cols = ['id', ...columns.filter((c) => c !== 'monitoring' && c !== 'id')];
+    const cols = ['id', ...columns.filter((c) => c !== 'monitoring' && c !== 'traffic' && c !== 'id')];
     download(`${model.path}.csv`, toCsv(all.results, cols));
   }
   async function bulkDelete() {

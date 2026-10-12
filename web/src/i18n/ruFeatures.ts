@@ -94,4 +94,34 @@ export const ruFeatures: Record<string, string> = {
   Alert: 'Алерт',
   'Configuration item': 'Конфигурационная единица',
   Received: 'Получен',
+  // Umbrella Flow integration
+  'No changes sent yet': 'Изменения ещё не отправлялись',
+  'Last delivery failed': 'Последняя отправка не удалась',
+  'The Flow API token is required': 'Укажите API-токен Flow',
+  'Connect Umbrella Flow': 'Подключить Umbrella Flow',
+  'Umbrella Flow URL': 'Адрес Umbrella Flow',
+  'Flow API token': 'API-токен Flow',
+  'Stored — leave empty to keep it': 'Сохранён — оставьте пустым, чтобы не менять',
+  'A Flow token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.':
+    'Токен Flow с правом integrations.inventory:read. Хранится в хранилище секретов (OpenBao) и никогда не передаётся в браузер.',
+  'Paste the new secret into Flow within 24 hours; until then change notifications carry signatures with both secrets.':
+    'Укажите новый секрет во Flow в течение 24 часов; до этого уведомления об изменениях подписываются обоими секретами.',
+  'Traffic from Flow disappears from DCIM pages and Flow is no longer notified of changes. The stored Flow token is deleted.':
+    'Трафик из Flow пропадёт со страниц DCIM, а Flow перестанет получать уведомления об изменениях. Сохранённый токен Flow будет удалён.',
+  'Last change notification': 'Последнее уведомление об изменениях',
+  'Delivered: {n} changes': 'Доставлено изменений: {n}',
+  'Failed after {n} attempts: {error}': 'Не доставлено после попыток: {n}; {error}',
+  'Store it in Flow (OpenBao) as the Inventory DB hook secret.': 'Сохраните его во Flow (OpenBao) как секрет хука Inventory DB.',
+  'Umbrella Flow': 'Umbrella Flow',
+  'DCIM pages show traffic from Flow: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.':
+    'Страницы DCIM показывают трафик из Flow: устройства, интерфейсы, каналы (95-й перцентиль относительно коммита) и активные адреса префиксов.',
+  'Change notifications': 'Уведомления об изменениях',
+  'Every DCIM, IPAM and circuits change is sent here, at most once every 5 seconds, signed with the secret:':
+    'Каждое изменение DCIM, IPAM и каналов отправляется сюда не чаще раза в 5 секунд, с подписью секретом:',
+  'Stored in the secret store; never sent to browsers.': 'Хранится в хранилище секретов; в браузер не передаётся.',
+  'Interface matching': 'Сопоставление интерфейсов',
+  'Fill the custom field snmp_index of interfaces with their ifIndex so Flow matches flow records to them.':
+    'Заполните у интерфейсов пользовательское поле snmp_index значением ifIndex, чтобы Flow сопоставлял с ними записи потоков.',
+  'Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Umbrella Flow shows traffic on devices, interfaces, circuits and prefixes.':
+    'Мониторинг Umbrella получает площадки, стойки и устройства из Inventory DB как конфигурационные единицы своей карты CMDB и возвращает состояние алертов, чтобы у устройств был виден статус мониторинга. Umbrella Flow показывает трафик устройств, интерфейсов, каналов и префиксов.',
 };
