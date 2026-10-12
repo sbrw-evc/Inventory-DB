@@ -15,12 +15,12 @@ The API behind them is under `/api/v1/settings/*` and `GET /api/v1/system/status
 
 ## Secrets and OpenBao
 
-Every secret goes through one store: integration signing secrets, the LDAP service account password, the Entra ID
+Every secret goes through one store: integration signing secrets and Umbrella Flow API tokens, the LDAP service account password, the Entra ID
 client secret, the PostgreSQL password (once the database was moved from the PostgreSQL page) and the session signing
 key (unless `JWT_SECRET` is set).
 
 - With OpenBao configured, secrets live in its KV v2 mount (`inventory` by default), at paths such as
-  `integrations/<id>`, `directory/ldap`, `directory/entra`, `system/postgres`, `system/jwt`.
+  `integrations/<id>` (`signing_secret`, plus `flow_token` for Umbrella Flow), `directory/ldap`, `directory/entra`, `system/postgres`, `system/jwt`.
 - Without OpenBao, they are kept AES-256-GCM encrypted in the `nc_secrets` table under `INTEGRATION_KEY` (or
   `JWT_SECRET`). In production the server refuses to start with neither OpenBao nor one of those keys.
 - Secrets kept in the database are moved to OpenBao automatically at startup once OpenBao is configured, and can be

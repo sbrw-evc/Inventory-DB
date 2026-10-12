@@ -386,6 +386,11 @@ Accepted response shapes (any of):
 `status` is one of `ok | info | warning | error | critical` (shown with the design's chip colours); the chip links to
 `incident_url` when present. Any error (e.g. `404` when the integration isn't installed) hides the column/chip.
 
+**Traffic in the UI.** With an active Umbrella Flow integration the device and interface lists get a "Traffic" column,
+device, interface and circuit pages a traffic card (and chips), and prefix pages the addresses Flow saw
+(`web/src/netbox/flow.tsx`, via `GET /api/v1/integrations/flow/status` and `/flow/prefix-addresses`). Any error hides
+them, as for monitoring; see [integrations.md](integrations.md#umbrella-flow).
+
 ## Web UI
 
 `web/src/netbox/NetboxRoutes.tsx` exports `DcimRoutes`, `IpamRoutes`, `CircuitsRoutes`, `VirtualizationRoutes`,
