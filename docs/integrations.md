@@ -194,3 +194,12 @@ otherwise AES-256-GCM encrypted in PostgreSQL (`nc_secrets`) and moved to OpenBa
 
 Flow is an internal service, so its URL may be a private address (unlike outgoing webhooks, there is no
 `WEBHOOK_ALLOW_PRIVATE` check); that is why only DCIM/IPAM admins can create `flow` integrations.
+
+### Verified end to end
+
+With Flow, Umbrella, OpenBao and PostgreSQL on one host (the demo network seeded by Flow's `seed-demo.mjs`), wired only
+through the APIs above: device, interface and circuit traffic and the active addresses of a prefix came through the
+proxy endpoints; renaming an interface description sent a signed notification Flow accepted (202) five seconds later,
+and Flow's next flows carried the new description.
+
+![Device page with the Flow traffic card](screens/device-flow-traffic-e2e.png)

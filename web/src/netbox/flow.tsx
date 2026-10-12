@@ -52,9 +52,15 @@ export function TrafficChip({ traffic }: { traffic: FlowTraffic | undefined }) {
 /** In (accent) and out (purple) series of the last window. */
 export function Sparkline({ data, width = 320, height = 56 }: { data: FlowTraffic['sparkline']; width?: number; height?: number }) {
   if (!data || !data.in?.length) return null;
-  const max = Math.max(1, ...data.in.map(Number), ...(data.out ?? []).map(Number));
+  // The drawing scale is at least 1 b/s; the peak shown is the real one.
+  const peak = Math.max(0, ...data.in.map(Number), ...(data.out ?? []).map(Number));
+  const max = Math.max(1, peak);
   const first = data.t?.[0];
   const last = data.t?.[data.t.length - 1];
+  // t are bucket starts: the window ends one bucket after the last start.
+  const step = data.t && data.t.length > 1 ? Date.parse(data.t[1]) - Date.parse(data.t[0]) : 0;
+  const end = last ? new Date(Date.parse(last) + (Number.isFinite(step) ? step : 0)) : null;
+  const hm = (d: Date) => d.toLocaleTimeString(currentLang(), { hour: '2-digit', minute: '2-digit' });
   return (
     <figure className="nb-spark" style={{ margin: 0 }}>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={`${t('traffic')}: ${t('inbound')} / ${t('outbound')}`}>
@@ -66,8 +72,8 @@ export function Sparkline({ data, width = 320, height = 56 }: { data: FlowTraffi
         <span className="nb-spark-key out">{t('outbound')}</span>
         <span className="nb-spacer" />
         <span className="nb-muted">
-          {t('peak')}: {bps(max)}
-          {first && last ? ` · ${new Date(first).toLocaleTimeString(currentLang(), { hour: '2-digit', minute: '2-digit' })}–${new Date(last).toLocaleTimeString(currentLang(), { hour: '2-digit', minute: '2-digit' })}` : ''}
+          {peak > 0 ? `${t('peak')}: ${bps(peak)}` : t('noTrafficWindow')}
+          {first && end ? ` · ${hm(new Date(first))}–${hm(end)}` : ''}
         </span>
       </figcaption>
     </figure>

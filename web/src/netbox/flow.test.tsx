@@ -64,7 +64,27 @@ describe('Umbrella Flow UI', () => {
     expect(el.textContent).toContain('7.2 Gb/s');
     expect(el.textContent).toContain('Over commit');
     expect(el.querySelectorAll('polyline')).toHaveLength(2);
+    expect(el.textContent).toContain('Peak: 2 b/s');
     expect(el.querySelector('a[href="https://flow.corp/visualize?q=x"]')?.textContent).toContain('Open in Flow');
+  });
+
+  it('shows no made-up peak when the window has no traffic', async () => {
+    vi.stubGlobal(
+      'fetch',
+      respond(200, {
+        window: '24h',
+        results: {
+          '2': {
+            in_bps: 0, out_bps: 0, speed_bps: null, utilization_in: null, utilization_out: null,
+            sparkline: { t: ['2026-10-11T21:30:00Z', '2026-10-11T22:00:00Z'], in: [0, 0], out: [0, 0] },
+            flow_url: 'https://flow.corp/visualize?q=y', last_seen: null,
+          },
+        },
+      }),
+    );
+    const el = await render(<FlowTrafficCard objectType="dcim.device" id={2} />);
+    expect(el.textContent).toContain('No traffic in the window');
+    expect(el.textContent).not.toContain('Peak');
   });
 
   it('lists active addresses and offers to create the ones missing from IPAM', async () => {

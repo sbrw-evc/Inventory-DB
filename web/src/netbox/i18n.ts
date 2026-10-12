@@ -79,6 +79,7 @@ const ui: Dict = {
   outbound: ['Out', 'Выход'],
   linkSpeed: ['Speed', 'Скорость'],
   peak: ['Peak', 'Пик'],
+  noTrafficWindow: ['No traffic in the window', 'Нет трафика за период'],
   lastSeen: ['Last seen', 'Последний раз'],
   noTraffic: ['Flow has seen no traffic for this object.', 'Flow не видел трафика по этому объекту.'],
   openInFlow: ['Open in Flow', 'Открыть во Flow'],
