@@ -179,3 +179,41 @@ export function changedKeys(pre: Record<string, unknown> | null, post: Record<st
   const keys = new Set([...Object.keys(pre ?? {}), ...Object.keys(post ?? {})]);
   return [...keys].filter((k) => !skip.has(k) && JSON.stringify(pre?.[k] ?? null) !== JSON.stringify(post?.[k] ?? null));
 }
+
+/** Bits per second in SI units: `7.2 Gb/s` (`7,2 Гбит/с` in Russian). */
+export function formatBps(bps: number | null | undefined, lang: 'en' | 'ru' = 'en'): string {
+  if (bps == null || !Number.isFinite(bps)) return '—';
+  const units = lang === 'ru' ? ['бит/с', 'Кбит/с', 'Мбит/с', 'Гбит/с', 'Тбит/с'] : ['b/s', 'kb/s', 'Mb/s', 'Gb/s', 'Tb/s'];
+  let v = Math.max(0, bps);
+  let i = 0;
+  while (v >= 1000 && i < units.length - 1) {
+    v /= 1000;
+    i++;
+  }
+  const digits = v >= 100 || i === 0 ? 0 : 1;
+  return `${v.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 })} ${units[i]}`;
+}
+
+/** Bytes in binary units: `1.2 MiB` (`1,2 МиБ`). */
+export function formatBytes(bytes: number | null | undefined, lang: 'en' | 'ru' = 'en'): string {
+  if (bytes == null || !Number.isFinite(bytes)) return '—';
+  const units = lang === 'ru' ? ['Б', 'КиБ', 'МиБ', 'ГиБ', 'ТиБ'] : ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  let v = Math.max(0, bytes);
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: i === 0 ? 0 : 1 })} ${units[i]}`;
+}
+
+/** Utilisation (0..1, from Flow) as a whole percentage for UtilBar; null when the speed is unknown. */
+export const utilPct = (u: number | null | undefined): number | null => (u == null || !Number.isFinite(u) ? null : Math.round(Math.max(0, u) * 100));
+
+/** SVG polyline points for a sparkline series scaled to `max` inside a w×h box. */
+export function sparkPoints(values: number[], max: number, w: number, h: number): string {
+  if (!values.length) return '';
+  const step = values.length > 1 ? w / (values.length - 1) : 0;
+  const scale = max > 0 ? (h - 2) / max : 0;
+  return values.map((v, i) => `${(i * step).toFixed(1)},${(h - 1 - Math.max(0, Number(v) || 0) * scale).toFixed(1)}`).join(' ');
+}

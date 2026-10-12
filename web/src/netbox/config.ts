@@ -34,13 +34,13 @@ export const TYPE_CONFIG: Record<string, TypeConfig> = {
   'dcim/device-roles': { columns: ['name', 'color', 'device_count', 'description'] },
   'dcim/platforms': { columns: ['name', 'manufacturer', 'device_count', 'description'], filters: ['manufacturer_id'] },
   'dcim/devices': {
-    columns: ['name', 'status', 'monitoring', 'site', 'location', 'rack', 'role', 'device_type', 'primary_ip', 'serial', 'tags'],
+    columns: ['name', 'status', 'monitoring', 'traffic', 'site', 'location', 'rack', 'role', 'device_type', 'primary_ip', 'serial', 'tags'],
     filters: ['site_id', 'location_id', 'rack_id', 'role_id', 'status', 'device_type_id', 'platform_id', 'cluster_id', 'tenant_id', 'tag'],
     counters: 'status',
     page: true,
   },
   'dcim/interfaces': {
-    columns: ['device', 'name', 'type', 'enabled', 'lag', 'mtu', 'mac_address', 'mode', 'cable', 'link_peers', 'description'],
+    columns: ['device', 'name', 'type', 'enabled', 'traffic', 'lag', 'mtu', 'mac_address', 'mode', 'cable', 'link_peers', 'description'],
     filters: ['device_id', 'site_id', 'type', 'enabled', 'cabled'],
   },
   'dcim/front-ports': { columns: ['device', 'name', 'type', 'rear_port', 'rear_port_position', 'cable', 'link_peers', 'description'], filters: ['device_id', 'site_id', 'type', 'cabled'] },

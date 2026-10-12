@@ -6,6 +6,7 @@ import { configFor, objectRoute } from './config';
 import { changedKeys, statusTone } from './format';
 import { useAsync, useMe } from './hooks';
 import { currentLang, fieldLabel, t, typeLabel, valueLabel } from './i18n';
+import { FlowTrafficCard } from './flow';
 import { ObjectForm } from './ObjectForm';
 
 /** Read-only details of an object: all fields, computed values, tags, custom fields and timestamps. */
@@ -21,6 +22,11 @@ export function ObjectDetails({ model, obj }: { model: ModelSchema; obj: NbObjec
     <>
       <KV rows={rows} />
       {model.object_type === 'extras.objectchange' && <ChangeDiff pre={obj.prechange_data as never} post={obj.postchange_data as never} />}
+      {model.object_type === 'dcim.interface' && (
+        <div style={{ marginTop: 12 }}>
+          <FlowTrafficCard objectType="dcim.interface" id={obj.id} commit />
+        </div>
+      )}
     </>
   );
 }

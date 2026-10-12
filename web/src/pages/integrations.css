@@ -53,3 +53,7 @@
 @media (max-width: 720px) {
   .integration-details { grid-template-columns: 1fr; }
 }
+
+.integration-counters .text-error {
+  color: var(--error);
+}

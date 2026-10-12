@@ -16,6 +16,9 @@ Features:
 - **Settings (administrators):** system status, sign-in with LDAP / Active Directory and Microsoft Entra ID,
   password policy, PostgreSQL connection, statistics and moving to another server, and the OpenBao secret store
   ([docs/settings.md](docs/settings.md)).
+- **Integrations:** Umbrella monitoring (CMDB feed, alert states on devices) and Umbrella Flow (traffic on devices,
+  interfaces and circuits with 24 h sparklines and 95th percentile vs commit, active addresses of prefixes, signed
+  change notifications) — [docs/integrations.md](docs/integrations.md).
 - UI follows the Umbrella monitoring design ([docs/design.md](docs/design.md)), in English and Russian.
 - Swagger UI at `/api/v1/docs`.
 

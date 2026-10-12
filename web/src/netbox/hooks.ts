@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FlowTraffic } from '@shared';
 import { ApiError, nb, request, toQuery, type Me, type ModelSchema, type NbObject } from './api';
 import { normalizeMonitoring, type MonitoringStatus } from './format';
 
@@ -94,4 +95,24 @@ export function useInterval(cb: () => void, ms: number, on: boolean) {
     const h = setInterval(() => ref.current(), ms);
     return () => clearInterval(h);
   }, [ms, on]);
+}
+
+/**
+ * Traffic from the Umbrella Flow integration (server-side proxy, contract §2.1). Returns `null` when no Flow
+ * integration is active or Flow fails, so callers hide the column, chip or card.
+ */
+export function useFlowTraffic(objectType: 'dcim.device' | 'dcim.interface' | 'circuits.circuit', ids: number[]): Map<number, FlowTraffic> | null {
+  const key = [...new Set(ids)].sort((a, b) => a - b).join(',');
+  const { data } = useAsync(async () => {
+    if (!key) return null;
+    try {
+      const res = await request<{ results?: Record<string, FlowTraffic> }>('GET', `/api/v1/integrations/flow/status${toQuery({ object_type: objectType, ids: key })}`);
+      const out = new Map<number, FlowTraffic>();
+      for (const [id, v] of Object.entries(res?.results ?? {})) if (v && typeof v === 'object') out.set(Number(id), v);
+      return out;
+    } catch {
+      return null;
+    }
+  }, [objectType, key]);
+  return data ?? null;
 }

@@ -5,8 +5,9 @@ import { Card, ErrorBox, KV, Layout, MonitoringChip, RefLink, StatusChip, uiHref
 import { objectRoute } from './config';
 import { DetailShell, type DetailContext } from './DetailShell';
 import { compareAddr, contrastText, elevationBlocks, isRef, type ElevationUnit } from './format';
-import { findModel, useAsync, useMonitoring, useSchema } from './hooks';
+import { findModel, useAsync, useFlowTraffic, useMonitoring, useSchema } from './hooks';
 import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
+import { FlowTitleChip, FlowTrafficCard, PrefixFlowAddresses, TrafficCell } from './flow';
 import { DeviceComponents, RackPowerCard } from './morePages';
 
 type SearchHit = Awaited<ReturnType<typeof nb.search>>['results'][number];
@@ -188,7 +189,15 @@ function NonRacked({ rack }: { rack: NbObject }) {
 
 export function DevicePage() {
   return (
-    <DetailShell objectType="dcim.device" extra={({ obj }) => <DeviceMonitoring id={obj.id} />}>
+    <DetailShell
+      objectType="dcim.device"
+      extra={({ obj }) => (
+        <>
+          <DeviceMonitoring id={obj.id} />
+          <FlowTitleChip objectType="dcim.device" id={obj.id} />
+        </>
+      )}
+    >
       {(ctx) => <DeviceBody ctx={ctx} />}
     </DetailShell>
   );
@@ -214,6 +223,8 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
     if (a) ipsByIface.set(a.id, [...(ipsByIface.get(a.id) ?? []), ip]);
   }
   const rack = obj.rack as Ref | null;
+  const ifaceTraffic = useFlowTraffic('dcim.interface', (ifaces.data?.results ?? []).map((i) => i.id));
+  const ifaceColumns = ['name', 'type', 'enabled', ...(ifaceTraffic ? ['traffic'] : []), 'lag', 'mtu', 'mode', 'ipAddresses', 'cable', 'connection'];
   return (
     <>
       <div className="nb-grid">
@@ -238,6 +249,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
         >
           <MiniTable rows={ips.data?.results ?? []} columns={['address', 'status', 'assigned_object', 'vrf', 'dns_name']} empty="—" />
         </Card>
+        <FlowTrafficCard objectType="dcim.device" id={obj.id} />
       </div>
       <div style={{ marginTop: 12 }}>
         <Card
@@ -255,7 +267,7 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
             <table className="nb-table">
               <thead>
                 <tr>
-                  {['name', 'type', 'enabled', 'lag', 'mtu', 'mode', 'ipAddresses', 'cable', 'connection'].map((c) => (
+                  {ifaceColumns.map((c) => (
                     <th key={c}>{c === 'ipAddresses' || c === 'connection' ? t(c) : fieldLabel(c)}</th>
                   ))}
                 </tr>
@@ -273,6 +285,11 @@ function DeviceBody({ ctx }: { ctx: DetailContext }) {
                     <td>
                       <Value v={i.enabled} />
                     </td>
+                    {ifaceTraffic && (
+                      <td>
+                        <TrafficCell traffic={ifaceTraffic.get(i.id)} />
+                      </td>
+                    )}
                     <td>
                       <Value v={i.lag} />
                     </td>
@@ -313,7 +330,7 @@ export function PrefixPage() {
 }
 
 function PrefixBody({ ctx }: { ctx: DetailContext }) {
-  const { obj, canWrite, reload } = ctx;
+  const { obj, canWrite, reload, openCreate } = ctx;
   const vrf = obj.vrf as Ref | null;
   const depth = Number(obj._depth ?? 0);
   const prefix = String(obj.prefix);
@@ -451,6 +468,7 @@ function PrefixBody({ ctx }: { ctx: DetailContext }) {
           <MiniTable rows={ips.data?.results ?? []} columns={['address', 'status', 'role', 'assigned_object', 'dns_name', 'description']} empty="—" />
         </Card>
       </div>
+      <PrefixFlowAddresses prefix={obj} canWrite={canWrite} version={obj} onCreate={(presets) => openCreate('ipam.ipaddress', presets)} />
     </>
   );
 }
