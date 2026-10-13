@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { request, toQuery, type NbObject, type Ref } from './api';
 import { Card, Chip, UtilBar } from './components';
-import { formatBps, formatBytes, sparkPoints, utilPct, utilTone } from './format';
+import { formatBps, formatBytes, formatTimeRange, sparkPoints, utilPct, utilTone } from './format';
 import { useAsync, useFlowTraffic } from './hooks';
 import { currentLang, fieldLabel, t } from './i18n';
 
@@ -60,7 +60,6 @@ export function Sparkline({ data, width = 320, height = 56 }: { data: FlowTraffi
   // t are bucket starts: the window ends one bucket after the last start.
   const step = data.t && data.t.length > 1 ? Date.parse(data.t[1]) - Date.parse(data.t[0]) : 0;
   const end = last ? new Date(Date.parse(last) + (Number.isFinite(step) ? step : 0)) : null;
-  const hm = (d: Date) => d.toLocaleTimeString(currentLang(), { hour: '2-digit', minute: '2-digit' });
   return (
     <figure className="nb-spark" style={{ margin: 0 }}>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={`${t('traffic')}: ${t('inbound')} / ${t('outbound')}`}>
@@ -73,7 +72,7 @@ export function Sparkline({ data, width = 320, height = 56 }: { data: FlowTraffi
         <span className="nb-spacer" />
         <span className="nb-muted">
           {peak > 0 ? `${t('peak')}: ${bps(peak)}` : t('noTrafficWindow')}
-          {first && end ? ` · ${hm(new Date(first))}–${hm(end)}` : ''}
+          {first && end ? ` · ${formatTimeRange(new Date(first), end, currentLang())}` : ''}
         </span>
       </figcaption>
     </figure>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apiParams, changedKeys, compareAddr, contrastText, elevationBlocks, formatBps, formatBytes, normalizeMonitoring, plainText, sparkPoints, statusTone, toCsv, utilPct, type ElevationUnit } from './format';
+import { apiParams, changedKeys, compareAddr, contrastText, elevationBlocks, formatBps, formatBytes, formatTimeRange, normalizeMonitoring, plainText, sparkPoints, statusTone, toCsv, utilPct, type ElevationUnit } from './format';
 import { dictionaries, fieldLabel, t, typeLabel } from './i18n';
 
 describe('netbox format helpers', () => {
@@ -14,6 +14,16 @@ describe('netbox format helpers', () => {
     expect(utilPct(null)).toBeNull();
     expect(sparkPoints([0, 2, 4], 4, 100, 22)).toBe('0.0,21.0 50.0,11.0 100.0,1.0');
     expect(sparkPoints([], 1, 10, 10)).toBe('');
+  });
+
+  it('formats sparkline windows', () => {
+    const at = (iso: string) => new Date(iso);
+    expect(formatTimeRange(at('2026-10-12T09:00:00Z'), at('2026-10-12T10:00:00Z'), 'en', 'UTC')).toBe('09:00 AM–10:00 AM');
+    expect(formatTimeRange(at('2026-10-12T09:00:00Z'), at('2026-10-12T10:00:00Z'), 'ru', 'UTC')).toBe('09:00–10:00');
+    expect(formatTimeRange(at('2026-10-11T22:00:00Z'), at('2026-10-12T22:00:00Z'), 'en', 'UTC')).toBe('Oct 11, 10:00 PM – Oct 12, 10:00 PM');
+    expect(formatTimeRange(at('2026-10-11T22:00:00Z'), at('2026-10-12T22:00:00Z'), 'ru', 'UTC')).toBe('11 окт., 22:00 – 12 окт., 22:00');
+    // The day boundary is the viewer's: 21:00–23:00 UTC is one day in UTC, two days in Moscow.
+    expect(formatTimeRange(at('2026-10-12T20:00:00Z'), at('2026-10-12T22:00:00Z'), 'ru', 'Europe/Moscow')).toBe('12 окт., 23:00 – 13 окт., 01:00');
   });
 
   it('maps statuses to design tones', () => {
