@@ -210,6 +210,19 @@ export function formatBytes(bytes: number | null | undefined, lang: 'en' | 'ru' 
 /** Utilisation (0..1, from Flow) as a whole percentage for UtilBar; null when the speed is unknown. */
 export const utilPct = (u: number | null | undefined): number | null => (u == null || !Number.isFinite(u) ? null : Math.round(Math.max(0, u) * 100));
 
+/**
+ * Time window of a sparkline: `10:00–11:00` within one day, `Oct 12, 10:00 PM – Oct 13, 10:00 PM`
+ * (`12 окт., 22:00 – 13 окт., 22:00`) across days, so a 24-hour window is not shown as `10:00 PM–10:00 PM`.
+ */
+export function formatTimeRange(start: Date, end: Date, lang: 'en' | 'ru' = 'en', timeZone?: string): string {
+  const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+  const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone });
+  const time: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone };
+  if (day(start) === day(end)) return `${start.toLocaleTimeString(locale, time)}–${end.toLocaleTimeString(locale, time)}`;
+  const full = (d: Date) => d.toLocaleString(locale, { ...time, day: 'numeric', month: 'short' });
+  return `${full(start)} – ${full(end)}`;
+}
+
 /** SVG polyline points for a sparkline series scaled to `max` inside a w×h box. */
 export function sparkPoints(values: number[], max: number, w: number, h: number): string {
   if (!values.length) return '';
