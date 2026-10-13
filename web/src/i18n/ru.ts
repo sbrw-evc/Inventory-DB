@@ -526,4 +526,11 @@ export const ru: Record<string, string> = {
   'Virtualization': 'Виртуализация',
   'Spreadsheet bases of your inventory, the DCIM and IPAM catalog and the integrations that feed them.': 'Табличные базы инвентаря, каталог DCIM и IPAM и интеграции, которые их наполняют.',
   'Bring spreadsheets and NocoDB bases into Inventory DB.': 'Перенос таблиц и баз NocoDB в Inventory DB.',
+  'All sections': 'Все разделы',
+  'Home': 'На главную',
+  'Open anyway': 'Всё равно открыть',
+  'Better on a computer': 'Удобнее на компьютере',
+  'Integrations, imports, administration and settings': 'Интеграции, импорт, администрирование и настройки',
+  'The «{page}» section is made for a computer': 'Раздел «{page}» сделан для компьютера',
+  'The page has wide tables or long forms that do not fit a phone screen. Open it on a computer, or open it here anyway.': 'На странице широкие таблицы или длинные формы, которые не помещаются на экран телефона. Откройте её на компьютере или всё равно откройте здесь.',
 };

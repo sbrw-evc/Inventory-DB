@@ -8,6 +8,8 @@ import { TrafficCell } from './flow';
 import { findModel, useAsync, useFlowTraffic, useInterval, useMe, useMonitoring, useSchema } from './hooks';
 import { fieldLabel, t, typeLabel, valueLabel } from './i18n';
 import { SidePanel } from './SidePanel';
+import { Sheet } from '../components/shell/Sheet';
+import { useMobile } from '../lib/useMobile';
 
 const PAGE_SIZES = [25, 50, 100, 250];
 /** Filter keys that aren't model fields, mapped to the referenced object type. */
@@ -176,6 +178,9 @@ export function ObjectListPage({ app }: { app: string }) {
   const [live, setLive] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
+  // On the phone the filters open in a bottom sheet (Umbrella's filters sheet).
+  const mobile = useMobile();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const sel = routeId ?? sp.get('_sel');
   const canWrite = !!me?.can_write && !model?.read_only;
 
@@ -281,6 +286,14 @@ export function ObjectListPage({ app }: { app: string }) {
     ) : undefined;
 
   const count = list.data?.count ?? 0;
+  const activeFilters = (cfg.filters ?? []).filter((k) => sp.get(k)).length;
+  const filterControls = (
+    <div className="nb-filters">
+      {(cfg.filters ?? []).map((k) => (
+        <FilterControl key={k} model={model} schema={schema} k={k} value={sp.get(k) ?? ''} onChange={(v) => update({ [k]: v })} />
+      ))}
+    </div>
+  );
   return (
     <Layout panel={panel}>
       <div className="nb-title nb-list-title">
@@ -302,24 +315,33 @@ export function ObjectListPage({ app }: { app: string }) {
             + {t('add')}
           </button>
         )}
-        {canWrite && (
+        {mobile && cfg.filters && (
+          <button className={`nb-btn ${activeFilters ? 'nb-btn-on' : ''}`} onClick={() => setFiltersOpen(true)} aria-haspopup="dialog">
+            {activeFilters ? t('filtersN', { n: activeFilters }) : t('filters')}
+          </button>
+        )}
+        {canWrite && !mobile && (
           <button className="nb-btn" onClick={() => update({ _sel: 'import' }, false)}>
             {t('importCsv')}
           </button>
         )}
-        <button className="nb-btn" onClick={exportCsv}>
-          {t('exportCsv')}
-        </button>
-        <button
-          className="nb-btn"
-          onClick={() => {
-            void navigator.clipboard?.writeText(window.location.href);
-            setFlash(t('copied'));
-          }}
-        >
-          {t('copyLink')}
-        </button>
-        {[...sp.keys()].some((k) => k !== '_sel' && k !== 'limit') && (
+        {!mobile && (
+          <button className="nb-btn" onClick={exportCsv}>
+            {t('exportCsv')}
+          </button>
+        )}
+        {!mobile && (
+          <button
+            className="nb-btn"
+            onClick={() => {
+              void navigator.clipboard?.writeText(window.location.href);
+              setFlash(t('copied'));
+            }}
+          >
+            {t('copyLink')}
+          </button>
+        )}
+        {!mobile && [...sp.keys()].some((k) => k !== '_sel' && k !== 'limit') && (
           <button className="nb-btn" onClick={() => setSp(new URLSearchParams(), { replace: true })}>
             {t('resetFilters')}
           </button>
@@ -329,12 +351,27 @@ export function ObjectListPage({ app }: { app: string }) {
           {live ? t('live') : t('paused')}
         </span>
       </div>
-      {cfg.filters && (
-        <div className="nb-filters">
-          {cfg.filters.map((k) => (
-            <FilterControl key={k} model={model} schema={schema} k={k} value={sp.get(k) ?? ''} onChange={(v) => update({ [k]: v })} />
-          ))}
-        </div>
+      {cfg.filters && !mobile && filterControls}
+      {cfg.filters && mobile && (
+        <Sheet
+          open={filtersOpen}
+          title={t('filters')}
+          onClose={() => setFiltersOpen(false)}
+          footer={
+            <>
+              {activeFilters > 0 && (
+                <button className="nb-btn" onClick={() => setSp(new URLSearchParams(), { replace: true })}>
+                  {t('resetFilters')}
+                </button>
+              )}
+              <button className="nb-btn primary" onClick={() => setFiltersOpen(false)}>
+                {t('showResults')}
+              </button>
+            </>
+          }
+        >
+          {filterControls}
+        </Sheet>
       )}
       {!!counters.data?.length && (
         <div className="nb-counters">
@@ -411,7 +448,7 @@ export function ObjectListPage({ app }: { app: string }) {
                   />
                 </td>
                 {columns.map((c, i) => (
-                  <td key={c} className={i === 0 ? 'first' : undefined}>
+                  <td key={c} className={i === 0 ? 'first' : undefined} data-label={i === 0 ? undefined : c === 'id' ? 'ID' : fieldLabel(c)}>
                     {cell(o, c, i === 0)}
                   </td>
                 ))}

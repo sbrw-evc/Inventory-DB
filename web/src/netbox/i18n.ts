@@ -6,10 +6,13 @@ export type Lang = 'en' | 'ru';
 
 export function currentLang(): Lang {
   try {
-    return localStorage.getItem('lang') === 'ru' ? 'ru' : 'en';
+    const saved = localStorage.getItem('lang');
+    if (saved === 'en' || saved === 'ru') return saved;
   } catch {
-    return 'en';
+    /* ignore */
   }
+  // As the main app (i18n/index.ts): without a saved choice, the browser's language.
+  return typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
 }
 
 type Dict = Record<string, [en: string, ru: string]>;
@@ -46,6 +49,9 @@ const ui: Dict = {
   live: ['Live update', 'Автообновление'],
   paused: ['Paused', 'Пауза'],
   resetFilters: ['Reset filters', 'Сбросить фильтры'],
+  filters: ['Filters', 'Фильтры'],
+  filtersN: ['Filters · {n}', 'Фильтры · {n}'],
+  showResults: ['Show', 'Показать'],
   any: ['Any', 'Любой'],
   yes: ['Yes', 'Да'],
   no: ['No', 'Нет'],
