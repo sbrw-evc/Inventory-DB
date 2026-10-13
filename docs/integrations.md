@@ -136,6 +136,8 @@ of the cross-application contract, [Network `docs/integrations.md`](https://gith
    `POST /api/v1/integrations` `{"kind":"flow","title":"Flow","flowUrl":"https://flow.corp","flowToken":"flow_…"}`.
    Copy the returned `secret` into Flow (it is shown once; `POST /integrations/:id/rotate-secret` issues a new one).
    `PATCH /integrations/:id` changes `flowUrl` or replaces the token (`flowToken`); the token is never returned.
+   Flow integrations are installation-wide: every DCIM/IPAM admin sees and manages all of them (not only the one who
+   created it), and nobody else sees them, the creator included once they are no longer admin.
 3. Creating the integration adds the custom field `snmp_index` (integer, `dcim.interface`) unless it exists; fill it
    with the interfaces' ifIndex so Flow can match flow records to interfaces.
 4. For Flow's inventory sync, create an API token of a read-only user (`POST /api/v1/tokens`) and, for

@@ -153,6 +153,43 @@ describe('flow integration: management', () => {
     expect((await createFlow(app, owner.headers, { flowUrl: 'ftp://x' })).statusCode).toBe(400);
   });
 
+  it('lets every DCIM/IPAM admin, and only admins, see and manage Flow integrations', async () => {
+    const { app, owner, api } = await setup();
+    const created = (await createFlow(app, owner.headers)).json().integration;
+    const umbrella = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/v1/integrations',
+        headers: owner.headers,
+        payload: { kind: 'umbrella', title: 'Umbrella prod', inventoryUrl: 'https://inv.example' },
+      })
+    ).json().integration;
+    const other = await signUpUser(app);
+    const list = async (h: Record<string, string>) =>
+      ((await app.inject({ method: 'GET', url: '/api/v1/integrations', headers: h })).json() as { id: string }[]).map((i) => i.id);
+    const patch = (h: Record<string, string>, id: string) =>
+      app.inject({ method: 'PATCH', url: `/api/v1/integrations/${id}`, headers: h, payload: { title: 'Renamed' } });
+
+    // A viewer sees none of them and cannot create one.
+    expect(await list(other.headers)).toEqual([]);
+    expect((await patch(other.headers, created.id)).statusCode).toBe(404);
+
+    // Made admin: sees and manages the Flow integration, not someone else's Umbrella one.
+    await api.post('/netbox/roles', { user_id: other.userId, role: 'admin' });
+    expect(await list(other.headers)).toEqual([created.id]);
+    expect((await patch(other.headers, created.id)).json()).toMatchObject({ title: 'Renamed' });
+    expect((await patch(other.headers, umbrella.id)).statusCode).toBe(404);
+    const rotated = await app.inject({ method: 'POST', url: `/api/v1/integrations/${created.id}/rotate-secret`, headers: other.headers });
+    expect(rotated.json().secret).toMatch(/^whsec_/);
+
+    // The creator, no longer admin, loses access to the Flow integration but keeps their own Umbrella one.
+    await app.inject({ method: 'PUT', url: `/api/v1/netbox/roles/${owner.userId}`, headers: other.headers, payload: { role: 'editor' } });
+    expect(await list(owner.headers)).toEqual([umbrella.id]);
+    expect((await patch(owner.headers, created.id)).statusCode).toBe(404);
+    const removed = await app.inject({ method: 'DELETE', url: `/api/v1/integrations/${created.id}`, headers: other.headers });
+    expect(removed.statusCode).toBe(200);
+  });
+
   it('stores the Flow token in OpenBao when it is configured', async () => {
     const bao: FakeOpenBao = await startFakeOpenBao();
     try {

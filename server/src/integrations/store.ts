@@ -54,8 +54,11 @@ const toIntegration = (r: IntegrationRow): Integration => {
 const getRow = (id: string) =>
   getDb().prepare('SELECT * FROM nc_integrations WHERE id = ?').get(id) as IntegrationRow | undefined;
 
-export function listIntegrations(userId: string): Integration[] {
-  const rows = getDb().prepare('SELECT * FROM nc_integrations WHERE created_by = ? ORDER BY created_at').all(userId) as IntegrationRow[];
+/** The user's own integrations; Flow integrations (all of them) only for DCIM/IPAM admins (`withFlow`). */
+export function listIntegrations(userId: string, withFlow = false): Integration[] {
+  const rows = getDb()
+    .prepare("SELECT * FROM nc_integrations WHERE CASE WHEN kind = 'flow' THEN ? ELSE created_by = ? END ORDER BY created_at")
+    .all(withFlow, userId) as IntegrationRow[];
   return rows.map(toIntegration);
 }
 
@@ -65,10 +68,14 @@ export function getIntegration(id: string): Integration {
   return toIntegration(row);
 }
 
-/** Integrations are managed by the user who created them; others get 404 so ids don't leak. */
-export function getOwnedIntegration(id: string, userId: string): Integration {
+/**
+ * Integrations are managed by the user who created them, Flow integrations (installation-wide) by every DCIM/IPAM
+ * admin (`isAdmin`); others get 404 so ids don't leak.
+ */
+export function getOwnedIntegration(id: string, userId: string, isAdmin = false): Integration {
   const integration = getIntegration(id);
-  if (integration.createdBy !== userId) throw notFound('Integration');
+  const allowed = integration.kind === 'flow' ? isAdmin : integration.createdBy === userId;
+  if (!allowed) throw notFound('Integration');
   return integration;
 }
 

@@ -11,6 +11,7 @@ import { copyText } from "../components/ShareDialog";
 import { t } from "../i18n";
 import { formatDate, relativeTime } from "../lib/format";
 import { toastError } from "../lib/toast";
+import { useMe } from "../netbox/hooks";
 import "./integrations.css";
 
 const KEY = ["integrations"] as const;
@@ -611,6 +612,8 @@ export function IntegrationsPage() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: KEY, queryFn: integrationsApi.list });
   const [creating, setCreating] = useState<IntegrationKind | null>(null);
+  // Umbrella Flow is installation-wide: only DCIM/IPAM admins connect and manage it.
+  const isAdmin = useMe().data?.is_admin ?? false;
   // Secrets are shown once, right after creation or rotation; kept only in memory.
   const [secrets, setSecrets] = useState<Record<string, string>>({});
 
@@ -623,9 +626,11 @@ export function IntegrationsPage() {
         )}
         actions={
           <>
-            <button className="btn" onClick={() => setCreating("flow")}>
-              <Icon name="plus" size={15} /> {t("Connect Umbrella Flow")}
-            </button>
+            {isAdmin && (
+              <button className="btn" onClick={() => setCreating("flow")}>
+                <Icon name="plus" size={15} /> {t("Connect Umbrella Flow")}
+              </button>
+            )}
             <button
               className="btn btn-primary"
               onClick={() => setCreating("umbrella")}
