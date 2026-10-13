@@ -67,18 +67,296 @@
 .m-tab-pill { position: absolute; top: 2px; left: 50%; width: 56px; height: 30px; margin-left: -28px; border-radius: 999px; background: var(--accent-soft); }
 .m-tab-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 30px; border-radius: 999px; }
 .m-tab-label { position: relative; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.m-sheet-backdrop { position: fixed; inset: 0; z-index: 940; display: flex; align-items: flex-end; background: var(--backdrop); }
-.m-sheet {
-  width: 100%;
-  max-height: 85dvh;
+/* Bottom sheet, "More" and the note for a page made for a computer (Umbrella mobile.css). */
+.m-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 940;
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--m-safe-b);
-  background: var(--chrome);
+  justify-content: flex-end;
+  background: var(--backdrop);
+}
+
+.m-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 48px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: 0;
   border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+
+.m-sheet-full {
+  height: calc(100dvh - 48px);
+}
+
+.m-sheet-grip {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 2px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.m-sheet-grip span {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.m-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 10px 8px 18px;
+  touch-action: none;
+}
+
+.m-sheet-head h2 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.m-sheet-kicker {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.m-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 16px 20px;
+}
+
+.m-sheet-foot {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* "More" */
+.m-more-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.m-more-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+
+.m-more-tile.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.m-more-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.m-more-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.m-more-row:active,
+.m-more-row.active {
+  background: var(--surface-2);
+}
+
+.m-more-row > svg:first-child {
+  color: var(--muted);
+}
+
+.m-more-chev {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.m-more-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.m-more-desk h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.m-more-desk > p {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+}
+
+.m-more-list .m-more-row {
+  min-height: 44px;
+  color: var(--muted);
+}
+
+/* A page made for a computer */
+.m-desk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8vh;
+  padding: 28px 20px 22px;
+  text-align: center;
+}
+
+.m-desk h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+.m-desk p {
+  margin: 0;
+  max-width: 34ch;
+}
+
+.m-desk-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.m-desk-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  padding: 4px;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.m-desk-actions a.btn {
+  text-decoration: none;
+}
+
+.m-desk-actions {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.m-more-section { display: flex; flex-direction: column; }
+.m-more-group { margin: 8px 12px 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.m-shell .user-dropdown { position: fixed; top: 60px; right: 8px; }
+
+/* ---------- Catalog lists on the phone (as Umbrella's tables on the phone) ---------- */
+/* Search and "Filters · n" stay; the filters open in a bottom sheet, one per line. */
+.m-shell .nb-toolbar { padding: 10px 12px; }
+.m-shell .nb-toolbar .nb-search { flex: 1 1 100%; }
+.m-shell .nb-toolbar .nb-btn { flex: 1 1 auto; }
+.nb-btn.nb-btn-on { border-color: var(--chip-on-border); background: var(--chip-on-bg); color: var(--accent); }
+.m-sheet .nb-filters { grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; border: 0; box-shadow: none; background: none; }
+.m-sheet .nb-filter { min-height: 44px; }
+.m-sheet-foot .nb-btn { flex: 1 1 auto; justify-content: center; min-height: 42px; }
+
+/* Rows become cards: the name takes the first line, the other cells flow with their column name. */
+.m-shell .nb-table-wrap { overflow: visible; border: 0; background: none; box-shadow: none; }
+.m-shell .nb-table,
+.m-shell .nb-table tbody { display: block; min-width: 0; }
+.m-shell .nb-table thead,
+.m-shell .nb-table td.check { display: none; }
+.m-shell .nb-table tbody tr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
   box-shadow: var(--shadow);
 }
-.m-sheet-head { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 14px 10px 6px 20px; }
-.m-sheet-grip { position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--border); }
-.m-sheet .sidebar { margin: 0; overflow-y: auto; }
-.m-shell .user-dropdown { position: fixed; top: 60px; right: 8px; }
+.m-shell .nb-table td { display: block; min-width: 0; padding: 0; border: 0; }
+.m-shell .nb-table td.first { flex-basis: 100%; font-size: 15.5px; white-space: normal; }
+.m-shell .nb-table td[data-label]::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* Status counters scroll sideways in one row (Umbrella's .ci-tiles on the phone). */
+.m-shell .nb-counters {
+  display: flex;
+  gap: 8px;
+  margin: 0 -12px;
+  padding: 0 12px 2px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 12px;
+  scrollbar-width: none;
+}
+.m-shell .nb-counters::-webkit-scrollbar { display: none; }
+.m-shell .nb-counter { flex: none; min-width: 96px; max-width: 150px; padding: 8px 12px; border-radius: 14px; scroll-snap-align: start; }
+.m-shell .nb-counter b { font-size: 20px; }
