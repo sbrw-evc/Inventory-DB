@@ -16,7 +16,7 @@ import { authHeaders, dcimClientFor } from '../integrations/dcim.js';
 import { clearFlowCache, FlowError, flowGet } from '../integrations/flow/client.js';
 import { ensureSnmpIndexField } from '../integrations/flow/customField.js';
 import { startFlowNotifier } from '../integrations/flow/notifier.js';
-import { requireNetboxRole } from '../netbox/access.js';
+import { getNetboxRole, requireNetboxRole } from '../netbox/access.js';
 import { cidrToString, hexKey, parseCidr, parseIp } from '../netbox/cidr.js';
 import { verifySignature } from '../integrations/secrets.js';
 import {
@@ -124,15 +124,17 @@ export async function integrationRoutes(app: FastifyInstance) {
 
   startFlowNotifier();
 
-  const owned = (req: FastifyRequest) => getOwnedIntegration((req.params as { id: string }).id, requireUser(req).id);
+  const isAdmin = (req: FastifyRequest) => getNetboxRole(requireUser(req).id) === 'admin';
+  const owned = (req: FastifyRequest) => getOwnedIntegration((req.params as { id: string }).id, requireUser(req).id, isAdmin(req));
 
-  app.get('/api/v1/integrations', async (req) => listIntegrations(requireUser(req).id));
+  app.get('/api/v1/integrations', async (req) => listIntegrations(requireUser(req).id, isAdmin(req)));
 
   app.post('/api/v1/integrations', async (req, reply) => {
     const user = requireUser(req);
     const input = createSchema.parse(req.body);
     if (input.kind === 'flow') {
-      // A Flow integration changes what every user sees on DCIM pages and makes the server call Flow: admins only.
+      // A Flow integration changes what every user sees on DCIM pages and makes the server call Flow: admins only
+      // (every DCIM/IPAM admin manages it, see getOwnedIntegration).
       requireNetboxRole(req, 'admin');
     }
     const created = await createIntegration(user.id, input);
