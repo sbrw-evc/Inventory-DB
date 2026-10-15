@@ -3,11 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { PageHead } from '../components/shell/PageHead';
 import { t } from '../i18n';
 import { useAuth } from '../lib/auth';
-import { DirectoryPage } from './DirectoryPage';
-import { IdentityPage } from './IdentityPage';
 import { OpenBaoPage } from './OpenBaoPage';
-import { PolicyPage } from './PolicyPage';
 import { PostgresPage } from './PostgresPage';
+import { SpaPage } from './SpaPage';
 import { StatusPage } from './StatusPage';
 import { Banner } from './ui';
 
@@ -35,29 +33,16 @@ export function SettingsPage() {
         <Route index element={<Navigate to="status" replace />} />
         <Route path="status" element={<StatusPage />} />
         <Route
-          path="directory"
+          path="spa"
           element={
-            <Section title={t('Directories')} subtitle={t('Sign-in with LDAP / Active Directory and Microsoft Entra ID.')}>
-              <DirectoryPage />
+            <Section title="SPA" subtitle={t('Sign-in and access are managed in SPA (Single Point of Authorization).')}>
+              <SpaPage />
             </Section>
           }
         />
-        <Route
-          path="identity"
-          element={
-            <Section title={t('Single sign-in')} subtitle={t('Umbrella single sign-in, passkeys and sign-in with Google, Apple or OpenID Connect.')}>
-              <IdentityPage />
-            </Section>
-          }
-        />
-        <Route
-          path="password-policy"
-          element={
-            <Section title={t('Password policy')} subtitle={t('Rules for the passwords of local accounts.')}>
-              <PolicyPage />
-            </Section>
-          }
-        />
+        <Route path="identity" element={<Navigate to="../spa" replace />} />
+        <Route path="directory" element={<Navigate to="../spa" replace />} />
+        <Route path="password-policy" element={<Navigate to="../spa" replace />} />
         <Route
           path="postgresql"
           element={

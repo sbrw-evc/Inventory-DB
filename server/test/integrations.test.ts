@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { injectDcimClient, setDcimClient, type DcimClient, type NetboxObject } from '../src/integrations/dcim.js';
 import { sign, verifySignature } from '../src/integrations/secrets.js';
 import { clearIdentityCache } from '../src/routes/integrations.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 /** A small NetBox-shaped inventory: one site, one rack, two cabled devices. */
 const fixtures: Record<string, NetboxObject[]> = {
@@ -38,7 +38,7 @@ const fakeDcim: DcimClient = { list: async <T>(path: string) => (fixtures[path] 
 
 async function setup() {
   const app = await createTestApp();
-  const owner = await signUpUser(app);
+  const owner = await signInUser(app);
   const created = await app.inject({
     method: 'POST',
     url: '/api/v1/integrations',
@@ -76,7 +76,7 @@ describe('integrations: management', () => {
     expect(list.json()).toHaveLength(1);
     expect(JSON.stringify(list.json())).not.toContain(secret);
 
-    const other = await signUpUser(app);
+    const other = await signInUser(app);
     expect((await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}`, headers: other.headers })).statusCode).toBe(404);
 
     const patched = await app.inject({ method: 'PATCH', url: `/api/v1/integrations/${id}`, headers: owner.headers, payload: { title: 'Renamed' } });

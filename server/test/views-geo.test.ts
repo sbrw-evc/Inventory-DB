@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Table, View } from '../../shared/src/index.js';
 import { parseGeo } from '../../shared/src/index.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 let app: FastifyInstance;
 let h: Record<string, string>;
@@ -21,7 +21,7 @@ const enc = (v: unknown) => encodeURIComponent(JSON.stringify(v));
 
 beforeAll(async () => {
   app = await createTestApp();
-  h = (await signUpUser(app, 'geo@example.com')).headers;
+  h = (await signInUser(app, 'geo@example.com')).headers;
   baseId = (await ok<Base>('POST', '/bases', { title: 'Geo' })).id;
 });
 

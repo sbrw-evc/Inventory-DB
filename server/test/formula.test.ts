@@ -4,7 +4,7 @@ import type { Base, Column, ListResult, RecordData, Table } from '../../shared/s
 import { FormulaError, compileFormula, displayFormula, normalizeFormula, parseFormula } from '../src/data/formula.js';
 import { val } from '../src/data/sql.js';
 import type { DB } from '../src/db/index.js';
-import { createTestApp, openTestDb, signUpUser } from './helpers.js';
+import { createTestApp, openTestDb, signInUser } from './helpers.js';
 
 let db: DB;
 beforeAll(() => {
@@ -128,7 +128,7 @@ describe('formula fields end-to-end', () => {
 
   beforeAll(async () => {
     app = await createTestApp();
-    headers = (await signUpUser(app)).headers;
+    headers = (await signInUser(app)).headers;
     const base = await api<Base>('POST', '/bases', { title: 'F' });
     t = await api<Table>('POST', `/bases/${base.id}/tables`, {
       title: 'Lines',

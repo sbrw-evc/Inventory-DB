@@ -36,16 +36,12 @@ export const ru: Record<string, string> = {
 
   // auth
   'Sign in': 'Войти',
-  'Sign up': 'Зарегистрироваться',
-  'Create your account': 'Создайте учётную запись',
   'Spreadsheet-style database for your inventory.': 'Табличная база данных для учёта оборудования и запасов.',
   Name: 'Имя',
   Email: 'Эл. почта',
   Password: 'Пароль',
   'At least 8 characters.': 'Не менее 8 символов.',
   'Please wait…': 'Подождите…',
-  'No account yet?': 'Нет учётной записи?',
-  'Already have an account?': 'Уже есть учётная запись?',
 
   // home
   'Welcome, {name}': 'Добро пожаловать, {name}',

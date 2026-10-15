@@ -28,8 +28,9 @@ export function App() {
   return (
     <div key={lang} className="app-root">
       <Routes>
-        <Route path="/signin" element={<AuthPage mode="signin" />} />
-        <Route path="/signup" element={<AuthPage mode="signup" />} />
+        <Route path="/signin" element={<AuthPage />} />
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/signup" element={<Navigate to="/signin" replace />} />
         <Route path="/shared/view/:shareUuid" element={lazyPage(<SharedViewPage />)} />
         <Route path="/shared/form/:shareUuid" element={lazyPage(<SharedFormPage />)} />
         <Route element={<AppLayout />}>

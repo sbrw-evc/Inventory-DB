@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Column, Table, View } from '../../shared/src/index.js';
 import { getDb } from '../src/db/index.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 type H = Record<string, string>;
 let app: FastifyInstance;
@@ -27,7 +27,7 @@ const tableExists = (name: string) => !!getDb().prepare('SELECT 1 FROM informati
 
 beforeAll(async () => {
   app = await createTestApp();
-  const u = await signUpUser(app, 'meta-owner@example.com');
+  const u = await signInUser(app, 'meta-owner@example.com');
   owner = u.headers;
   ownerId = u.userId;
 });
@@ -44,19 +44,19 @@ describe('bases', () => {
     const upd = await api<Base>('PATCH', `/bases/${base.id}`, { title: 'Stock' });
     expect(upd.title).toBe('Stock');
 
-    const stranger = await signUpUser(app);
+    const stranger = await signInUser(app);
     const s = call(stranger.headers);
     await s('GET', `/bases/${base.id}`, undefined, 404);
     expect(await s<Base[]>('GET', '/bases')).toEqual([]);
 
-    const viewer = await signUpUser(app);
+    const viewer = await signInUser(app);
     getDb().prepare(`INSERT INTO nc_base_members (base_id, user_id, role) VALUES (?, ?, 'viewer')`).run(base.id, viewer.userId);
     const v = call(viewer.headers);
     await v('GET', `/bases/${base.id}`);
     await v('POST', `/bases/${base.id}/tables`, { title: 'X' }, 403);
     await v('PATCH', `/bases/${base.id}`, { title: 'nope' }, 403);
 
-    const editor = await signUpUser(app);
+    const editor = await signInUser(app);
     getDb().prepare(`INSERT INTO nc_base_members (base_id, user_id, role) VALUES (?, ?, 'editor')`).run(base.id, editor.userId);
     const t = await call(editor.headers)<Table>('POST', `/bases/${base.id}/tables`, { title: 'Things' });
     await call(editor.headers)('DELETE', `/bases/${base.id}`, undefined, 403);
@@ -293,7 +293,7 @@ describe('views', () => {
     }
 
     // locking: an editor can lock but not change or unlock a locked view
-    const editor = await signUpUser(app);
+    const editor = await signInUser(app);
     getDb().prepare(`INSERT INTO nc_base_members (base_id, user_id, role) VALUES (?, ?, 'editor')`).run(base.id, editor.userId);
     const ed = call(editor.headers);
     await ed('PATCH', `/views/${copy.id}`, { locked: true });

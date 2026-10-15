@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { getDb } from '../db/index.js';
-import { badRequest, conflict, notFound } from '../errors.js';
-import { bootstrapAdmin, getNetboxRole, listRoles, requireNetboxRole, setRole, type NetboxRole } from './access.js';
+import { HttpError, badRequest, conflict, notFound } from '../errors.js';
+import { getNetboxRole, listRoles, requireNetboxRole, type NetboxRole } from './access.js';
 import { requireUser } from '../auth/plugin.js';
 import { formatIp } from './cidr.js';
 import { importCsv } from './csvImport.js';
@@ -226,7 +226,6 @@ export async function registerNetboxRoutes(app: FastifyInstance) {
   // Roles
   app.get('/api/v1/netbox/me', async (req) => {
     const user = requireUser(req);
-    bootstrapAdmin(user); // the first caller becomes admin while there is none
     const role = getNetboxRole(user.id);
     return { user, role, can_write: role !== 'viewer', is_admin: role === 'admin' };
   });
@@ -234,17 +233,13 @@ export async function registerNetboxRoutes(app: FastifyInstance) {
     requireNetboxRole(req, 'admin');
     return { results: listRoles() };
   });
-  app.post('/api/v1/netbox/roles', async (req: Req) => {
+  // Roles are assigned in SPA.
+  const managedInSpa = async (req: Req) => {
     requireNetboxRole(req, 'admin');
-    const body = objBody(req.body);
-    const who = String(body.user_id ?? body.email ?? '');
-    if (!who) throw badRequest('Validation failed', { user_id: ['Provide user_id or email.'] });
-    return setRole(who, String(body.role));
-  });
-  app.put('/api/v1/netbox/roles/:userId', async (req: Req) => {
-    requireNetboxRole(req, 'admin');
-    return setRole(req.params.userId, String(objBody(req.body).role));
-  });
+    throw new HttpError(409, 'MANAGED_IN_SPA', 'Roles are assigned in SPA');
+  };
+  app.post('/api/v1/netbox/roles', managedInSpa);
+  app.put('/api/v1/netbox/roles/:userId', managedInSpa);
 
   // Schema (models, fields, choices) for clients and the UI
   app.get('/api/v1/netbox/schema', async (req) => {

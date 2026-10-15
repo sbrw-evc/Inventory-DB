@@ -7,14 +7,13 @@ import { logEvent } from './logbuf.js';
 import { OpenBaoClient } from './openbao.js';
 import { copySecretsTo, listSecrets, localSecretCount, openBaoClient, secretBackend, setSecret, useOpenBao } from './secrets.js';
 
-export type SecretUsage = 'integration' | 'ldap' | 'entra' | 'postgres' | 'jwt' | 'other';
+export type SecretUsage = 'integration' | 'spa' | 'postgres' | 'jwt' | 'other';
 
 /** What a secret path is used for (the page lists secrets by purpose, never their values). */
 export function secretUsage(path: string, titles: Record<string, string> = {}): { usage: SecretUsage; title?: string } {
   const m = /^integrations\/(.+)$/.exec(path);
   if (m) return { usage: 'integration', title: titles[m[1]] };
-  if (path === 'directory/ldap') return { usage: 'ldap' };
-  if (path === 'directory/entra') return { usage: 'entra' };
+  if (path === 'spa') return { usage: 'spa' };
   if (path === 'system/postgres') return { usage: 'postgres' };
   if (path === 'system/jwt') return { usage: 'jwt' };
   return { usage: 'other' };

@@ -7,14 +7,14 @@ import type { Column, Table, View } from '../../shared/src/index.js';
 import { getRecord, insertRecords, listRecords, updateRecords } from '../src/data/records.js';
 import { createBase, createTable, getTable, updateView } from '../src/meta/service.js';
 import { flushWebhooks } from '../src/platform/webhooks.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { multipart, startReceiver } from './platform-fixtures.js';
 
 const col = (t: Table, title: string): Column => t.columns.find((c) => c.title === title)!;
 
 async function setup() {
   const app = await createTestApp();
-  const owner = await signUpUser(app);
+  const owner = await signInUser(app);
   const base = createBase(owner.userId, { title: 'B' });
   const table = createTable(base.id, {
     title: 'Items',
@@ -161,7 +161,7 @@ describe('platform with data engine', () => {
 
   it('creates the inventory template with working rollups and formulas', async () => {
     const app = await createTestApp();
-    const u = await signUpUser(app);
+    const u = await signInUser(app);
     const res = await app.inject({ method: 'POST', url: '/api/v1/bases/templates/inventory', headers: u.headers });
     expect(res.statusCode).toBe(200);
     const base = res.json();

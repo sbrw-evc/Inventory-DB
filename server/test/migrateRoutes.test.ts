@@ -3,7 +3,7 @@ import { getJob } from '../src/platform/jobs.js';
 import type { Job } from '../../shared/src/index.js';
 import { MOCK_TOKEN, startMockNocoDB, type MockNocoDB } from './migrateNocodbMock.js';
 
-const { createTestApp, signUpUser } = await import('./helpers.js');
+const { createTestApp, signInUser } = await import('./helpers.js');
 
 let mock: MockNocoDB;
 beforeAll(async () => {
@@ -14,7 +14,7 @@ afterAll(async () => mock.close());
 describe('NocoDB migration routes', () => {
   it('lists NocoDB bases and validates the connection', async () => {
     const app = await createTestApp();
-    const { headers } = await signUpUser(app);
+    const { headers } = await signInUser(app);
 
     const anon = await app.inject({ method: 'POST', url: '/api/v1/migrate/nocodb/bases', payload: { url: mock.url, token: MOCK_TOKEN } });
     expect(anon.statusCode).toBe(401);
@@ -36,7 +36,7 @@ describe('NocoDB migration routes', () => {
 
   it('starts a background migration job without storing the token', async () => {
     const app = await createTestApp();
-    const { headers } = await signUpUser(app);
+    const { headers } = await signInUser(app);
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/migrate/nocodb',

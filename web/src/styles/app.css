@@ -724,6 +724,7 @@ input[type='color'] { padding: 2px; border: 1px solid var(--input-border); borde
 .um-item:hover,
 .um-item:focus-visible { background: var(--surface-2); outline: none; }
 .um-item.danger { color: var(--error); }
+a.um-item { text-decoration: none; }
 .um-label { flex: 1; }
 .um-value { color: var(--muted); font-size: 13px; }
 .um-chevron { color: var(--muted); display: inline-flex; }
@@ -1150,15 +1151,11 @@ button.tile:hover { border-color: var(--accent); }
 .signin-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .signin form { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; }
 .signin .field-label { margin: 0; }
-.auth-switch { text-align: center; color: var(--muted); }
-.auth-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
-.auth-or::before,
-.auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-.auth-methods { display: flex; flex-direction: column; gap: 10px; }
-.auth-hub-methods { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .auth-hint { margin: 0; text-align: center; font-size: 12px; }
-.btn-umbrella { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
-.um-warn { color: var(--warn, #b45309); font-size: 12.5px; padding: 0 12px 6px; }
+.auth-redirect { display: flex; align-items: center; gap: 8px; }
+.auth-help { font-size: 13px; line-height: 1.5; }
+.auth-help ol { margin: 8px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.auth-help code { overflow-wrap: anywhere; }
 .prefs { display: flex; gap: 8px; align-items: center; }
 .password { position: relative; }
 .password .input { padding-right: 42px; }

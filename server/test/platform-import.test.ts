@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import { convertValue, inferType } from '../src/platform/infer.js';
 import { normalizeHeaders, parseUpload } from '../src/platform/import.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { addMember, multipart, seedBase } from './platform-fixtures.js';
 
 describe('type inference', () => {
@@ -76,8 +76,8 @@ describe('parsing', () => {
 describe('import preview endpoint', () => {
   it('returns headers, samples and inferred types; requires editor', async () => {
     const app = await createTestApp();
-    const owner = await signUpUser(app);
-    const viewer = await signUpUser(app);
+    const owner = await signInUser(app);
+    const viewer = await signInUser(app);
     const s = seedBase(owner.userId);
     addMember(s.baseId, viewer.userId, 'viewer');
     const csv = 'Name,Qty,Type\nA,1,In\nB,2,Out\nC,3,In\nD,4,Out\n';

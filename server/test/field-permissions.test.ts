@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Table, View } from '../../shared/src/index.js';
 import { insertRecords, listRecords } from '../src/data/records.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { addMember } from './platform-fixtures.js';
 
 type H = Record<string, string>;
@@ -31,9 +31,9 @@ const enc = (v: unknown) => encodeURIComponent(JSON.stringify(v));
 
 beforeAll(async () => {
   app = await createTestApp();
-  const o = await signUpUser(app, 'perm-owner@example.com');
-  const e = await signUpUser(app, 'perm-editor@example.com');
-  const v = await signUpUser(app, 'perm-viewer@example.com');
+  const o = await signInUser(app, 'perm-owner@example.com');
+  const e = await signInUser(app, 'perm-editor@example.com');
+  const v = await signInUser(app, 'perm-viewer@example.com');
   owner = o.headers;
   editor = e.headers;
   viewer = v.headers;

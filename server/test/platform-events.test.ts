@@ -3,7 +3,7 @@ import { bus } from '../src/events.js';
 import { audit } from '../src/platform/audit.js';
 import { matchesFilter } from '../src/platform/filterEval.js';
 import { flushWebhooks } from '../src/platform/webhooks.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { addMember, seedBase, startReceiver } from './platform-fixtures.js';
 
 const closers: (() => Promise<void>)[] = [];
@@ -16,7 +16,7 @@ async function setup() {
   const app = await createTestApp();
   // a second app instance must not double-register bus listeners
   await createTestApp();
-  const owner = await signUpUser(app);
+  const owner = await signInUser(app);
   const s = seedBase(owner.userId);
   return { app, owner, s };
 }
@@ -52,7 +52,7 @@ describe('audit', () => {
     expect(page.pageInfo).toEqual({ totalRows: 5, offset: 0, limit: 2, isLastPage: false });
     expect(page.list[0].action).toBe('meta');
 
-    const editor = await signUpUser(app);
+    const editor = await signInUser(app);
     addMember(s.baseId, editor.userId, 'editor');
     const denied = await app.inject({ method: 'GET', url: `/api/v1/bases/${s.baseId}/audit`, headers: editor.headers });
     expect(denied.statusCode).toBe(403);
@@ -155,7 +155,7 @@ describe('webhooks', () => {
 
   it('requires editor role', async () => {
     const { app, s } = await setup();
-    const viewer = await signUpUser(app);
+    const viewer = await signInUser(app);
     addMember(s.baseId, viewer.userId, 'viewer');
     const res = await app.inject({ method: 'GET', url: `/api/v1/tables/${s.tableId}/hooks`, headers: viewer.headers });
     expect(res.statusCode).toBe(403);

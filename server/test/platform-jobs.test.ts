@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createJob, getJob, updateJob } from '../src/platform/jobs.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 describe('jobs', () => {
   it('creates, updates and serves a job only to its owner', async () => {
     const app = await createTestApp();
-    const a = await signUpUser(app);
-    const b = await signUpUser(app);
+    const a = await signInUser(app);
+    const b = await signInUser(app);
     const job = createJob(a.userId, 'nocodb-migration');
     expect(job.status).toBe('queued');
     updateJob(job.id, { status: 'running', progress: 0.5, message: 'Copying', appendLog: 'step 1' });

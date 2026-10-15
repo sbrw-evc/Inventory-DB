@@ -7,7 +7,7 @@ import { configureFlowNotifier, resetFlowNotifier } from '../src/integrations/fl
 import { verifySignature } from '../src/integrations/secrets.js';
 import { getSecret, useLocalSecrets, useOpenBao } from '../src/system/secrets.js';
 import { startFakeOpenBao, type FakeOpenBao } from './fake-openbao.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, grantRole, signInUser } from './helpers.js';
 import { makeApi } from './netbox-fixtures.js';
 
 /** A stand-in Umbrella Flow: records every request; answers are set per test. */
@@ -82,7 +82,7 @@ afterEach(() => resetFlowNotifier());
 async function setup() {
   const app = await createTestApp();
   // The first user that writes DCIM/IPAM becomes its admin; GET /netbox/me does that too.
-  const owner = await signUpUser(app);
+  const owner = await signInUser(app);
   await app.inject({ method: 'GET', url: '/api/v1/netbox/me', headers: owner.headers });
   return { app, owner, api: makeApi(app, owner.headers) };
 }
@@ -147,7 +147,7 @@ describe('flow integration: management', () => {
 
   it('needs the DCIM/IPAM admin role, a URL and a token', async () => {
     const { app, owner } = await setup();
-    const viewer = await signUpUser(app);
+    const viewer = await signInUser(app);
     expect((await createFlow(app, viewer.headers)).statusCode).toBe(403);
     expect((await createFlow(app, owner.headers, { flowToken: '' })).statusCode).toBe(400);
     expect((await createFlow(app, owner.headers, { flowUrl: 'ftp://x' })).statusCode).toBe(400);
@@ -164,7 +164,7 @@ describe('flow integration: management', () => {
         payload: { kind: 'umbrella', title: 'Umbrella prod', inventoryUrl: 'https://inv.example' },
       })
     ).json().integration;
-    const other = await signUpUser(app);
+    const other = await signInUser(app);
     const list = async (h: Record<string, string>) =>
       ((await app.inject({ method: 'GET', url: '/api/v1/integrations', headers: h })).json() as { id: string }[]).map((i) => i.id);
     const patch = (h: Record<string, string>, id: string) =>
@@ -175,7 +175,7 @@ describe('flow integration: management', () => {
     expect((await patch(other.headers, created.id)).statusCode).toBe(404);
 
     // Made admin: sees and manages the Flow integration, not someone else's Umbrella one.
-    await api.post('/netbox/roles', { user_id: other.userId, role: 'admin' });
+    grantRole(other.userId, 'admin');
     expect(await list(other.headers)).toEqual([created.id]);
     expect((await patch(other.headers, created.id)).json()).toMatchObject({ title: 'Renamed' });
     expect((await patch(other.headers, umbrella.id)).statusCode).toBe(404);
@@ -183,7 +183,7 @@ describe('flow integration: management', () => {
     expect(rotated.json().secret).toMatch(/^whsec_/);
 
     // The creator, no longer admin, loses access to the Flow integration but keeps their own Umbrella one.
-    await app.inject({ method: 'PUT', url: `/api/v1/netbox/roles/${owner.userId}`, headers: other.headers, payload: { role: 'editor' } });
+    grantRole(owner.userId, 'editor');
     expect(await list(owner.headers)).toEqual([umbrella.id]);
     expect((await patch(owner.headers, created.id)).statusCode).toBe(404);
     const removed = await app.inject({ method: 'DELETE', url: `/api/v1/integrations/${created.id}`, headers: other.headers });
@@ -215,7 +215,7 @@ describe('flow integration: traffic proxy', () => {
   it('calls Flow with the token, returns only the asked ids and caches for a minute', async () => {
     const { app, owner } = await setup();
     await createFlow(app, owner.headers);
-    const viewer = await signUpUser(app);
+    const viewer = await signInUser(app);
     const url = '/api/v1/integrations/flow/status?object_type=dcim.device&ids=1,2';
     const res = await app.inject({ method: 'GET', url, headers: viewer.headers });
     expect(res.statusCode).toBe(200);

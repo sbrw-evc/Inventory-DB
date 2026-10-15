@@ -1,12 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, Fingerprint, KeyRound, Languages, LockKeyhole, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ExternalLink, KeyRound, Languages, LogOut, Moon, Settings, ShieldCheck, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LANGS, setLang, useLang, useT } from '../../i18n';
 import { useAuth } from '../../lib/auth';
-import { formatDate } from '../../lib/format';
-import { ChangePasswordDialog } from '../../settings/ChangePassword';
-import { PasskeysDialog } from '../../settings/Passkeys';
 import { setTheme, useTheme, type Theme } from '../../lib/theme';
 import { spring } from './Brand';
 
@@ -32,8 +29,6 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 export function UserMenu({ compact }: { compact?: boolean }) {
   const t = useT();
   const { user, account, signOut } = useAuth();
-  const [changing, setChanging] = useState(false);
-  const [passkeys, setPasskeys] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -111,42 +106,16 @@ export function UserMenu({ compact }: { compact?: boolean }) {
                 {user?.name && <small>{user.email}</small>}
               </div>
             </div>
-            {account?.passwordExpiresSoon && account.passwordExpiresAt && (
-              <div className="um-warn" role="note">
-                {t('Your password expires {at}.', { at: formatDate(account.passwordExpiresAt, true) })}
-              </div>
-            )}
             <button type="button" role="menuitem" className="um-item" onClick={() => navigate('/admin/tokens')}>
               <KeyRound size={18} />
               {t('API tokens')}
             </button>
-            {account?.source === 'local' && (
-              <button
-                type="button"
-                role="menuitem"
-                className="um-item"
-                onClick={() => {
-                  setOpen(false);
-                  setChanging(true);
-                }}
-              >
-                <LockKeyhole size={18} />
-                {t('Change password')}
-              </button>
-            )}
-            {account?.passkeys && (
-              <button
-                type="button"
-                role="menuitem"
-                className="um-item"
-                onClick={() => {
-                  setOpen(false);
-                  setPasskeys(true);
-                }}
-              >
-                <Fingerprint size={18} />
-                {t('Passkeys')}
-              </button>
+            {account?.spa?.account_url && (
+              <a role="menuitem" className="um-item" href={account.spa.account_url} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
+                <ShieldCheck size={18} />
+                <span className="um-label">{t('Account and security')}</span>
+                <ExternalLink size={14} aria-hidden />
+              </a>
             )}
             {account?.admin && (
               <button type="button" role="menuitem" className="um-item" onClick={() => navigate('/settings')}>
@@ -184,8 +153,6 @@ export function UserMenu({ compact }: { compact?: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
-      {changing && user && <ChangePasswordDialog login={user.email} onClose={() => setChanging(false)} />}
-      {passkeys && <PasskeysDialog onClose={() => setPasskeys(false)} />}
     </div>
   );
 }

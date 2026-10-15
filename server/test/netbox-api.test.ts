@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { signUpUser } from './helpers.js';
+import { grantRole, signInUser } from './helpers.js';
 import { makeApi, seedDcim, setupNetbox } from './netbox-fixtures.js';
 
 describe('netbox api behaviour', () => {
-  it('enforces roles: anonymous 401, viewer read-only, admin grants editor', async () => {
+  it('enforces roles: anonymous 401, viewer read-only, editor from SPA writes; roles are read-only here', async () => {
     const { app, api, admin } = await setupNetbox();
     const anon = await app.inject({ method: 'GET', url: '/api/v1/dcim/sites' });
     expect(anon.statusCode).toBe(401);
@@ -11,19 +11,20 @@ describe('netbox api behaviour', () => {
     const me = await api.get('/netbox/me');
     expect(me).toMatchObject({ role: 'admin', can_write: true, is_admin: true });
 
-    const bob = await signUpUser(app, 'bob@example.com');
+    const bob = await signInUser(app, 'bob@example.com');
     const bobApi = makeApi(app, bob.headers);
     expect((await bobApi.get('/netbox/me')).role).toBe('viewer');
     expect((await bobApi.call('GET', '/dcim/sites')).status).toBe(200);
     expect((await bobApi.call('POST', '/dcim/sites', { name: 'X', slug: 'x' })).status).toBe(403);
     expect((await bobApi.call('GET', '/netbox/roles')).status).toBe(403);
 
-    await api.post('/netbox/roles', { email: 'bob@example.com', role: 'editor' });
+    // Roles are assigned in SPA, not here.
+    expect((await api.call('POST', '/netbox/roles', { email: 'bob@example.com', role: 'editor' })).status).toBe(409);
+    expect((await api.call('PUT', `/netbox/roles/${admin.userId}`, { role: 'viewer' })).status).toBe(409);
+    grantRole(bob.userId, 'editor');
     expect((await bobApi.call('POST', '/dcim/sites', { name: 'X', slug: 'x' })).status).toBe(201);
     const roles = await api.get('/netbox/roles');
     expect(roles.results.find((r: any) => r.email === 'bob@example.com').role).toBe('editor');
-    // the last admin can't be demoted
-    expect((await api.call('PUT', `/netbox/roles/${admin.userId}`, { role: 'viewer' })).status).toBe(409);
   });
 
   it('lists with pagination, filters, search and ordering; bulk create/update/delete', async () => {

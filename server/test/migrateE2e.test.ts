@@ -7,7 +7,7 @@ import { getRecord, listRecords } from '../src/data/records.js';
 import { getBase, getTable } from '../src/meta/service.js';
 import { runMigration } from '../src/migrate/nocodbMigration.js';
 import { createJob, getJob } from '../src/platform/jobs.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { MOCK_TOKEN, startMockNocoDB, type MockNocoDB } from './migrateNocodbMock.js';
 
 describe('NocoDB migration end-to-end (real data engine)', () => {
@@ -19,7 +19,7 @@ describe('NocoDB migration end-to-end (real data engine)', () => {
 
   it('migrates the Products/Suppliers base', async () => {
     const app = await createTestApp();
-    const { userId } = await signUpUser(app);
+    const { userId } = await signInUser(app);
     const job = createJob(userId, 'nocodb-migration');
     const result = await runMigration({ url: mock.url, token: MOCK_TOKEN, nocoBaseId: 'pinv0001', userId, jobId: job.id, client: { retryBaseMs: 1 } });
     const finished = getJob(job.id);

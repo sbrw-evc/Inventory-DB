@@ -9,7 +9,7 @@ import type { Base, Table } from '../../shared/src/index.js';
 import { getDb } from '../src/db/index.js';
 import { parsePostgresUrl } from '../src/system/config.js';
 import { TEST_DATABASE_URL, TEST_SCHEMA_PREFIX } from './db-env.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 process.env.CONFIG_DIR = mkdtempSync(join(tmpdir(), 'idb-config-'));
 
@@ -27,7 +27,7 @@ const target = (schema: string) => ({ ...connection, password, schema });
 
 beforeAll(async () => {
   app = await createTestApp();
-  admin = (await signUpUser(app)).headers;
+  admin = (await signInUser(app)).headers;
   await api('GET', '/settings/postgres');
 });
 

@@ -30,8 +30,7 @@ export function baoRows(s: OpenBaoStatus, locale: string): [string, string | und
 function usageText(u: SecretUsage) {
   return {
     integration: t('Integration signing secret'),
-    ldap: t('LDAP / AD service account password'),
-    entra: t('Entra ID client secret'),
+    spa: t('SPA connection key'),
     postgres: t('PostgreSQL password'),
     jwt: t('Session signing key'),
     other: t('Other'),
@@ -76,7 +75,7 @@ function Current({ overview, onChanged }: { overview: OpenBaoOverview; onChanged
         </Button>
       }
     >
-      <p className="muted">{t('All Inventory DB secrets are kept in OpenBao: directory passwords, integration keys, the database password and the session signing key.')}</p>
+      <p className="muted">{t('All Inventory DB secrets are kept in OpenBao: integration keys, the SPA connection key, the database password and the session signing key.')}</p>
       <Rows
         align="end"
         rows={[

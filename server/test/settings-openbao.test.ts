@@ -9,7 +9,7 @@ import { encryptSecret } from '../src/integrations/secrets.js';
 import { moveLegacySecrets } from '../src/integrations/store.js';
 import { getSecret, openBaoClient, secretBackend, setSecret, useLocalSecrets, useOpenBao } from '../src/system/secrets.js';
 import { startFakeOpenBao, type FakeOpenBao } from './fake-openbao.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 process.env.CONFIG_DIR = mkdtempSync(join(tmpdir(), 'idb-config-'));
 
@@ -29,8 +29,8 @@ beforeAll(async () => {
   bao = await startFakeOpenBao();
   other = await startFakeOpenBao({ mounts: ['inventory', 'other'] });
   app = await createTestApp();
-  admin = (await signUpUser(app)).headers;
-  viewer = (await signUpUser(app)).headers;
+  admin = (await signInUser(app)).headers;
+  viewer = (await signInUser(app)).headers;
   // The first user to open an admin page becomes the DCIM/IPAM (and settings) admin.
   await api('GET', '/settings/openbao');
 });

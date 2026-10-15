@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Role, User } from '../../../shared/src/index.js';
 import { getDb } from '../db/index.js';
 import { notFound, unauthorized } from '../errors.js';
-import { assertBaseRole, getUser, isDisabled, userIdForApiToken, verifyJwt } from './service.js';
+import { assertBaseRole, getUser, isDisabled, sessionValid, userIdForApiToken, verifyJwt } from './service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -11,7 +11,8 @@ declare module 'fastify' {
 }
 
 /**
- * Resolves the caller from `Authorization: Bearer <jwt>`, `xc-auth: <jwt>` or `xc-token: <api token>`.
+ * Resolves the caller from `Authorization: Bearer <jwt>`, `xc-auth: <jwt>` (the session started after the SPA
+ * callback) or `xc-token: <api token>`. Users disabled by SPA lose both; revoked sessions stay revoked.
  * Routes then call `requireUser(req)` / `requireBaseRole(...)`.
  */
 export async function authPlugin(app: FastifyInstance) {
@@ -20,9 +21,14 @@ export async function authPlugin(app: FastifyInstance) {
     let userId: string | null = null;
     const apiToken = req.headers['xc-token'];
     const bearer = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? (req.headers['xc-auth'] as string | undefined);
-    if (typeof apiToken === 'string' && apiToken) userId = userIdForApiToken(apiToken);
-    else if (bearer) userId = await verifyJwt(bearer);
-    if (userId && !isDisabled(userId)) {
+    if (typeof apiToken === 'string' && apiToken) {
+      userId = userIdForApiToken(apiToken);
+      if (userId && isDisabled(userId)) userId = null;
+    } else if (bearer) {
+      const session = await verifyJwt(bearer);
+      userId = session && sessionValid(session.sub, session.iat) ? session.sub : null;
+    }
+    if (userId) {
       try {
         req.user = getUser(userId);
       } catch {

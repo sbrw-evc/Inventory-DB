@@ -13,7 +13,6 @@ import type {
   Job,
   ListQuery,
   ListResult,
-  PasswordPolicy,
   RecordData,
   Role,
   Sort,
@@ -81,66 +80,31 @@ export interface MigrationResult {
 const enc = encodeURIComponent;
 
 export const authApi = {
-  signUp: (body: { email: string; password: string; name?: string }) =>
-    http.post<{ user: User; token: string }>('/auth/signup', body, { anonymous: true }),
-  signIn: (body: { email: string; password: string }) =>
-    http.post<{ user: User; token: string }>('/auth/signin', body, { anonymous: true }),
   me: () => http.get<{ user: User; account?: Account }>('/auth/me'),
-  providers: () => http.get<AuthProviders>('/auth/providers', { anonymous: true }),
-  changePassword: (body: { email: string; password: string; newPassword: string }) =>
-    http.post<{ user: User; token: string }>('/auth/password', body, { anonymous: true }),
-  /** Passkey, Umbrella and provider buttons of the sign-in page. */
-  methods: () => http.get<AuthMethods>('/auth/methods', { anonymous: true }),
-  passkeyBegin: () => http.post<Ceremony>('/auth/passkey/begin', {}, { anonymous: true }),
-  passkeyFinish: (ceremony: string, credential: unknown) =>
-    http.post<{ user: User; token: string }>('/auth/passkey/finish', { ceremony, credential }, { anonymous: true }),
-  myPasskeys: () => http.get<Passkey[]>('/auth/me/passkeys'),
-  addPasskeyBegin: () => http.post<Ceremony>('/auth/me/passkeys/begin', {}),
-  addPasskeyFinish: (ceremony: string, credential: unknown, name?: string) => http.post<Passkey>('/auth/me/passkeys/finish', { ceremony, credential, name }),
-  renamePasskey: (id: string, name: string) => http.patch<{ ok: true }>(`/auth/me/passkeys/${encodeURIComponent(id)}`, { name }),
-  removePasskey: (id: string) => http.del<void>(`/auth/me/passkeys/${encodeURIComponent(id)}`),
+  /** Whether Inventory DB is connected to SPA (the sign-in page). */
+  spa: () => http.get<SpaStatus>('/auth/spa', { anonymous: true }),
 };
 
-/** A WebAuthn ceremony: the options for the browser and the server's handle of the challenge. */
-export interface Ceremony {
-  ceremony: string;
-  options: Record<string, unknown>;
-}
-export interface Passkey {
-  id: string;
-  name: string;
-  transports: string[];
-  backup_eligible: boolean;
-  /** Synchronised from Umbrella Monitoring: managed in the Umbrella profile. */
-  from_hub: boolean;
-  created_at: string;
-  last_used_at: string | null;
-}
-export interface AuthMethods {
-  passkeys: boolean;
-  providers: { id: 'google' | 'apple' | 'oidc'; title: string }[];
-  /** Umbrella single sign-in and the methods the hub offers (password, passkey, Entra ID, Google…). */
-  umbrella: { hub: string; methods: { id: string; title: string }[] } | null;
+/** Sign-in goes through SPA: these are browser navigations, not API calls. */
+export const spaUrls = {
+  start: (returnTo: string, opts: { prompt?: 'login' } = {}) =>
+    `/api/auth/spa/start?return=${encodeURIComponent(returnTo)}${opts.prompt ? `&prompt=${opts.prompt}` : ''}`,
+  logout: '/api/auth/spa/logout',
+};
+
+export interface SpaStatus {
+  connected: boolean;
+  issuer?: string;
+  application?: string | null;
 }
 
-/** How the signed-in user signs in, whether they may open the settings, and when their password expires. */
+/** The signed-in user's role (from SPA) and where they manage their password and passkeys (SPA's profile). */
 export interface Account {
-  source: 'local' | 'ldap' | 'entra' | 'google' | 'apple' | 'oidc' | 'umbrella';
+  source: string;
+  username?: string | null;
   admin: boolean;
   role?: 'admin' | 'editor' | 'viewer' | null;
-  passwordExpiresAt: string | null;
-  passwordExpiresSoon: boolean;
-  /** Passkeys are turned on. */
-  passkeys?: boolean;
-  /** The passkeys of this account come from Umbrella Monitoring. */
-  passkeysFromHub?: boolean;
-  /** Address of Umbrella Monitoring when connected. */
-  hub?: string | null;
-}
-export interface AuthProviders {
-  ldap: boolean;
-  entra: boolean;
-  password_policy: PasswordPolicy;
+  spa?: { issuer: string; account_url: string } | null;
 }
 
 export const metaApi = {

@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Column, ListResult, RecordData, Table } from '../../shared/src/index.js';
 import { getDb } from '../src/db/index.js';
-import { createTestApp, openTestDb, signUpUser } from './helpers.js';
+import { createTestApp, openTestDb, signInUser } from './helpers.js';
 
 let app: FastifyInstance;
 let headers: Record<string, string>;
@@ -23,16 +23,16 @@ const where = (columnId: string, op: string, value?: unknown) => enc({ logic: 'a
 
 beforeAll(async () => {
   app = await createTestApp();
-  headers = (await signUpUser(app, 'Mixed.Case@Example.com')).headers;
+  headers = (await signInUser(app, 'Mixed.Case@Example.com')).headers;
   baseId = (await api<Base>('POST', '/bases', { title: 'PG' })).id;
 });
 
 describe('postgres storage', () => {
-  it('signs in with any letter case of the email and rejects a duplicate that differs only in case', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/signin', payload: { email: 'mixed.case@example.com', password: 'Correct-Horse-9!' } });
-    expect(res.statusCode).toBe(200);
-    const dup = await app.inject({ method: 'POST', url: '/api/v1/auth/signup', payload: { email: 'MIXED.case@example.com', password: 'Correct-Horse-9!' } });
-    expect(dup.statusCode).toBe(409);
+  it('finds a member to invite by any letter case of the e-mail', async () => {
+    const other = await signInUser(app, 'Other.Person@Example.com');
+    const m = await api('POST', `/bases/${baseId}/members`, { email: 'other.person@example.COM', role: 'viewer' });
+    expect(m).toMatchObject({ userId: other.userId, role: 'viewer' });
+    await api('DELETE', `/bases/${baseId}/members/${other.userId}`);
   });
 
   it('continues the id sequence after records inserted with explicit ids', async () => {

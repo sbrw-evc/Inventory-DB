@@ -13,12 +13,11 @@ Features:
 - **DCIM/IPAM (NetBox core):** sites, racks with elevation, devices, interfaces, cables with trace, prefixes
   with utilisation and next free IP, IP addresses, VLANs, VRFs, tenants, tags, custom fields, change log, and a
   NetBox-compatible REST API ([docs/netbox.md](docs/netbox.md)).
-- **Settings (administrators):** system status, sign-in with LDAP / Active Directory and Microsoft Entra ID,
-  **single sign-in with Umbrella** (shared users, password policy and passkeys with Umbrella Monitoring, Umbrella
-  Flow and Network Control — [docs/identity-federation.md](docs/identity-federation.md)), **passkeys** (Windows
-  Hello face / fingerprint / PIN, Touch ID / Face ID, security keys), sign-in with Google, Apple and OpenID Connect,
-  password policy with history, common-password blocking and lockout, PostgreSQL connection, statistics and moving to another server, and the OpenBao secret store
-  ([docs/settings.md](docs/settings.md)).
+- **Sign-in and access are managed in SPA** (Single Point of Authorization): Inventory DB keeps no passwords,
+  passkeys or directory settings; people sign in with SPA and get their DCIM/IPAM role there
+  ([docs/spa.md](docs/spa.md)).
+- **Settings (administrators):** system status, the SPA connection with its users, PostgreSQL connection, statistics
+  and moving to another server, and the OpenBao secret store ([docs/settings.md](docs/settings.md)).
 - **Integrations:** Umbrella monitoring (CMDB feed, alert states on devices) and Umbrella Flow (traffic on devices,
   interfaces and circuits with 24 h sparklines and 95th percentile vs commit, active addresses of prefixes, signed
   change notifications) — [docs/integrations.md](docs/integrations.md).
@@ -41,7 +40,8 @@ npm run build && npm start   # serves the built web app from the API server
 ```
 
 Environment: `DATABASE_URL` (`postgres://inventory:inventory@localhost:5432/inventory`), `TEST_DATABASE_URL`
-(tests; defaults to `DATABASE_URL`), `PORT` (8080), `JWT_SECRET` (set in production), `UPLOAD_DIR` (`data/uploads`),
+(tests; defaults to `DATABASE_URL`), `PORT` (8080), `SPA_CONNECTION_KEY` / `SPA_CONNECTION_KEY_FILE` and
+`SPA_PUBLIC_URL` (sign-in with SPA, [docs/spa.md](docs/spa.md)), `SESSION_HOURS` (12), `JWT_SECRET` (set in production), `UPLOAD_DIR` (`data/uploads`),
 `WEBHOOK_ALLOW_PRIVATE=1` (let webhooks call private/internal addresses; off by default), `CONFIG_DIR`
 (`data/config`, the settings file), and the `OPENBAO_*` variables of [docs/settings.md](docs/settings.md).
 
@@ -71,7 +71,14 @@ rebuilds and upgrades; only `docker compose down -v` deletes them.
 it private: without it OpenBao cannot be unsealed and every secret is lost. To unseal by hand instead, set
 `OPENBAO_AUTO_UNSEAL=false`.
 
-The first account that signs in becomes the administrator and sees the **Settings** group of the menu.
+## Sign-in and access
+
+Sign-in and access are managed in SPA — [sbrw-evc/SPA-Single-point-of-authorization-](https://github.com/sbrw-evc/SPA-Single-point-of-authorization-)
+(contract: its [docs/protocol.md](https://github.com/sbrw-evc/SPA-Single-point-of-authorization-/blob/main/docs/protocol.md)).
+To connect: in SPA open **Applications → Connect an application**, choose **Inventory DB**, enter its address and give
+its roles (`admin`, `editor`, `viewer`) to people or groups; put the connection key (`spa1.…`) into
+`SPA_CONNECTION_KEY` in `.env` and run `docker compose up -d`. People with SPA's `admin` role for Inventory DB see the
+**Settings** group of the menu. Details: [docs/spa.md](docs/spa.md).
 
 Upgrade: `git pull && docker compose up -d --build`.
 

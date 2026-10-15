@@ -1,8 +1,8 @@
 /**
- * Every secret Inventory DB keeps (integration signing secrets, the LDAP bind password, the Entra ID client secret,
- * the PostgreSQL password, the session signing key) goes through this store. With OpenBao configured the secrets
+ * Every secret Inventory DB keeps (integration signing secrets, the SPA connection key when it is not given in the
+ * environment, the PostgreSQL password, the session signing key) goes through this store. With OpenBao configured the secrets
  * live in its KV v2 mount; without it they are kept encrypted (AES-256-GCM) in the `nc_secrets` table, and the
- * settings pages say so. Paths are logical, e.g. `integrations/int_abc` or `directory/ldap`.
+ * settings pages say so. Paths are logical, e.g. `integrations/int_abc` or `spa`.
  */
 import { getDb, now } from '../db/index.js';
 import { decryptSecret, encryptSecret } from '../integrations/secrets.js';

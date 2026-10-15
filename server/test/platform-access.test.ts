@@ -7,7 +7,7 @@ import { authPlugin } from '../src/auth/plugin.js';
 import { getDb } from '../src/db/index.js';
 import { registerDocs } from '../src/platform/docs.js';
 import { platformRoutes } from '../src/routes/platform.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 import { addMember, multipart, seedBase } from './platform-fixtures.js';
 
 beforeAll(() => {
@@ -17,8 +17,8 @@ beforeAll(() => {
 describe('members', () => {
   it('lists, invites, changes roles and protects the last owner', async () => {
     const app = await createTestApp();
-    const owner = await signUpUser(app, 'owner@example.com');
-    const other = await signUpUser(app, 'other@example.com');
+    const owner = await signInUser(app, 'owner@example.com');
+    const other = await signInUser(app, 'other@example.com');
     const { baseId } = seedBase(owner.userId);
     const url = `/api/v1/bases/${baseId}/members`;
 
@@ -62,7 +62,7 @@ describe('members', () => {
 describe('api tokens', () => {
   it('creates a token shown once, authenticates with xc-token, lists and revokes', async () => {
     const app = await createTestApp();
-    const u = await signUpUser(app);
+    const u = await signInUser(app);
     const created = await app.inject({ method: 'POST', url: '/api/v1/tokens', headers: u.headers, payload: { description: 'CI' } });
     const { id, token } = created.json();
     expect(token).toMatch(/^nc_/);
@@ -73,7 +73,7 @@ describe('api tokens', () => {
     const list = await app.inject({ method: 'GET', url: '/api/v1/tokens', headers: u.headers });
     expect(list.json()).toEqual([{ id, description: 'CI', createdAt: expect.any(String) }]);
 
-    const other = await signUpUser(app);
+    const other = await signInUser(app);
     const stolen = await app.inject({ method: 'DELETE', url: `/api/v1/tokens/${id}`, headers: other.headers });
     expect(stolen.statusCode).toBe(404);
 
@@ -87,7 +87,7 @@ describe('api tokens', () => {
 describe('files', () => {
   it('uploads and serves a file; requires editor access somewhere', async () => {
     const app = await createTestApp();
-    const u = await signUpUser(app);
+    const u = await signInUser(app);
     const mp = multipart({}, { name: 'hello.txt', content: 'hello world', type: 'text/plain' });
 
     const noBase = await app.inject({ method: 'POST', url: '/api/v1/files', headers: { ...u.headers, ...mp.headers }, payload: mp.payload });
@@ -121,9 +121,9 @@ describe('files', () => {
 describe('comments', () => {
   it('lists, adds (commenter+) and deletes (author or owner)', async () => {
     const app = await createTestApp();
-    const owner = await signUpUser(app);
-    const commenter = await signUpUser(app);
-    const viewer = await signUpUser(app);
+    const owner = await signInUser(app);
+    const commenter = await signInUser(app);
+    const viewer = await signInUser(app);
     const s = seedBase(owner.userId);
     addMember(s.baseId, commenter.userId, 'commenter');
     addMember(s.baseId, viewer.userId, 'viewer');
@@ -155,8 +155,8 @@ describe('comments', () => {
 describe('sharing (no data engine needed)', () => {
   it('enables/disables sharing and enforces the password before anything else', async () => {
     const app = await createTestApp();
-    const owner = await signUpUser(app);
-    const viewer = await signUpUser(app);
+    const owner = await signInUser(app);
+    const viewer = await signInUser(app);
     const s = seedBase(owner.userId);
     addMember(s.baseId, viewer.userId, 'viewer');
     const url = `/api/v1/views/${s.viewId}/share`;
@@ -185,7 +185,7 @@ describe('sharing (no data engine needed)', () => {
   });
   it('locks out a client after repeated wrong share passwords', async () => {
     const app = await createTestApp();
-    const owner = await signUpUser(app);
+    const owner = await signInUser(app);
     const s = seedBase(owner.userId);
     const shared = await app.inject({ method: 'POST', url: `/api/v1/views/${s.viewId}/share`, headers: owner.headers, payload: { password: 'secret1' } });
     const meta = `/api/v1/public/views/${shared.json().shareUuid}`;

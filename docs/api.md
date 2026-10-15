@@ -3,7 +3,7 @@
 All endpoints are under `/api/v1`, JSON in and out. Errors: `{ error, message, details? }` with HTTP status
 400/401/403/404/409/500. Types referenced below live in `shared/src/types.ts`.
 
-Auth: `Authorization: Bearer <jwt>` (or `xc-auth: <jwt>`) from sign-in, or `xc-token: <api token>`.
+Auth: `Authorization: Bearer <jwt>` (or `xc-auth: <jwt>`) — the session started after sign-in with SPA ([spa.md](spa.md)) — or `xc-token: <api token>`.
 Roles per base: owner > editor > commenter > viewer. "min role" is the minimum required.
 
 Owners in brackets are the module that implements the endpoint.
@@ -11,9 +11,11 @@ Owners in brackets are the module that implements the endpoint.
 ## Auth [core, done]
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | /auth/signup | `{email,password,name?}` | `{user, token}` |
-| POST | /auth/signin | `{email,password}` | `{user, token}` |
-| GET | /auth/me | | `{user}` |
+| GET | /auth/me | | `{user, account: {source, username, admin, role, spa: {issuer, account_url}}}` |
+| GET | /auth/spa | (public) | `{connected, issuer?, application?}` |
+
+Sign-in itself is a browser flow outside `/api/v1`: `GET /api/auth/spa/start?return=…`, `GET /api/auth/spa/callback`,
+`GET /api/auth/spa/logout` ([spa.md](spa.md)). There is no sign-up and no password API.
 
 ## Meta [data engine]
 | Method | Path | Min role | Body / query | Returns |

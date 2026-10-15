@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Base, Column, ListResult, RecordData, Table } from '../../shared/src/index.js';
 import { getDb } from '../src/db/index.js';
 import { bus } from '../src/events.js';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 type H = Record<string, string>;
 let app: FastifyInstance;
@@ -22,7 +22,7 @@ const enc = (v: unknown) => encodeURIComponent(JSON.stringify(v));
 
 beforeAll(async () => {
   app = await createTestApp();
-  const u = await signUpUser(app, 'data@example.com');
+  const u = await signInUser(app, 'data@example.com');
   headers = u.headers;
   userId = u.userId;
   baseId = (await api<Base>('POST', '/bases', { title: 'Data' })).id;

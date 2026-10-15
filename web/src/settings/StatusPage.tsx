@@ -5,7 +5,6 @@ import { getLang, t } from '../i18n';
 import { formatDate } from '../lib/format';
 import { settingsApi, type State } from './api';
 import { baoRows, baoState } from './OpenBaoPage';
-import { lettersText } from './policy';
 import { Banner, Button, formatBytes, formatDuration, formatMs, Pill, Rows, useResource } from './ui';
 
 function StatusCard({ title, state, label, wide, children }: { title: string; state?: State; label?: string; wide?: boolean; children: ReactNode }) {
@@ -49,18 +48,15 @@ export function StatusPage() {
       </>
     );
 
-  const { build: b, runtime: rt, openbao: ob, postgres: pg, ldap: ld, entra: en, integrations: ig, inventory: inv, logs, settings } = s;
+  const { build: b, runtime: rt, openbao: ob, postgres: pg, spa, integrations: ig, inventory: inv, logs } = s;
   const obState: State = s.secrets.backend === 'local' ? 'warn' : baoState(ob);
   const pgState: State = pg.ok ? 'ok' : 'error';
-  const ldState: State = !ld.enabled ? 'off' : ld.ok ? 'ok' : 'error';
-  const enState: State = !en.enabled ? 'off' : en.ok ? 'ok' : 'error';
+  const spaState: State = !spa.connected ? 'error' : spa.ok ? 'ok' : spa.last_sync ? 'error' : 'warn';
   const errors = logs.counts.error ?? 0;
   const warnings = logs.counts.warn ?? 0;
   const logState: State = errors > 0 ? 'error' : warnings > 0 ? 'warn' : 'ok';
-  const problems = [obState, pgState, ldState, enState].filter((x) => x === 'error').length;
-  const users = inv.users.local + inv.users.ldap + inv.users.entra;
+  const problems = [obState, pgState, spaState].filter((x) => x === 'error').length;
   const h = pg.health;
-  const p = settings.password_policy;
 
   return (
     <>
@@ -130,44 +126,21 @@ export function StatusPage() {
           />
           {pg.error && <Banner kind="error" title={pg.error} />}
         </StatusCard>
-        <StatusCard title="LDAP / AD" state={ldState}>
-          {ld.enabled ? (
+        <StatusCard title="SPA" state={spaState} label={!spa.connected ? t('Not connected') : undefined}>
+          {spa.connected ? (
             <Rows
               align="end"
               rows={[
-                [t('Directory'), ld.kind === 'ad' ? 'Active Directory' : ld.kind === 'openldap' ? 'OpenLDAP' : undefined],
-                [t('Server'), ld.url],
-                [t('Encryption'), ld.tls === 'none' ? t('Off') : ld.tls === 'starttls' ? 'StartTLS' : ld.tls === 'ldaps' ? 'LDAPS' : undefined],
-                [t('Search base'), ld.base_dn],
-                [t('Administrators group'), ld.admin_group],
-                [t('Users'), num(inv.users.ldap)],
-                [t('Response time'), ld.ok ? formatMs(ld.latency_ms, locale) : undefined],
+                [t('Issuer'), spa.issuer],
+                [t('Application'), spa.application],
+                [t('Last synchronization'), date(spa.last_sync)],
+                [t('Users'), spa.users !== undefined ? num(spa.users) : undefined],
               ]}
             />
           ) : (
-            <p className="muted">{t('Sign-in with LDAP / AD is off.')}</p>
+            <p className="muted">{t('This application is not connected to SPA')}</p>
           )}
-          {ld.error && <Banner kind="error" title={ld.error} />}
-        </StatusCard>
-        <StatusCard title="Entra ID" state={enState}>
-          {en.enabled ? (
-            <Rows
-              align="end"
-              rows={[
-                [t('Tenant'), en.tenant_id],
-                [t('Application (client) ID'), en.client_id],
-                [t('Redirect URI'), en.redirect_url],
-                [t('Administrators group'), en.admin_group_id],
-                [t('Users group'), en.user_group_id],
-                [t('Client secret'), en.credentials ? t('Accepted') : t('Not checked')],
-                [t('Users'), num(inv.users.entra)],
-                [t('Response time'), en.ok ? formatMs(en.latency_ms, locale) : undefined],
-              ]}
-            />
-          ) : (
-            <p className="muted">{t('Sign-in with Entra ID is off.')}</p>
-          )}
-          {en.error && <Banner kind="error" title={en.error} />}
+          {spa.error && <Banner kind="error" title={spa.error} />}
         </StatusCard>
         <StatusCard title={t('Integrations')}>
           <Rows
@@ -184,8 +157,7 @@ export function StatusPage() {
           <Rows
             align="end"
             rows={[
-              [t('Users'), num(users)],
-              [t('Local / LDAP / Entra ID'), `${num(inv.users.local)} / ${num(inv.users.ldap)} / ${num(inv.users.entra)}`],
+              [t('Users'), num(inv.users)],
               [t('Administrators'), num(inv.admins)],
               [t('Disabled users'), inv.disabled_users ? num(inv.disabled_users) : undefined],
               [t('Last sign-in'), date(inv.last_sign_in)],
@@ -198,22 +170,6 @@ export function StatusPage() {
               [t('API tokens'), num(inv.api_tokens)],
               [t('Webhooks'), num(inv.webhooks)],
               [t('Change log entries'), num(inv.audit_entries)],
-            ]}
-          />
-        </StatusCard>
-        <StatusCard title={t('Password policy')} state={settings.expired_users ? 'warn' : undefined}>
-          <Rows
-            align="end"
-            rows={[
-              [t('Minimum length'), String(p.min_length)],
-              [t('Letters'), lettersText(p.letters)],
-              [t('Digits required'), yesNo(p.require_digits)],
-              [t('Special characters required'), yesNo(p.require_special)],
-              [t('Upper and lower case required'), yesNo(p.require_mixed_case)],
-              [t('Password lifetime'), p.max_age_days ? t('{n} days', { n: p.max_age_days }) : t('Unlimited')],
-              [t('Local accounts'), num(settings.local_users)],
-              [t('Expired passwords'), settings.expired_users ? num(settings.expired_users) : undefined],
-              [t('Expiring soon'), settings.expiring_users ? num(settings.expiring_users) : undefined],
             ]}
           />
         </StatusCard>

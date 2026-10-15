@@ -1,13 +1,10 @@
 /**
- * OpenID Connect relying party for Google (Workspace), Sign in with Apple, any OpenID Connect provider and the
- * Umbrella Identity hub: discovery, authorization code flow with PKCE, ID token verification (keys from the
- * provider's JWKS) and the client secret of Apple (an ES256 JWT signed with the team's key).
+ * OpenID Connect relying party used to sign in with SPA: discovery, authorization code flow with PKCE (S256) and ID
+ * token verification against the issuer's JWKS (RS256, `iss`, `aud`, `exp`, `nonce`).
  */
 import { createHash, randomBytes } from 'node:crypto';
-import { SignJWT, createRemoteJWKSet, importPKCS8, jwtVerify, type JWTPayload } from 'jose';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 
-export const GOOGLE_ISSUER = 'https://accounts.google.com';
-export const APPLE_ISSUER = 'https://appleid.apple.com';
 const TIMEOUT_MS = 10_000;
 
 export interface Metadata {
@@ -16,6 +13,7 @@ export interface Metadata {
   token_endpoint: string;
   jwks_uri: string;
   userinfo_endpoint?: string;
+  end_session_endpoint?: string;
 }
 
 const discovered = new Map<string, { m: Metadata; at: number }>();
@@ -107,6 +105,7 @@ export async function exchange(c: Client, code: string, r: Request): Promise<{ i
   return { id_token: t.id_token, access_token: t.access_token };
 }
 
+/** Verifies the ID token: RS256 signature from the issuer's JWKS, `iss`, `aud`, `exp` and the `nonce` of the request. */
 export async function verify(c: Client, idToken: string, nonce: string): Promise<JWTPayload & Record<string, unknown>> {
   const m = await discover(c.issuer);
   let jwks = keySets.get(m.jwks_uri);
@@ -114,22 +113,9 @@ export async function verify(c: Client, idToken: string, nonce: string): Promise
     jwks = createRemoteJWKSet(new URL(m.jwks_uri), { timeoutDuration: TIMEOUT_MS });
     keySets.set(m.jwks_uri, jwks);
   }
-  const { payload } = await jwtVerify(idToken, jwks, { issuer: m.issuer, audience: c.clientId, algorithms: ['RS256', 'ES256'], clockTolerance: 60 });
-  if (nonce && payload.nonce !== nonce) throw new Error('The ID token has a wrong nonce');
+  const { payload } = await jwtVerify(idToken, jwks, { issuer: m.issuer, audience: c.clientId, algorithms: ['RS256'], clockTolerance: 60, requiredClaims: ['exp', 'sub'] });
+  if (!nonce || payload.nonce !== nonce) throw new Error('The ID token has a wrong nonce');
   return payload as JWTPayload & Record<string, unknown>;
-}
-
-/** The client secret of Sign in with Apple: a JWT signed with the team's .p8 key. */
-export async function appleSecret(teamId: string, keyId: string, clientId: string, keyPem: string): Promise<string> {
-  const key = await importPKCS8(keyPem.trim(), 'ES256');
-  return new SignJWT({})
-    .setProtectedHeader({ alg: 'ES256', kid: keyId })
-    .setIssuer(teamId)
-    .setIssuedAt()
-    .setExpirationTime('10m')
-    .setAudience(APPLE_ISSUER)
-    .setSubject(clientId)
-    .sign(key);
 }
 
 export const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : []);

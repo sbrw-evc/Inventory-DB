@@ -290,4 +290,23 @@ export const migrations: string[] = [
   );
   CREATE INDEX nc_passkeys_user ON nc_passkeys (user_id);
   `,
+  // SPA (docs/spa.md): sign-in, passwords, the password policy, passkeys, directories and sign-in providers moved to
+  // SPA. Users keep their IDs (base memberships, ownership and audit hold) and are bound to SPA's user ID (source
+  // 'spa', external_id) on their first SPA sign-in or synchronization; e-mail is no longer unique.
+  `
+  DROP TABLE IF EXISTS nc_password_history;
+  DROP TABLE IF EXISTS nc_passkeys;
+  ALTER TABLE nc_users
+    DROP COLUMN IF EXISTS password_hash,
+    DROP COLUMN IF EXISTS password_changed_at,
+    DROP COLUMN IF EXISTS admin_granted_by,
+    -- sessions issued before this moment no longer count (set when SPA disables the person)
+    ADD COLUMN sessions_revoked_at TEXT;
+  DROP INDEX IF EXISTS nc_users_email;
+  CREATE INDEX nc_users_email ON nc_users (lower(email));
+  CREATE INDEX nc_users_username ON nc_users (lower(username));
+  DELETE FROM nc_settings WHERE key IN
+    ('directory.ldap', 'directory.entra', 'password_policy', 'identity.umbrella', 'identity.providers', 'identity.passkeys', 'identity.public_url');
+  DELETE FROM nc_secrets WHERE path IN ('directory/ldap', 'directory/entra', 'identity/umbrella') OR path LIKE 'identity/providers/%';
+  `,
 ];

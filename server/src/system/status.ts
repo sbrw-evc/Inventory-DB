@@ -1,13 +1,12 @@
-/** System status page: build, runtime, PostgreSQL, OpenBao, directory sign-in, integrations, counts and recent errors. */
+/** System status page: build, runtime, PostgreSQL, OpenBao, the SPA connection, integrations, counts and recent errors. */
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { accountStats, activeEntra, entraClientSecret, getEntraConfig, getLdapConfig, ldapBindPassword, usersBySource } from '../auth/directory.js';
-import { entraPing } from '../auth/entra.js';
-import { ldapPing, normalizeLdap, tlsMode } from '../auth/ldap.js';
-import { getPolicy, policySummary } from '../auth/policy.js';
+import { loadKey } from '../auth/spa/connection.js';
+import { spaState } from '../auth/spa/sync.js';
+import { userCounts } from '../auth/spa/users.js';
 import { getDb, q } from '../db/index.js';
 import { models } from '../netbox/registry.js';
 import { recentLogs } from './logbuf.js';
@@ -55,46 +54,30 @@ const count = (sql: string) => {
   }
 };
 
-async function ldapStatus() {
-  const c = getLdapConfig();
-  if (!c.enabled) return { enabled: false, ok: false, latency_ms: 0 };
-  const base = { enabled: true, kind: c.kind, url: c.url, tls: tlsMode(c), base_dn: c.base_dn, admin_group: c.admin_group_dn || undefined };
-  const r = await timed(async () => ldapPing(normalizeLdap(c), await ldapBindPassword()));
-  return { ...base, ok: !r.error, latency_ms: r.ms, error: r.error };
-}
-
-async function entraStatus() {
-  const c = getEntraConfig();
-  if (!c.enabled) return { enabled: false, ok: false, credentials: false, latency_ms: 0 };
-  const active = activeEntra();
-  const base = {
-    enabled: true,
-    cloud: c.cloud,
-    tenant_id: c.tenant_id,
-    client_id: c.client_id,
-    redirect_url: c.redirect_url,
-    admin_group_id: c.admin_group_id || undefined,
-    user_group_id: c.user_group_id || undefined,
-    credentials: !!(await entraClientSecret().catch(() => '')),
+async function spaStatus() {
+  const { key, source, error } = await loadKey();
+  if (!key) return { connected: false, ok: false, error: error ?? undefined };
+  const st = spaState(key);
+  return {
+    connected: true,
+    key_source: source ?? undefined,
+    issuer: key.issuer,
+    application: st.config?.application?.name,
+    ok: st.ok,
+    last_sync: st.last_sync,
+    error: st.error,
+    users: st.counts.users,
   };
-  if (!active) return { ...base, ok: false, latency_ms: 0, error: 'The settings are incomplete' };
-  const r = await timed(() => entraPing(active));
-  return { ...base, issuer: r.value, ok: !r.error && base.credentials, latency_ms: r.ms, error: r.error ?? (base.credentials ? undefined : 'The client secret is not set') };
 }
 
 export async function systemStatus() {
   const mem = process.memoryUsage();
   const client = openBaoClient();
-  const [openbao, ldap, entra] = await Promise.all([
-    client ? client.status() : Promise.resolve(null),
-    ldapStatus(),
-    entraStatus(),
-  ]);
-  const policy = getPolicy();
+  const [openbao, spa] = await Promise.all([client ? client.status() : Promise.resolve(null), spaStatus()]);
   const integrations = getDb()
     .prepare("SELECT COUNT(*) total, COUNT(*) FILTER (WHERE active = 1) active, MAX(config::jsonb ->> 'lastFeedAt') last_feed, MAX(config::jsonb ->> 'lastAlertAt') last_alert FROM nc_integrations")
     .get() as { total: number; active: number; last_feed: string | null; last_alert: string | null };
-  const accounts = accountStats();
+  const accounts = userCounts();
   return {
     checked_at: new Date().toISOString(),
     version: VERSION,
@@ -113,12 +96,10 @@ export async function systemStatus() {
     secrets: { backend: secretBackend(), local: localSecretCount() },
     openbao: openbao ?? { configured: false, reachable: false, token_ok: false, mount_ok: false, renewable: false, latency_ms: 0 },
     postgres: postgresHealth(),
-    ldap,
-    entra,
+    spa,
     integrations: { total: integrations.total, active: integrations.active, last_feed_at: integrations.last_feed ?? undefined, last_alert_at: integrations.last_alert ?? undefined },
-    settings: { password_policy: policy, ...policySummary(policy) },
     inventory: {
-      users: usersBySource(),
+      users: accounts.active,
       admins: accounts.admins,
       disabled_users: accounts.disabled,
       last_sign_in: accounts.last_sign_in,

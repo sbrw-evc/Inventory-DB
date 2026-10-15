@@ -44,7 +44,7 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 6. **UI**: sidebar of bases/tables/views, grid with inline editing and keyboard navigation, expanded
    record drawer with comments and history, toolbar (fields, filter, sort, group, search), undo/redo of cell edits.
    Heavy views (calendar, timeline, map, form builder) and secondary pages load on demand.
-7. **Auth & roles**: email/password sign-up/in (JWT), base members with roles owner / editor /
+7. **Auth & roles**: sign-in with SPA ([spa.md](spa.md)) and an own session (JWT), base members with roles owner / editor /
    commenter / viewer enforced on every route, API tokens (`xc-token` header like NocoDB).
    Field-level permissions: per field and role, hidden or read-only (owners always full), enforced by the API.
 8. **REST API**: `/api/v1/...` meta + data endpoints, OpenAPI JSON + Swagger UI at `/api/docs`.

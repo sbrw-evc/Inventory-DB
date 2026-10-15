@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { expect } from 'vitest';
-import { createTestApp, signUpUser } from './helpers.js';
+import { createTestApp, signInUser } from './helpers.js';
 
 export type Api = ReturnType<typeof makeApi>;
 
@@ -42,7 +42,7 @@ const safeJson = (s: string) => {
 /** App + first user (admin via the bootstrap rule). */
 export async function setupNetbox() {
   const app = await createTestApp();
-  const admin = await signUpUser(app);
+  const admin = await signInUser(app);
   const api = makeApi(app, admin.headers);
   await api.get('/netbox/me');
   return { app, api, admin };

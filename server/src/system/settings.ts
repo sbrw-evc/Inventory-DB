@@ -1,4 +1,4 @@
-/** Application settings kept in the database (`nc_settings`): directory sign-in, password policy. Never secrets. */
+/** Application settings kept in the database (`nc_settings`), e.g. the state of the SPA synchronization. Never secrets. */
 import { getDb, json, now } from '../db/index.js';
 
 export function readSetting<T>(key: string, fallback: T): T {

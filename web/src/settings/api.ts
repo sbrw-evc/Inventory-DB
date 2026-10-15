@@ -1,142 +1,44 @@
-import type { PasswordPolicy } from '@shared';
 import { http } from '../api/client';
 
 export type State = 'ok' | 'warn' | 'error' | 'off';
 export type SecretBackend = 'openbao' | 'local';
-export type AccountStats = { total: number; admins: number; disabled: number; last_sign_in?: string };
-
-// ---- LDAP / AD and Entra ID ----
-export type LdapKind = 'ad' | 'openldap';
-export interface LdapConfig {
-  enabled: boolean;
-  kind: LdapKind;
-  url: string;
-  start_tls: boolean;
-  skip_verify: boolean;
-  ca_cert: string;
-  bind_dn: string;
-  base_dn: string;
-  user_filter: string;
-  username_attr: string;
-  name_attr: string;
-  email_attr: string;
-  admin_group_dn: string;
-}
-export interface LdapView {
-  config: LdapConfig;
-  bind_password_set: boolean;
-  local_admins: number;
-  users: AccountStats;
-  secrets: SecretBackend;
-}
-export interface LdapReport {
-  ok: boolean;
-  error?: string;
-  probe?: {
-    server: string;
-    tls: 'ldaps' | 'starttls' | 'none';
-    base_dn: string;
-    admin_group: boolean;
-    user_authenticated: boolean;
-    user?: { dn: string; username: string; name: string; email: string; admin: boolean };
-  };
-}
-
-export type EntraCloud = 'global' | 'usgov' | 'china';
-export interface EntraConfig {
-  enabled: boolean;
-  cloud: EntraCloud;
-  tenant_id: string;
-  client_id: string;
-  redirect_url: string;
-  admin_group_id: string;
-  user_group_id: string;
-}
-export interface EntraView {
-  config: EntraConfig;
-  client_secret_set: boolean;
-  local_admins: number;
-  users: AccountStats;
-  secrets: SecretBackend;
-}
-export interface EntraReport {
-  ok: boolean;
-  error?: string;
-  probe?: { issuer?: string; tenant_id?: string; credentials: boolean };
-}
-
-// ---- Password policy ----
-export interface PolicySummary {
-  policy: PasswordPolicy;
-  local_users: number;
-  expired_users: number;
-  expiring_users: number;
-  /** The policy comes from Umbrella Monitoring and is read-only here. */
-  managed_by_hub?: boolean;
-}
-
-// ---- Umbrella Identity: passkeys, providers, single sign-in ----
 export type IdbRole = 'admin' | 'editor' | 'viewer';
-export type MappedRole = IdbRole | 'none';
-export interface PasskeySettings {
-  enabled: boolean;
-  rp_id: string;
-  from_hub: boolean;
-  effective_rp_id: string;
+
+// ---- SPA (sign-in and access) ----
+export interface SpaView {
+  connected: boolean;
+  key_source: 'environment' | 'file' | 'secret_store' | null;
+  key_error?: string;
+  issuer: string | null;
+  client_id: string | null;
+  redirect_uri: string;
+  public_url: string;
+  application: { id: string; name: string; type: string } | null;
+  account_url: string | null;
+  sign_out_url: string | null;
+  spa_roles: { id: string; name: string; description?: string }[];
+  methods: { id: string; title: string }[];
+  roles_published_at: string | null;
+  roles_error: string | null;
+  last_sync: string | null;
+  last_success: string | null;
+  ok: boolean;
+  error: string | null;
+  counts: { users: number; created: number; updated: number; matched: number; disabled: number };
+  users: { total: number; active: number; disabled: number; bound: number; admins: number; last_sign_in?: string };
 }
-export type ProviderKind = 'google' | 'apple' | 'oidc';
-export interface ProviderConfig {
-  enabled: boolean;
-  title: string;
-  issuer: string;
-  client_id: string;
-  team_id: string;
-  key_id: string;
-  allowed_domains: string[];
-  existing_only: boolean;
-  scopes: string;
-  groups_claim: string;
-  admin_group: string;
+export interface SpaUserRow {
+  id: string;
+  email: string;
+  name: string;
+  username: string | null;
+  source: string;
+  external_id: string | null;
+  disabled: boolean;
+  last_sign_in_at: string | null;
+  created_at: string;
   role: IdbRole;
 }
-export interface ProvidersView {
-  public_url: string;
-  providers: { kind: ProviderKind; config: ProviderConfig; client_secret_set: boolean; private_key_set: boolean; redirect_uri: string }[];
-}
-export interface UmbrellaView {
-  enabled: boolean;
-  connected: boolean;
-  hub: string;
-  client_id: string;
-  application: string;
-  role_map: { match: string; role: IdbRole }[];
-  admin_role: MappedRole;
-  default_role: MappedRole;
-  link_local: boolean;
-  sso: boolean;
-  sync_users: boolean;
-  sync_policy: boolean;
-  sync_passkeys: boolean;
-  methods: { id: string; title: string }[];
-  hub_passkeys: { enabled: boolean; rp_id: string };
-  status: { last_sync?: string; ok: boolean; error?: string; users: number; created: number; updated: number; disabled: number; conflicts: string[] };
-  public_url: string;
-  redirect_uri: string;
-}
-export interface UmbrellaCheck {
-  hub: string;
-  application: string;
-  methods: { id: string; title: string }[];
-  passkeys: { enabled: boolean; rp_id: string };
-  passkeys_here: boolean;
-  users: number;
-  roles: string[];
-  groups: string[];
-  conflicts: string[];
-}
-export type UmbrellaInput = Pick<UmbrellaView, 'enabled' | 'role_map' | 'admin_role' | 'default_role' | 'link_local' | 'sso' | 'sync_users' | 'sync_policy' | 'sync_passkeys'> & {
-  key?: string;
-};
 
 // ---- PostgreSQL ----
 export type SslMode = 'disable' | 'require' | 'verify-full';
@@ -283,7 +185,7 @@ export interface OpenBaoReport {
   status: OpenBaoStatus;
   secrets?: number;
 }
-export type SecretUsage = 'integration' | 'ldap' | 'entra' | 'postgres' | 'jwt' | 'other';
+export type SecretUsage = 'integration' | 'spa' | 'postgres' | 'jwt' | 'other';
 export interface SecretItem {
   path: string;
   keys: string[];
@@ -322,25 +224,10 @@ export interface SystemStatus {
     error?: string;
     health?: { version: string; database: string; user: string; size_bytes: number; started_at: string; connections: number; max_connections: number; ssl: boolean };
   };
-  ldap: { enabled: boolean; ok: boolean; kind?: LdapKind; url?: string; tls?: string; base_dn?: string; admin_group?: string; latency_ms: number; error?: string };
-  entra: {
-    enabled: boolean;
-    ok: boolean;
-    cloud?: EntraCloud;
-    tenant_id?: string;
-    client_id?: string;
-    redirect_url?: string;
-    admin_group_id?: string;
-    user_group_id?: string;
-    issuer?: string;
-    credentials: boolean;
-    latency_ms: number;
-    error?: string;
-  };
+  spa: { connected: boolean; ok: boolean; key_source?: string; issuer?: string; application?: string; last_sync?: string; error?: string; users?: number };
   integrations: { total: number; active: number; last_feed_at?: string; last_alert_at?: string };
-  settings: { password_policy: PasswordPolicy } & Omit<PolicySummary, 'policy'>;
   inventory: {
-    users: Record<'local' | 'ldap' | 'entra', number>;
+    users: number;
     admins: number;
     disabled_users: number;
     last_sign_in?: string;
@@ -360,14 +247,6 @@ export interface SystemStatus {
 const S = '/settings';
 export const settingsApi = {
   status: () => http.get<SystemStatus>('/system/status'),
-  ldap: () => http.get<LdapView>(`${S}/ldap`),
-  saveLdap: (body: { config: Partial<LdapConfig>; bind_password?: string }) => http.put<LdapView>(`${S}/ldap`, body),
-  testLdap: (body: { config: LdapConfig; bind_password?: string; test_username?: string; test_password?: string }) => http.post<LdapReport>(`${S}/ldap/test`, body),
-  entra: () => http.get<EntraView>(`${S}/entra`),
-  saveEntra: (body: { config: Partial<EntraConfig>; client_secret?: string }) => http.put<EntraView>(`${S}/entra`, body),
-  testEntra: (body: { config: EntraConfig; client_secret?: string }) => http.post<EntraReport>(`${S}/entra/test`, body),
-  policy: () => http.get<PolicySummary>(`${S}/password-policy`),
-  savePolicy: (p: PasswordPolicy) => http.put<PolicySummary>(`${S}/password-policy`, p),
   postgres: () => http.get<PostgresOverview>(`${S}/postgres`),
   testPostgres: () => http.post<PostgresTest>(`${S}/postgres/test`),
   postgresStats: () => http.get<PostgresStats>(`${S}/postgres/stats`),
@@ -379,15 +258,7 @@ export const settingsApi = {
   probeOpenBao: (t: OpenBaoTarget) => http.post<OpenBaoReport>(`${S}/openbao/probe`, t),
   migrateOpenBao: (target: OpenBaoTarget, overwrite: boolean) => http.post<{ addr: string; mount: string; copied: number }>(`${S}/openbao/migrate`, { target, overwrite }),
   moveLocalSecrets: () => http.post<{ moved: number }>(`${S}/openbao/move-local`),
-  passkeys: () => http.get<PasskeySettings>(`${S}/passkeys`),
-  savePasskeys: (body: { enabled: boolean; rp_id: string }) => http.put<PasskeySettings>(`${S}/passkeys`, body),
-  savePublicUrl: (public_url: string) => http.put<{ public_url: string }>(`${S}/public-url`, { public_url }),
-  providers: () => http.get<ProvidersView>(`${S}/providers`),
-  saveProvider: (kind: ProviderKind, config: ProviderConfig, secrets: { client_secret?: string; private_key?: string }) =>
-    http.put<ProvidersView>(`${S}/providers/${kind}`, { config, ...secrets }),
-  umbrella: () => http.get<UmbrellaView>(`${S}/identity`),
-  checkUmbrella: (key: string) => http.post<UmbrellaCheck>(`${S}/identity/check`, { key }),
-  saveUmbrella: (body: UmbrellaInput) => http.put<UmbrellaView>(`${S}/identity`, body),
-  syncUmbrella: () => http.post<UmbrellaView>(`${S}/identity/sync`),
-  disconnectUmbrella: () => http.del<UmbrellaView>(`${S}/identity`),
+  spa: () => http.get<SpaView>(`${S}/spa`),
+  syncSpa: () => http.post<SpaView>(`${S}/spa/sync`),
+  spaUsers: () => http.get<SpaUserRow[]>(`${S}/spa/users`),
 };
