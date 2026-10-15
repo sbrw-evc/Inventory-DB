@@ -1154,6 +1154,10 @@ button.tile:hover { border-color: var(--accent); }
 .auth-or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
 .auth-or::before,
 .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.auth-methods { display: flex; flex-direction: column; gap: 10px; }
+.auth-hub-methods { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.auth-hint { margin: 0; text-align: center; font-size: 12px; }
+.btn-umbrella { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
 .um-warn { color: var(--warn, #b45309); font-size: 12.5px; padding: 0 12px 6px; }
 .prefs { display: flex; gap: 8px; align-items: center; }
 .password { position: relative; }

@@ -19,7 +19,7 @@ import {
 } from '../auth/directory.js';
 import { ENTRA_CLOUDS, normalizeEntra, entraTest, type EntraConfig } from '../auth/entra.js';
 import { ldapTest, normalizeLdap, type LdapConfig } from '../auth/ldap.js';
-import { policySummary, savePolicy } from '../auth/policy.js';
+import { policyManaged, policySummary, savePolicy } from '../auth/policy.js';
 import { HttpError, badRequest, conflict } from '../errors.js';
 import { requireNetboxRole } from '../netbox/access.js';
 import { DEFAULT_MOUNT, PG_SSL_MODES, type OpenBaoConnection } from '../system/config.js';
@@ -67,6 +67,10 @@ const policySchema = z.object({
   letters: z.enum(POLICY_LETTERS as [PasswordPolicy['letters'], ...PasswordPolicy['letters'][]]),
   max_age_days: z.number().int(),
   warn_days: z.number().int(),
+  history_count: z.number().int().default(5),
+  block_common: z.boolean().default(true),
+  lockout_attempts: z.number().int().default(10),
+  lockout_minutes: z.number().int().default(15),
 });
 const pgTarget = z.object({
   host: z.string().trim().min(1).max(255),
@@ -228,11 +232,12 @@ export async function settingsRoutes(app: FastifyInstance) {
   // ---- Password policy ----
   app.get('/api/v1/settings/password-policy', async (req) => {
     requireAdmin(req);
-    return policySummary();
+    return { ...policySummary(), managed_by_hub: policyManaged() };
   });
 
   app.put('/api/v1/settings/password-policy', async (req) => {
     const user = requireAdmin(req);
+    if (policyManaged()) throw new HttpError(409, 'POLICY_MANAGED', 'The password policy comes from Umbrella Monitoring');
     const policy = savePolicy(policySchema.parse(req.body), user.id);
     logEvent('warn', 'Password policy changed', { by: user.email });
     return policySummary(policy);

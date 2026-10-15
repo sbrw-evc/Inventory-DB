@@ -14,7 +14,10 @@ Features:
   with utilisation and next free IP, IP addresses, VLANs, VRFs, tenants, tags, custom fields, change log, and a
   NetBox-compatible REST API ([docs/netbox.md](docs/netbox.md)).
 - **Settings (administrators):** system status, sign-in with LDAP / Active Directory and Microsoft Entra ID,
-  password policy, PostgreSQL connection, statistics and moving to another server, and the OpenBao secret store
+  **single sign-in with Umbrella** (shared users, password policy and passkeys with Umbrella Monitoring, Umbrella
+  Flow and Network Control — [docs/identity-federation.md](docs/identity-federation.md)), **passkeys** (Windows
+  Hello face / fingerprint / PIN, Touch ID / Face ID, security keys), sign-in with Google, Apple and OpenID Connect,
+  password policy with history, common-password blocking and lockout, PostgreSQL connection, statistics and moving to another server, and the OpenBao secret store
   ([docs/settings.md](docs/settings.md)).
 - **Integrations:** Umbrella monitoring (CMDB feed, alert states on devices) and Umbrella Flow (traffic on devices,
   interfaces and circuits with 24 h sparklines and 95th percentile vs commit, active addresses of prefixes, signed

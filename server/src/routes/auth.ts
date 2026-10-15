@@ -8,6 +8,8 @@ import { requireUser } from '../auth/plugin.js';
 import { getPolicy } from '../auth/policy.js';
 import { accountInfo, changePassword, issueJwt, signIn, signUp, signValue, verifyValue } from '../auth/service.js';
 import { bootstrapAdmin, getNetboxRole } from '../netbox/access.js';
+import { passkeyConfig } from '../auth/identity/passkeys.js';
+import { umbrellaSettings } from '../auth/identity/umbrella.js';
 import { logEvent } from '../system/logbuf.js';
 
 const signUpBody = z.object({ email: z.string().email(), password: z.string().min(1), name: z.string().optional() });
@@ -66,7 +68,20 @@ export async function authRoutes(app: FastifyInstance) {
     const policy = getPolicy();
     const expires = info.source === 'local' ? passwordExpiresAt(info.passwordChangedAt, policy) : null;
     const warn = !!expires && !!policy.warn_days && Date.parse(expires) - Date.now() <= policy.warn_days * 86_400_000;
-    return { user, account: { source: info.source, admin: getNetboxRole(user.id) === 'admin', passwordExpiresAt: expires, passwordExpiresSoon: warn } };
+    const pk = passkeyConfig();
+    return {
+      user,
+      account: {
+        source: info.source,
+        admin: getNetboxRole(user.id) === 'admin',
+        role: getNetboxRole(user.id),
+        passwordExpiresAt: expires,
+        passwordExpiresSoon: warn,
+        passkeys: pk.enabled,
+        passkeysFromHub: pk.from_hub && info.source === 'umbrella',
+        hub: umbrellaSettings().enabled ? umbrellaSettings().hub : null,
+      },
+    };
   });
 
   /** Entra ID sign-in: off to Microsoft with PKCE; the verifier waits in an HttpOnly cookie bound to the state. */

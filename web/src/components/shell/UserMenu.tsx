@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, KeyRound, Languages, LockKeyhole, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Fingerprint, KeyRound, Languages, LockKeyhole, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LANGS, setLang, useLang, useT } from '../../i18n';
 import { useAuth } from '../../lib/auth';
 import { formatDate } from '../../lib/format';
 import { ChangePasswordDialog } from '../../settings/ChangePassword';
+import { PasskeysDialog } from '../../settings/Passkeys';
 import { setTheme, useTheme, type Theme } from '../../lib/theme';
 import { spring } from './Brand';
 
@@ -32,6 +33,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
   const t = useT();
   const { user, account, signOut } = useAuth();
   const [changing, setChanging] = useState(false);
+  const [passkeys, setPasskeys] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -132,6 +134,20 @@ export function UserMenu({ compact }: { compact?: boolean }) {
                 {t('Change password')}
               </button>
             )}
+            {account?.passkeys && (
+              <button
+                type="button"
+                role="menuitem"
+                className="um-item"
+                onClick={() => {
+                  setOpen(false);
+                  setPasskeys(true);
+                }}
+              >
+                <Fingerprint size={18} />
+                {t('Passkeys')}
+              </button>
+            )}
             {account?.admin && (
               <button type="button" role="menuitem" className="um-item" onClick={() => navigate('/settings')}>
                 <Settings size={18} />
@@ -169,6 +185,7 @@ export function UserMenu({ compact }: { compact?: boolean }) {
         )}
       </AnimatePresence>
       {changing && user && <ChangePasswordDialog login={user.email} onClose={() => setChanging(false)} />}
+      {passkeys && <PasskeysDialog onClose={() => setPasskeys(false)} />}
     </div>
   );
 }

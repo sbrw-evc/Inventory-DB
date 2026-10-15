@@ -34,6 +34,7 @@ export function PolicyPage() {
   const set = (patch: Partial<PasswordPolicy>) => setDraft({ ...p, ...patch });
   const problem = policyError(p);
   const dirty = !same(p, saved);
+  const managed = !!summary.data.managed_by_hub;
 
   const save = () =>
     saver.run(async () => {
@@ -46,6 +47,11 @@ export function PolicyPage() {
     <div className="settings-stack">
       <Card title={t('Password policy')}>
         <p className="muted">{t('Rules for passwords of local accounts. Accounts from LDAP / AD and Entra ID follow the rules of the directory.')}</p>
+        {managed && (
+          <Banner kind="info" title={t('The policy comes from Umbrella Monitoring')}>
+            {t('It is the same in Umbrella Monitoring, Umbrella Flow, Inventory DB and Network Control. Change it in Umbrella, or turn off “Use the password policy of Umbrella” in Settings → Single sign-in.')}
+          </Banner>
+        )}
         <Rows
           align="end"
           rows={[
@@ -57,8 +63,9 @@ export function PolicyPage() {
       </Card>
       <Card
         title={t('Rules')}
-        onSubmit={save}
+        onSubmit={managed ? undefined : save}
         footer={
+          !managed && (
           <>
             <Button variant="ghost" onClick={() => setDraft(DEFAULT_PASSWORD_POLICY)} disabled={same(p, DEFAULT_PASSWORD_POLICY) || saver.busy}>
               {t('Recommended rules')}
@@ -70,8 +77,10 @@ export function PolicyPage() {
               {t('Save')}
             </Button>
           </>
+          )
         }
       >
+        <fieldset className="plain-fieldset" style={{ gap: 14 }} disabled={managed}>
         <div className="grid-2">
           <Field label={t('Minimum length')} hint={t('From 8 to 128 characters.')}>
             {(id) => <NumberInput id={id} value={p.min_length} min={8} max={128} onChange={(n) => set({ min_length: n })} />}
@@ -115,6 +124,30 @@ export function PolicyPage() {
             </Field>
           )}
         </div>
+        <div className="grid-2">
+          <Field label={t('Password history')} hint={t('A new password must differ from this many previous ones. 0 — not checked.')}>
+            {(id) => <NumberInput id={id} value={p.history_count} min={0} max={24} onChange={(n) => set({ history_count: n })} />}
+          </Field>
+          <div className="stack" style={{ gap: 6, justifyContent: 'center' }}>
+            <Switch
+              checked={p.block_common}
+              onChange={(v) => set({ block_common: v })}
+              label={t('Block common passwords')}
+              hint={t('Popular passwords, keyboard sequences and the login with a few characters added.')}
+            />
+          </div>
+        </div>
+        <div className="grid-2">
+          <Field label={t('Lock the account after wrong passwords')} hint={t('0 — the built-in limits only.')}>
+            {(id) => <NumberInput id={id} value={p.lockout_attempts} min={0} max={100} onChange={(n) => set({ lockout_attempts: n, lockout_minutes: n && !p.lockout_minutes ? 15 : p.lockout_minutes })} />}
+          </Field>
+          {p.lockout_attempts > 0 && (
+            <Field label={t('Lock for, minutes')}>
+              {(id) => <NumberInput id={id} value={p.lockout_minutes} min={1} max={1440} onChange={(n) => set({ lockout_minutes: n })} />}
+            </Field>
+          )}
+        </div>
+        </fieldset>
         {problem && <Banner kind="error" title={problemText(problem)} />}
         <Banner kind="info" title={t('New rules apply when a password is set or changed. Existing passwords keep working until they expire.')} />
         <ActionResult action={saver} />

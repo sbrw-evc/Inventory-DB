@@ -8,7 +8,7 @@ import { HttpError, badRequest, conflict, forbidden, notFound, unauthorized } fr
 import { logEvent } from '../system/logbuf.js';
 import { getLdapConfig, ldapBindPassword, provisionExternalUser } from './directory.js';
 import { ldapAuthenticate, normalizeLdap } from './ldap.js';
-import { assertPasswordAllowed, isExpired } from './policy.js';
+import { assertNotLocked, assertNotReused, assertPasswordAllowed, isExpired, rememberPassword, signInFailed, signInSucceeded } from './policy.js';
 
 let signingKey: Uint8Array | null = null;
 const secret = () => signingKey ?? new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-only-secret-change-me');
@@ -24,7 +24,7 @@ interface UserRow {
   name: string;
   password_hash: string;
   created_at: string;
-  source: 'local' | 'ldap' | 'entra';
+  source: 'local' | 'ldap' | 'entra' | 'google' | 'apple' | 'oidc' | 'umbrella';
   username: string | null;
   disabled: number;
   password_changed_at: string | null;
@@ -67,6 +67,18 @@ async function localAccount(login: string, password: string): Promise<UserRow | 
  * name (or user@domain) for LDAP.
  */
 export async function signIn(login: string, password: string): Promise<User> {
+  assertNotLocked(login.trim());
+  try {
+    const user = await signInChecked(login, password);
+    signInSucceeded(login.trim());
+    return user;
+  } catch (e) {
+    if (e instanceof HttpError && e.statusCode === 401) signInFailed(login.trim());
+    throw e;
+  }
+}
+
+async function signInChecked(login: string, password: string): Promise<User> {
   const local = await localAccount(login, password);
   if (local) {
     if (local.disabled) throw new HttpError(403, 'ACCOUNT_DISABLED', 'This account is disabled');
@@ -91,13 +103,20 @@ export async function signIn(login: string, password: string): Promise<User> {
 
 /** Sets a new password for a local account after checking the current one (also used when it has expired). */
 export async function changePassword(login: string, current: string, next: string): Promise<User> {
+  assertNotLocked(login.trim());
   const row = await localAccount(login, current);
-  if (!row) throw unauthorized('Invalid email or password');
+  if (!row) {
+    signInFailed(login.trim());
+    throw unauthorized('Invalid email or password');
+  }
   if (row.disabled) throw new HttpError(403, 'ACCOUNT_DISABLED', 'This account is disabled');
   assertPasswordAllowed(next, row.email);
   if (await bcrypt.compare(next, row.password_hash)) throw new HttpError(400, 'PASSWORD_REUSED', 'The new password must differ from the current one');
+  await assertNotReused(row.id, next, row.password_hash);
   const ts = now();
+  rememberPassword(row.id, row.password_hash, ts);
   getDb().prepare('UPDATE nc_users SET password_hash = ?, password_changed_at = ?, last_sign_in_at = ? WHERE id = ?').run(await bcrypt.hash(next, 10), ts, ts, row.id);
+  signInSucceeded(login.trim());
   return toUser(row);
 }
 

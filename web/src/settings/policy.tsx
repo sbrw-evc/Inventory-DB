@@ -23,6 +23,10 @@ export function ruleText(rule: PolicyViolation, p: PasswordPolicy) {
       return t('Differs from the login');
     case 'control':
       return t('No control characters');
+    case 'common':
+      return t('Not a common or easily guessed password');
+    case 'history':
+      return t('Differs from the last {n} passwords', { n: p.history_count });
   }
 }
 
@@ -34,6 +38,8 @@ export function problemText(p: PolicyProblem) {
     fit: t('The required digits, special characters and letters do not fit into the minimum length.'),
     max_age: t('The password lifetime must be from 0 to 3650 days.'),
     warn: t('The warning must come from 0 to 90 days before expiry and earlier than the lifetime.'),
+    history: t('The password history must be from 0 to 24 passwords.'),
+    lockout: t('Lock after 3 to 100 wrong passwords, for 1 to 1440 minutes.'),
   }[p];
 }
 

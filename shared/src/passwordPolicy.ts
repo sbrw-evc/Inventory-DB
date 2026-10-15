@@ -1,6 +1,9 @@
+import { isCommonPassword } from './commonPasswords.js';
+
 /**
- * Password policy for local accounts, the same rules as Umbrella's: length, digits, special characters, mixed case,
- * allowed alphabets and maximum age. Checked by the server on sign-up and password change, and by the web app for
+ * Password policy for local accounts — the policy of the Umbrella family (the same JSON in Umbrella Monitoring,
+ * Umbrella Flow and Network Control; docs/identity-federation.md): length, digits, special characters, mixed case,
+ * allowed alphabets, common passwords, history, maximum age and lockout. Checked by the server on sign-up and password change, and by the web app for
  * the live checklist next to a password field.
  */
 export type PolicyLetters = 'latin' | 'cyrillic' | 'latin_cyrillic' | 'any';
@@ -17,10 +20,17 @@ export interface PasswordPolicy {
   max_age_days: number;
   /** Days before expiry when the user is warned; 0 = no warning. */
   warn_days: number;
+  /** A new password must differ from this many previous ones (0 = not checked). */
+  history_count: number;
+  /** Reject the most common passwords, keyboard sequences and the login with a few characters added. */
+  block_common: boolean;
+  /** Wrong passwords in a row that lock the account for lockout_minutes (0 = the built-in limits). */
+  lockout_attempts: number;
+  lockout_minutes: number;
 }
 
-export type PolicyViolation = 'length' | 'digits' | 'special' | 'mixed_case' | 'letters' | 'username' | 'control';
-export type PolicyProblem = 'length' | 'digits' | 'special' | 'fit' | 'max_age' | 'warn';
+export type PolicyViolation = 'length' | 'digits' | 'special' | 'mixed_case' | 'letters' | 'username' | 'control' | 'common' | 'history';
+export type PolicyProblem = 'length' | 'digits' | 'special' | 'fit' | 'max_age' | 'warn' | 'history' | 'lockout';
 
 export const POLICY_LETTERS: PolicyLetters[] = ['latin', 'cyrillic', 'latin_cyrillic', 'any'];
 export const MAX_AGE_DAYS = 3650;
@@ -38,6 +48,10 @@ export const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
   letters: 'latin',
   max_age_days: 0,
   warn_days: 0,
+  history_count: 5,
+  block_common: true,
+  lockout_attempts: 10,
+  lockout_minutes: 15,
 };
 
 const LETTER = /\p{L}/u;
@@ -64,6 +78,8 @@ export function policyError(p: PasswordPolicy): PolicyProblem | null {
   if (need > p.min_length) return 'fit';
   if (!int(p.max_age_days, 0, MAX_AGE_DAYS)) return 'max_age';
   if (p.max_age_days > 0 && (!int(p.warn_days, 0, MAX_WARN_DAYS) || p.warn_days >= p.max_age_days)) return 'warn';
+  if (!int(p.history_count, 0, 24)) return 'history';
+  if (p.lockout_attempts !== 0 && (!int(p.lockout_attempts, 3, 100) || !int(p.lockout_minutes, 1, 1440))) return 'lockout';
   return null;
 }
 
@@ -94,6 +110,7 @@ export function checkPassword(password: string, username: string, p: PasswordPol
     const login = username.toLowerCase();
     if (lowered === login || lowered === login.split('@')[0]) out.add('username');
   }
+  if (p.block_common && isCommonPassword(password, username)) out.add('common');
   return [...out];
 }
 
@@ -105,6 +122,7 @@ export function policyRules(p: PasswordPolicy): PolicyViolation[] {
   if (p.require_mixed_case) r.push('mixed_case');
   if (p.letters !== 'any') r.push('letters');
   r.push('username');
+  if (p.block_common) r.push('common');
   return r;
 }
 
@@ -120,5 +138,6 @@ export function passwordExpiresAt(changedAt: string | null | undefined, p: Passw
 export function normalizePolicy(v: Partial<PasswordPolicy> | null | undefined): PasswordPolicy {
   const p = { ...DEFAULT_PASSWORD_POLICY, ...(v ?? {}) };
   if (!POLICY_LETTERS.includes(p.letters)) p.letters = DEFAULT_PASSWORD_POLICY.letters;
+  if (!p.lockout_attempts) p.lockout_minutes = 0;
   return p;
 }

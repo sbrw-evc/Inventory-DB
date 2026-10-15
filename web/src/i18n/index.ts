@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { en } from './en';
 import { ru } from './ru';
 import { ruFeatures } from './ruFeatures';
+import { ruIdentity } from './ruIdentity';
 import { ruSettings } from './ruSettings';
 
 /**
@@ -14,7 +15,7 @@ export const LANGS: Array<{ code: Lang; label: string }> = [
   { code: 'ru', label: 'Русский' },
 ];
 
-const DICTS: Record<Lang, Record<string, string>> = { en, ru: { ...ruSettings, ...ruFeatures, ...ru } };
+const DICTS: Record<Lang, Record<string, string>> = { en, ru: { ...ruSettings, ...ruIdentity, ...ruFeatures, ...ru } };
 // Shared with the NetBox pages, which read the same key.
 const KEY = 'lang';
 

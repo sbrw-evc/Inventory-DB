@@ -260,4 +260,34 @@ export const migrations: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  // Umbrella Identity (docs/identity-federation.md): password history, passkeys, and accounts of Google, Apple,
+  // OpenID Connect and Umbrella single sign-in (sources 'google', 'apple', 'oidc', 'umbrella').
+  `
+  CREATE TABLE nc_password_history (
+    user_id TEXT NOT NULL REFERENCES nc_users(id) ON DELETE CASCADE,
+    hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX nc_password_history_user ON nc_password_history (user_id, created_at DESC);
+
+  CREATE TABLE nc_passkeys (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES nc_users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    -- base64url
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key TEXT NOT NULL,
+    user_handle TEXT NOT NULL,
+    sign_count BIGINT NOT NULL DEFAULT 0,
+    aaguid TEXT NOT NULL DEFAULT '',
+    transports TEXT NOT NULL DEFAULT '[]',
+    backup_eligible INTEGER NOT NULL DEFAULT 0,
+    backup_state INTEGER NOT NULL DEFAULT 0,
+    -- set for passkeys synchronized from Umbrella Monitoring
+    hub_id TEXT,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT
+  );
+  CREATE INDEX nc_passkeys_user ON nc_passkeys (user_id);
+  `,
 ];

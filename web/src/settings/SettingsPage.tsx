@@ -4,6 +4,7 @@ import { PageHead } from '../components/shell/PageHead';
 import { t } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { DirectoryPage } from './DirectoryPage';
+import { IdentityPage } from './IdentityPage';
 import { OpenBaoPage } from './OpenBaoPage';
 import { PolicyPage } from './PolicyPage';
 import { PostgresPage } from './PostgresPage';
@@ -36,8 +37,16 @@ export function SettingsPage() {
         <Route
           path="directory"
           element={
-            <Section title={t('Sign-in')} subtitle={t('Sign-in with LDAP / Active Directory and Microsoft Entra ID.')}>
+            <Section title={t('Directories')} subtitle={t('Sign-in with LDAP / Active Directory and Microsoft Entra ID.')}>
               <DirectoryPage />
+            </Section>
+          }
+        />
+        <Route
+          path="identity"
+          element={
+            <Section title={t('Single sign-in')} subtitle={t('Umbrella single sign-in, passkeys and sign-in with Google, Apple or OpenID Connect.')}>
+              <IdentityPage />
             </Section>
           }
         />

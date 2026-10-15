@@ -22,10 +22,14 @@ describe('password policy rules', () => {
     const p = DEFAULT_PASSWORD_POLICY;
     expect(checkPassword('Short-1', 'a@b.c', p)).toEqual(['length']);
     expect(checkPassword('longpassword', '', p).sort()).toEqual(['digits', 'mixed_case', 'special']);
-    expect(checkPassword('Пароль-123456', '', p)).toEqual(['letters']);
-    expect(checkPassword('Пароль-123456', '', { ...p, letters: 'cyrillic' })).toEqual([]);
-    expect(checkPassword('John.Smith-1', 'john.smith-1@example.com', p)).toEqual(['username']);
-    expect(checkPassword('Good-Password-1', 'a@b.c', p)).toEqual([]);
+    expect(checkPassword('Склад-Сервер-482', '', p)).toEqual(['letters']);
+    expect(checkPassword('Склад-Сервер-482', '', { ...p, letters: 'cyrillic' })).toEqual([]);
+    expect(checkPassword('John.Smith-1', 'john.smith-1@example.com', p)).toEqual(['username', 'common']);
+    expect(checkPassword('Good-Battery-1', 'a@b.c', p)).toEqual([]);
+    // common passwords, sequences and the login with a few characters
+    expect(checkPassword('Qwerty123456!', '', p)).toEqual(['common']);
+    expect(checkPassword('Password-123!', '', p)).toEqual(['common']);
+    expect(checkPassword('Qwerty123456!', '', { ...p, block_common: false })).toEqual([]);
   });
 
   it('rejects policies that cannot be met', () => {
@@ -52,24 +56,24 @@ describe('password policy settings', () => {
     const saved = await inject('PUT', '/settings/password-policy', { ...DEFAULT_PASSWORD_POLICY, min_length: 10, require_special: false, max_age_days: 90, warn_days: 14 }, admin);
     expect(saved.statusCode).toBe(200);
     expect(saved.json().policy).toMatchObject({ min_length: 10, require_special: false, max_age_days: 90 });
-    expect((await inject('POST', '/auth/signup', { email: 'nospecial@example.com', password: 'NoSpecial12' })).statusCode).toBe(200);
+    expect((await inject('POST', '/auth/signup', { email: 'nospecial@example.com', password: 'NoSpecialBattery12' })).statusCode).toBe(200);
   });
 
   it('asks for a new password once it has expired, and accepts one that meets the policy', async () => {
     await signUpUser(app, 'old@example.com');
     getDb().prepare("UPDATE nc_users SET password_changed_at = '2020-01-01T00:00:00.000Z' WHERE email = 'old@example.com'").run();
-    const expired = await inject('POST', '/auth/signin', { email: 'old@example.com', password: 'Password-123!' });
+    const expired = await inject('POST', '/auth/signin', { email: 'old@example.com', password: 'Correct-Horse-9!' });
     expect(expired.statusCode).toBe(403);
     expect(expired.json().error).toBe('PASSWORD_EXPIRED');
     expect((await inject('GET', '/settings/password-policy', undefined, admin)).json().expired_users).toBe(1);
 
-    const weak = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Password-123!', newPassword: 'short' });
+    const weak = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Correct-Horse-9!', newPassword: 'short' });
     expect(weak.json().error).toBe('PASSWORD_POLICY');
-    const same = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Password-123!', newPassword: 'Password-123!' });
+    const same = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Correct-Horse-9!', newPassword: 'Correct-Horse-9!' });
     expect(same.json().error).toBe('PASSWORD_REUSED');
     const wrong = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'nope', newPassword: 'Brand-New-Pass1' });
     expect(wrong.statusCode).toBe(401);
-    const ok = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Password-123!', newPassword: 'Brand-New-Pass1' });
+    const ok = await inject('POST', '/auth/password', { email: 'old@example.com', password: 'Correct-Horse-9!', newPassword: 'Brand-New-Pass1' });
     expect(ok.statusCode).toBe(200);
     expect((await inject('POST', '/auth/signin', { email: 'old@example.com', password: 'Brand-New-Pass1' })).statusCode).toBe(200);
 
@@ -82,7 +86,7 @@ describe('password policy settings', () => {
     const { headers } = await signUpUser(app, 'gone@example.com');
     getDb().prepare("UPDATE nc_users SET disabled = 1 WHERE email = 'gone@example.com'").run();
     expect((await inject('GET', '/auth/me', undefined, headers)).statusCode).toBe(401);
-    const res = await inject('POST', '/auth/signin', { email: 'gone@example.com', password: 'Password-123!' });
+    const res = await inject('POST', '/auth/signin', { email: 'gone@example.com', password: 'Correct-Horse-9!' });
     expect(res.json().error).toBe('ACCOUNT_DISABLED');
   });
 });

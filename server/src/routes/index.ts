@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authRoutes } from './auth.js';
 import { dataRoutes } from './data.js';
+import { identityRoutes } from './identity.js';
 import { integrationRoutes } from './integrations.js';
 import { metaRoutes } from './meta.js';
 import { migrateRoutes } from './migrate.js';
@@ -18,4 +19,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(netboxRoutes);
   await app.register(integrationRoutes);
   await app.register(settingsRoutes);
+  await app.register(identityRoutes);
 }

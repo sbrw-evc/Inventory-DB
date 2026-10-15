@@ -74,3 +74,24 @@ textarea.input { min-height: 96px; font-family: var(--mono, ui-monospace, SFMono
 .settings-table .wide { min-width: 240px; }
 .pg-query { display: block; max-width: 520px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .pg-who { display: flex; flex-direction: column; gap: 2px; }
+
+/* Sign-in methods: passkeys, providers and the Umbrella connection wizard. */
+.passkey-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.passkey-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.passkey-list li:first-child { border-top: 0; }
+.passkey-list .pk-icon { display: inline-flex; width: 34px; height: 34px; border-radius: 10px; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+.passkey-list .pk-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.passkey-list .pk-text small { color: var(--muted); }
+.steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 0; counter-reset: step; flex-wrap: wrap; }
+.steps li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; font-size: 13px; }
+.steps li::before { counter-increment: step; content: counter(step); display: inline-flex; width: 24px; height: 24px; border-radius: 50%; align-items: center; justify-content: center; border: 1px solid var(--border); font-size: 12px; }
+.steps li.done::before { content: "✓"; background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.steps li.current { color: var(--text); }
+.steps li.current::before { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.steps li + li::after { order: -1; content: ""; width: 20px; height: 1px; background: var(--border); }
+.role-map { display: flex; flex-direction: column; gap: 8px; }
+.role-map .row { display: grid; grid-template-columns: 1fr 160px auto; gap: 8px; align-items: center; }
+.copy-field { display: flex; gap: 8px; }
+.copy-field .input { flex: 1; font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px; }
+.provider-head { display: flex; align-items: center; gap: 10px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; }

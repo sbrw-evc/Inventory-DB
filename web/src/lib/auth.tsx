@@ -4,6 +4,7 @@ import type { User } from '@shared';
 import { getToken, setToken } from '../api/client';
 import { authApi, type Account } from '../api/endpoints';
 import { qk } from '../api/hooks';
+import { getPasskey } from './webauthn';
 
 interface AuthState {
   token: string | null;
@@ -13,6 +14,8 @@ interface AuthState {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
+  /** Windows Hello, Touch ID / Face ID, Android biometrics or a security key. */
+  signInWithPasskey: () => Promise<void>;
   /** Replace the password of a local account (also an expired one) and sign in with the new one. */
   changePassword: (email: string, password: string, newPassword: string) => Promise<void>;
   /** Use a session issued elsewhere (Entra ID sign-in). */
@@ -52,6 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => start(await authApi.signIn({ email, password })), [start]);
 
+  const signInWithPasskey = useCallback(async () => {
+    const c = await authApi.passkeyBegin();
+    start(await authApi.passkeyFinish(c.ceremony, await getPasskey(c.options)));
+  }, [start]);
+
   const signUp = useCallback(
     async (email: string, password: string, name?: string) => start(await authApi.signUp({ email, password, name })),
     [start],
@@ -77,11 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading: !!token && me.isLoading,
       signIn,
       signUp,
+      signInWithPasskey,
       changePassword,
       adoptSession,
       signOut,
     }),
-    [token, me.data, me.isLoading, signIn, signUp, changePassword, adoptSession, signOut],
+    [token, me.data, me.isLoading, signIn, signUp, signInWithPasskey, changePassword, adoptSession, signOut],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

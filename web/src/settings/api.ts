@@ -71,7 +71,72 @@ export interface PolicySummary {
   local_users: number;
   expired_users: number;
   expiring_users: number;
+  /** The policy comes from Umbrella Monitoring and is read-only here. */
+  managed_by_hub?: boolean;
 }
+
+// ---- Umbrella Identity: passkeys, providers, single sign-in ----
+export type IdbRole = 'admin' | 'editor' | 'viewer';
+export type MappedRole = IdbRole | 'none';
+export interface PasskeySettings {
+  enabled: boolean;
+  rp_id: string;
+  from_hub: boolean;
+  effective_rp_id: string;
+}
+export type ProviderKind = 'google' | 'apple' | 'oidc';
+export interface ProviderConfig {
+  enabled: boolean;
+  title: string;
+  issuer: string;
+  client_id: string;
+  team_id: string;
+  key_id: string;
+  allowed_domains: string[];
+  existing_only: boolean;
+  scopes: string;
+  groups_claim: string;
+  admin_group: string;
+  role: IdbRole;
+}
+export interface ProvidersView {
+  public_url: string;
+  providers: { kind: ProviderKind; config: ProviderConfig; client_secret_set: boolean; private_key_set: boolean; redirect_uri: string }[];
+}
+export interface UmbrellaView {
+  enabled: boolean;
+  connected: boolean;
+  hub: string;
+  client_id: string;
+  application: string;
+  role_map: { match: string; role: IdbRole }[];
+  admin_role: MappedRole;
+  default_role: MappedRole;
+  link_local: boolean;
+  sso: boolean;
+  sync_users: boolean;
+  sync_policy: boolean;
+  sync_passkeys: boolean;
+  methods: { id: string; title: string }[];
+  hub_passkeys: { enabled: boolean; rp_id: string };
+  status: { last_sync?: string; ok: boolean; error?: string; users: number; created: number; updated: number; disabled: number; conflicts: string[] };
+  public_url: string;
+  redirect_uri: string;
+}
+export interface UmbrellaCheck {
+  hub: string;
+  application: string;
+  methods: { id: string; title: string }[];
+  passkeys: { enabled: boolean; rp_id: string };
+  passkeys_here: boolean;
+  users: number;
+  roles: string[];
+  groups: string[];
+  conflicts: string[];
+}
+export type UmbrellaInput = Pick<UmbrellaView, 'enabled' | 'role_map' | 'admin_role' | 'default_role' | 'link_local' | 'sso' | 'sync_users' | 'sync_policy' | 'sync_passkeys'> & {
+  key?: string;
+};
 
 // ---- PostgreSQL ----
 export type SslMode = 'disable' | 'require' | 'verify-full';
@@ -314,4 +379,15 @@ export const settingsApi = {
   probeOpenBao: (t: OpenBaoTarget) => http.post<OpenBaoReport>(`${S}/openbao/probe`, t),
   migrateOpenBao: (target: OpenBaoTarget, overwrite: boolean) => http.post<{ addr: string; mount: string; copied: number }>(`${S}/openbao/migrate`, { target, overwrite }),
   moveLocalSecrets: () => http.post<{ moved: number }>(`${S}/openbao/move-local`),
+  passkeys: () => http.get<PasskeySettings>(`${S}/passkeys`),
+  savePasskeys: (body: { enabled: boolean; rp_id: string }) => http.put<PasskeySettings>(`${S}/passkeys`, body),
+  savePublicUrl: (public_url: string) => http.put<{ public_url: string }>(`${S}/public-url`, { public_url }),
+  providers: () => http.get<ProvidersView>(`${S}/providers`),
+  saveProvider: (kind: ProviderKind, config: ProviderConfig, secrets: { client_secret?: string; private_key?: string }) =>
+    http.put<ProvidersView>(`${S}/providers/${kind}`, { config, ...secrets }),
+  umbrella: () => http.get<UmbrellaView>(`${S}/identity`),
+  checkUmbrella: (key: string) => http.post<UmbrellaCheck>(`${S}/identity/check`, { key }),
+  saveUmbrella: (body: UmbrellaInput) => http.put<UmbrellaView>(`${S}/identity`, body),
+  syncUmbrella: () => http.post<UmbrellaView>(`${S}/identity/sync`),
+  disconnectUmbrella: () => http.del<UmbrellaView>(`${S}/identity`),
 };

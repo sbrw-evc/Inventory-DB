@@ -7,6 +7,7 @@ import {
   Database,
   EthernetPort,
   Factory,
+  Fingerprint,
   FileClock,
   FolderTree,
   Globe,
@@ -130,7 +131,8 @@ const SETTINGS: NavGroup = {
   icon: SlidersHorizontal,
   pages: [
     { id: 'settings/status', to: '/settings/status', label: 'System status', icon: Activity },
-    { id: 'settings/directory', to: '/settings/directory', label: 'Sign-in', icon: ShieldCheck },
+    { id: 'settings/identity', to: '/settings/identity', label: 'Single sign-in', icon: Fingerprint },
+    { id: 'settings/directory', to: '/settings/directory', label: 'Directories', icon: ShieldCheck },
     { id: 'settings/password-policy', to: '/settings/password-policy', label: 'Password policy', icon: LockKeyhole },
     { id: 'settings/postgresql', to: '/settings/postgresql', label: 'PostgreSQL', icon: Database },
     { id: 'settings/openbao', to: '/settings/openbao', label: 'OpenBao', icon: Vault },

@@ -89,14 +89,53 @@ export const authApi = {
   providers: () => http.get<AuthProviders>('/auth/providers', { anonymous: true }),
   changePassword: (body: { email: string; password: string; newPassword: string }) =>
     http.post<{ user: User; token: string }>('/auth/password', body, { anonymous: true }),
+  /** Passkey, Umbrella and provider buttons of the sign-in page. */
+  methods: () => http.get<AuthMethods>('/auth/methods', { anonymous: true }),
+  passkeyBegin: () => http.post<Ceremony>('/auth/passkey/begin', {}, { anonymous: true }),
+  passkeyFinish: (ceremony: string, credential: unknown) =>
+    http.post<{ user: User; token: string }>('/auth/passkey/finish', { ceremony, credential }, { anonymous: true }),
+  myPasskeys: () => http.get<Passkey[]>('/auth/me/passkeys'),
+  addPasskeyBegin: () => http.post<Ceremony>('/auth/me/passkeys/begin', {}),
+  addPasskeyFinish: (ceremony: string, credential: unknown, name?: string) => http.post<Passkey>('/auth/me/passkeys/finish', { ceremony, credential, name }),
+  renamePasskey: (id: string, name: string) => http.patch<{ ok: true }>(`/auth/me/passkeys/${encodeURIComponent(id)}`, { name }),
+  removePasskey: (id: string) => http.del<void>(`/auth/me/passkeys/${encodeURIComponent(id)}`),
 };
+
+/** A WebAuthn ceremony: the options for the browser and the server's handle of the challenge. */
+export interface Ceremony {
+  ceremony: string;
+  options: Record<string, unknown>;
+}
+export interface Passkey {
+  id: string;
+  name: string;
+  transports: string[];
+  backup_eligible: boolean;
+  /** Synchronised from Umbrella Monitoring: managed in the Umbrella profile. */
+  from_hub: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
+export interface AuthMethods {
+  passkeys: boolean;
+  providers: { id: 'google' | 'apple' | 'oidc'; title: string }[];
+  /** Umbrella single sign-in and the methods the hub offers (password, passkey, Entra ID, Google…). */
+  umbrella: { hub: string; methods: { id: string; title: string }[] } | null;
+}
 
 /** How the signed-in user signs in, whether they may open the settings, and when their password expires. */
 export interface Account {
-  source: 'local' | 'ldap' | 'entra';
+  source: 'local' | 'ldap' | 'entra' | 'google' | 'apple' | 'oidc' | 'umbrella';
   admin: boolean;
+  role?: 'admin' | 'editor' | 'viewer' | null;
   passwordExpiresAt: string | null;
   passwordExpiresSoon: boolean;
+  /** Passkeys are turned on. */
+  passkeys?: boolean;
+  /** The passkeys of this account come from Umbrella Monitoring. */
+  passkeysFromHub?: boolean;
+  /** Address of Umbrella Monitoring when connected. */
+  hub?: string | null;
 }
 export interface AuthProviders {
   ldap: boolean;
