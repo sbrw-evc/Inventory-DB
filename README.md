@@ -32,6 +32,7 @@ Features:
 - Swagger UI at `/api/v1/docs`.
 
 See [docs/plan.md](docs/plan.md) for the feature plan and [docs/api.md](docs/api.md) for the REST API.
+Business processes inside Ledger: [docs/processes.md](docs/processes.md); between the applications of the family: [family.md](https://github.com/sbrw-evc/current/blob/HEAD/docs/family.md).
 
 ## Development
 
