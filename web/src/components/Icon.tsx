@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { FieldType, ViewType } from '@shared';
 
 /**
- * Icons are lucide-react, the set the Umbrella app uses. `Icon` keeps the old name-based API so
+ * Icons are lucide-react, the set the Beacon app uses. `Icon` keeps the old name-based API so
  * every caller stays the same; unknown names fall back to the text glyph.
  */
 const ICONS: Record<string, LucideIcon> = {

@@ -1,3 +1,5 @@
+# Ledger (formerly Inventory DB): the server and the built web app in one image.
+
 # ---- build: compile the server and the web app ----
 FROM node:22-bookworm AS build
 WORKDIR /app
@@ -15,7 +17,7 @@ RUN npm run build
 # ---- deps: production dependencies of the server only ----
 FROM build AS deps
 RUN rm -rf node_modules server/node_modules \
-  && npm ci --omit=dev --workspace @inventory-db/server --include-workspace-root=false
+  && npm ci --omit=dev --workspace @ledger/server --include-workspace-root=false
 
 # ---- runtime ----
 FROM node:22-bookworm-slim

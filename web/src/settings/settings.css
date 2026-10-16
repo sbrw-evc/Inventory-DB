@@ -1,4 +1,4 @@
-/* Settings section, drawn like Umbrella's settings and status pages. */
+/* Settings section, drawn like Beacon's settings and status pages. */
 .settings-page { gap: 16px; }
 .settings-page .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
 .settings-stack { display: flex; flex-direction: column; gap: 16px; max-width: 980px; }
@@ -75,7 +75,7 @@ textarea.input { min-height: 96px; font-family: var(--mono, ui-monospace, SFMono
 .pg-query { display: block; max-width: 520px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .pg-who { display: flex; flex-direction: column; gap: 2px; }
 
-/* Sign-in methods: passkeys, providers and the Umbrella connection wizard. */
+/* Sign-in methods: passkeys, providers and the Beacon connection wizard. */
 .passkey-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .passkey-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
 .passkey-list li:first-child { border-top: 0; }

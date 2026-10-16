@@ -43,7 +43,7 @@ async function setup() {
     method: 'POST',
     url: '/api/v1/integrations',
     headers: owner.headers,
-    payload: { kind: 'umbrella', title: 'Umbrella prod', inventoryUrl: 'https://inv.example' },
+    payload: { kind: 'umbrella', title: 'Beacon prod', inventoryUrl: 'https://inv.example' },
   });
   expect(created.statusCode).toBe(201);
   const { integration, secret } = created.json() as { integration: { id: string }; secret: string };
@@ -92,7 +92,7 @@ describe('integrations: management', () => {
   });
 });
 
-describe('integrations: CMDB feed for Umbrella', () => {
+describe('integrations: CMDB feed for Beacon', () => {
   it('exports sites, racks and devices with identities and relations', async () => {
     const { app, owner, id } = await setup();
     const res = await app.inject({ method: 'GET', url: `/api/v1/integrations/${id}/umbrella/ci`, headers: owner.headers });
@@ -134,7 +134,7 @@ describe('integrations: CMDB feed for Umbrella', () => {
   });
 });
 
-describe('integrations: alerts from Umbrella', () => {
+describe('integrations: alerts from Beacon', () => {
   const alert = (over: Record<string, unknown> = {}) => ({
     alert_id: 'a1',
     status: 'open',
@@ -192,7 +192,7 @@ describe('integrations: alerts from Umbrella', () => {
     expect(active.json().map((s: any) => s.objectId)).toEqual([100]);
   });
 
-  it('matches CIs Umbrella found elsewhere by hostname, FQDN or IP, and lists the rest as unmatched', async () => {
+  it('matches CIs Beacon found elsewhere by hostname, FQDN or IP, and lists the rest as unmatched', async () => {
     const { app, owner, id, secret } = await setup();
     const url = `/api/v1/integrations/${id}/umbrella/alerts`;
     const res = await app.inject({

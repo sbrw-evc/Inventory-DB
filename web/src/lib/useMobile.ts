@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-/** The phone layout (Umbrella's breakpoint): below this width the app shows the mobile shell. */
+/** The phone layout (Beacon's breakpoint): below this width the app shows the mobile shell. */
 export const MOBILE_QUERY = '(max-width: 860px)';
 
 function subscribe(notify: () => void) {

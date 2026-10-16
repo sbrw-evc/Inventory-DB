@@ -48,8 +48,8 @@ export function buildIdentityIndex(cis: UmbrellaCi[]): IdentityIndex {
 }
 
 /**
- * Finds the inventory objects an Umbrella alert is about. Umbrella sends back the source_refs it got
- * from the CMDB feed, so that is tried first; names, FQDNs and IPs cover CIs Umbrella discovered elsewhere.
+ * Finds the inventory objects a Beacon alert is about. Beacon sends back the source_refs it got
+ * from the CMDB feed, so that is tried first; names, FQDNs and IPs cover CIs Beacon discovered elsewhere.
  */
 export function matchTargets(ci: UmbrellaAlertEvent['ci'], index: () => IdentityIndex): Target[] {
   const fromRefs = (ci.source_refs ?? []).map(parseSourceRef).filter((t): t is Target => t !== null);

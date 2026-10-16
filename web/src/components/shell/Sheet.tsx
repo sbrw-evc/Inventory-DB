@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react'
 import { useT } from '../../i18n'
 
-// Copied from Umbrella Monitoring (app/web/src/app/mobile/Sheet.tsx).
+// Copied from Beacon (app/web/src/app/mobile/Sheet.tsx).
 // Sheet is the bottom sheet of the phone layout: it slides up over the page, closes on the
 // backdrop, Escape, the close button or a swipe down by the handle.
 export function Sheet({ open, title, onClose, children, footer, full = false }: { open: boolean; title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; full?: boolean }) {

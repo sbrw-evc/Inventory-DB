@@ -1,12 +1,12 @@
-/** Sign-in and access through SPA (a fake SPA in-process): OIDC with PKCE, user synchronization, roles, catalogue. */
+/** Sign-in and access through Keystone (a fake Keystone in-process): OIDC with PKCE, user synchronization, roles, catalogue. */
 import type { FastifyInstance } from 'fastify';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { parseKey } from '../src/auth/spa/connection.js';
-import { clearOidcCaches } from '../src/auth/spa/oidc.js';
-import { resetSpaSyncMemory, syncSpa } from '../src/auth/spa/sync.js';
+import { parseKey } from '../src/auth/keystone/connection.js';
+import { clearOidcCaches } from '../src/auth/keystone/oidc.js';
+import { resetSpaSyncMemory, syncSpa } from '../src/auth/keystone/sync.js';
 import { getDb, newId, now } from '../src/db/index.js';
 import { createTestApp } from './helpers.js';
 import { startFakeSpa, type FakeSpa } from './support/fakeSpa.js';
@@ -30,7 +30,7 @@ const person = (id: string, username: string, roles: string[], extra: Partial<Fa
 
 const cookieOf = (setCookie: string | string[] | undefined) => String(Array.isArray(setCookie) ? setCookie[0] : (setCookie ?? '')).split(';')[0];
 
-/** The whole browser round trip: start → SPA authorize → callback. Returns where the callback sent the browser. */
+/** The whole browser round trip: start → Keystone authorize → callback. Returns where the callback sent the browser. */
 async function signIn(opts: { returnTo?: string; spoilState?: boolean; dropCookie?: boolean; query?: string } = {}) {
   const start = await app.inject({ method: 'GET', url: `/api/auth/spa/start?return=${encodeURIComponent(opts.returnTo ?? '/dcim/sites')}${opts.query ?? ''}` });
   expect(start.statusCode).toBe(302);
@@ -83,7 +83,7 @@ afterEach(async () => {
 describe('connection key', () => {
   it('parses spa1. keys and rejects anything else', () => {
     expect(parseKey(spa.key())).toEqual({ issuer: spa.url, client_id: spa.clientId, client_secret: spa.clientSecret, token: spa.token });
-    expect(() => parseKey('umbid1.abc')).toThrow(/SPA connection key/);
+    expect(() => parseKey('umbid1.abc')).toThrow(/Keystone connection key/);
     expect(() => parseKey(`spa1.${Buffer.from('{"issuer":"ftp://x","client_id":"a","client_secret":"b","token":"c"}').toString('base64url')}`)).toThrow();
   });
 
@@ -92,7 +92,7 @@ describe('connection key', () => {
     expect((await app.inject({ method: 'GET', url: '/api/v1/auth/spa' })).json()).toEqual({ connected: false });
     const start = await app.inject({ method: 'GET', url: '/api/auth/spa/start' });
     expect(start.statusCode).toBe(302);
-    expect(String(start.headers.location)).toMatch(/^\/signin\?sso_error=This%20application%20is%20not%20connected%20to%20SPA/);
+    expect(String(start.headers.location)).toMatch(/^\/signin\?sso_error=This%20application%20is%20not%20connected%20to%20Keystone/);
   });
 
   it('reads the key from SPA_CONNECTION_KEY_FILE', async () => {
@@ -108,8 +108,8 @@ describe('connection key', () => {
   });
 });
 
-describe('sign-in with SPA', () => {
-  it('runs the code flow with PKCE S256, nonce and a signed state, then starts an Inventory DB session', async () => {
+describe('sign-in with Keystone', () => {
+  it('runs the code flow with PKCE S256, nonce and a signed state, then starts an Ledger session', async () => {
     const r = await signIn();
     const q = Object.fromEntries(r.authorize.searchParams);
     expect(`${r.authorize.origin}${r.authorize.pathname}`).toBe(`${spa.url}/oauth2/authorize`);
@@ -176,19 +176,19 @@ describe('sign-in with SPA', () => {
     spa.tamper = tamper;
     const r = await signIn();
     expect(r.token).toBeNull();
-    expect(r.error).toBe('SPA sign-in could not be completed. Try again.');
+    expect(r.error).toBe('Keystone sign-in could not be completed. Try again.');
     expect(getDb().prepare('SELECT COUNT(*) n FROM nc_users').get()).toMatchObject({ n: 0 });
   });
 
-  it('shows access_denied from SPA, and refuses an ID token without a role of ours', async () => {
+  it('shows access_denied from Keystone, and refuses an ID token without a role of ours', async () => {
     spa.deny = true;
-    expect((await signIn()).error).toBe('You have no access to Inventory DB. Ask an SPA administrator for a role.');
+    expect((await signIn()).error).toBe('You have no access to Ledger. Ask a Keystone administrator for a role.');
     spa.users[0].roles = ['operator'];
-    expect((await signIn()).error).toBe('You have no access to Inventory DB. Ask an SPA administrator for a role.');
+    expect((await signIn()).error).toBe('You have no access to Ledger. Ask a Keystone administrator for a role.');
     expect(getDb().prepare('SELECT COUNT(*) n FROM nc_users').get()).toMatchObject({ n: 0 });
   });
 
-  it('binds a record from before SPA once by user name (case-insensitive) and keeps its ID and base memberships', async () => {
+  it('binds a record from before Keystone once by user name (case-insensitive) and keeps its ID and base memberships', async () => {
     const db = getDb();
     const legacy = newId('usr');
     db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'ada.old@corp.example.com', 'Old Ada', ?, 'local', 'ADA')").run(legacy, now());
@@ -203,7 +203,7 @@ describe('sign-in with SPA', () => {
     const bases = await app.inject({ method: 'GET', url: '/api/v1/bases', headers: { authorization: `Bearer ${(await signIn()).token}` } });
     expect(bases.json().map((b: { id: string }) => b.id)).toContain(base);
 
-    // Then by sub only: a new user name in SPA does not move the binding, and another old record with it stays apart.
+    // Then by sub only: a new user name in Keystone does not move the binding, and another old record with it stays apart.
     const other = newId('usr');
     db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'someone@example.com', 'Someone', ?, 'local', 'ada2')").run(other, now());
     spa.users[0].username = 'ada2';
@@ -212,7 +212,7 @@ describe('sign-in with SPA', () => {
     expect(db.prepare('SELECT source FROM nc_users WHERE id = ?').get(other)).toEqual({ source: 'local' });
   });
 
-  it('never binds a record from before SPA by e-mail', async () => {
+  it('never binds a record from before Keystone by e-mail', async () => {
     const db = getDb();
     // Same e-mail, no user name; same e-mail, another user name: neither is bound, by sign-in or by synchronization.
     const noName = newId('usr');
@@ -232,7 +232,7 @@ describe('sign-in with SPA', () => {
     expect(db.prepare('SELECT source, external_id, disabled FROM nc_users WHERE id = ?').get(otherName)).toEqual({ source: 'ldap', external_id: null, disabled: 1 });
   });
 
-  it('signs out through SPA', async () => {
+  it('signs out through Keystone', async () => {
     await syncSpa('test');
     const out = await app.inject({ method: 'GET', url: '/api/auth/spa/logout' });
     expect(out.statusCode).toBe(302);
@@ -292,7 +292,7 @@ describe('synchronization', () => {
     expect(u.usr_dan).toMatchObject({ role: 'editor', disabled: 0 });
   });
 
-  it('ends the sessions and suspends the API tokens of a person SPA disables; the tokens work again when SPA enables them', async () => {
+  it('ends the sessions and suspends the API tokens of a person Keystone disables; the tokens work again when Keystone enables them', async () => {
     spa.signedIn = 'usr_bob';
     const { token } = await signIn();
     const headers = { authorization: `Bearer ${token}` };
@@ -353,7 +353,7 @@ describe('synchronization', () => {
 });
 
 describe('settings', () => {
-  it('shows the SPA connection to administrators and synchronizes on request', async () => {
+  it('shows the Keystone connection to administrators and synchronizes on request', async () => {
     const admin = { authorization: `Bearer ${(await signIn()).token}` };
     spa.signedIn = 'usr_carl';
     const viewer = { authorization: `Bearer ${(await signIn()).token}` };
@@ -368,7 +368,7 @@ describe('settings', () => {
     const after = (await app.inject({ method: 'POST', url: '/api/v1/settings/spa/sync', headers: admin })).json();
     expect(after).toMatchObject({
       ok: true,
-      application: { id: spa.clientId, name: 'Inventory DB', type: 'inventory-db' },
+      application: { id: spa.clientId, name: 'Ledger', type: 'ledger' },
       account_url: `${spa.url}/profile`,
       sign_out_url: `${spa.url}/oauth2/logout`,
       counts: { users: 3 },
@@ -381,7 +381,7 @@ describe('settings', () => {
 
     const m = (await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: admin })).json();
     expect(m.account.spa.account_url).toBe(`${spa.url}/profile`);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/spa' })).json()).toEqual({ connected: true, issuer: spa.url, application: 'Inventory DB' });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/spa' })).json()).toEqual({ connected: true, issuer: spa.url, application: 'Ledger' });
   });
 
   it('has no local sign-in, sign-up, password or directory endpoints any more', async () => {

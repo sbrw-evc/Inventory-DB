@@ -1,12 +1,12 @@
-/** System status page: build, runtime, PostgreSQL, OpenBao, the SPA connection, integrations, counts and recent errors. */
+/** System status page: build, runtime, PostgreSQL, OpenBao, the Keystone connection, integrations, counts and recent errors. */
 import { existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { loadKey } from '../auth/spa/connection.js';
-import { spaState } from '../auth/spa/sync.js';
-import { userCounts } from '../auth/spa/users.js';
+import { loadKey } from '../auth/keystone/connection.js';
+import { spaState } from '../auth/keystone/sync.js';
+import { userCounts } from '../auth/keystone/users.js';
 import { getDb, q } from '../db/index.js';
 import { models } from '../netbox/registry.js';
 import { recentLogs } from './logbuf.js';
@@ -23,7 +23,7 @@ function appVersion(): string {
     const p = join(dir, 'package.json');
     if (existsSync(p)) {
       const pkg = JSON.parse(readFileSync(p, 'utf8')) as { name?: string; version?: string };
-      if (pkg.name === '@inventory-db/server') return pkg.version ?? '0.0.0';
+      if (pkg.name === '@ledger/server') return pkg.version ?? '0.0.0';
     }
     dir = dirname(dir);
   }

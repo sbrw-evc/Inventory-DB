@@ -1,5 +1,5 @@
 /**
- * Copies one NocoDB base into a new Inventory DB base: tables, fields, select options, records, links and views.
+ * Copies one NocoDB base into a new Ledger base: tables, fields, select options, records, links and views.
  * Runs as a background job; progress and a report of anything skipped/converted go to the job.
  *
  * The NocoDB API token is only handed to the client; it is never written to the job log, message or result.

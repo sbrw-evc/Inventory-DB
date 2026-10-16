@@ -3,7 +3,7 @@ import { apiParams, changedKeys, compareAddr, contrastText, elevationBlocks, for
 import { dictionaries, fieldLabel, t, typeLabel } from './i18n';
 
 describe('netbox format helpers', () => {
-  it('formats Flow traffic values', () => {
+  it('formats Current traffic values', () => {
     expect(formatBps(7.2e9)).toBe('7.2 Gb/s');
     expect(formatBps(950)).toBe('950 b/s');
     expect(formatBps(125_000_000)).toBe('125 Mb/s');

@@ -3,7 +3,7 @@ import { grantRole, signInUser } from './helpers.js';
 import { makeApi, seedDcim, setupNetbox } from './netbox-fixtures.js';
 
 describe('netbox api behaviour', () => {
-  it('enforces roles: anonymous 401, viewer read-only, editor from SPA writes; roles are read-only here', async () => {
+  it('enforces roles: anonymous 401, viewer read-only, editor from Keystone writes; roles are read-only here', async () => {
     const { app, api, admin } = await setupNetbox();
     const anon = await app.inject({ method: 'GET', url: '/api/v1/dcim/sites' });
     expect(anon.statusCode).toBe(401);
@@ -18,7 +18,7 @@ describe('netbox api behaviour', () => {
     expect((await bobApi.call('POST', '/dcim/sites', { name: 'X', slug: 'x' })).status).toBe(403);
     expect((await bobApi.call('GET', '/netbox/roles')).status).toBe(403);
 
-    // Roles are assigned in SPA, not here.
+    // Roles are assigned in Keystone, not here.
     expect((await api.call('POST', '/netbox/roles', { email: 'bob@example.com', role: 'editor' })).status).toBe(409);
     expect((await api.call('PUT', `/netbox/roles/${admin.userId}`, { role: 'viewer' })).status).toBe(409);
     grantRole(bob.userId, 'editor');

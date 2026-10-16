@@ -1,5 +1,5 @@
 /**
- * Pure mapping helpers from NocoDB (v2 API) metadata and values to Inventory DB's model.
+ * Pure mapping helpers from NocoDB (v2 API) metadata and values to Ledger's model.
  * No I/O here so every rule is unit-testable.
  */
 import {

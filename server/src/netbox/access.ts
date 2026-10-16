@@ -1,7 +1,7 @@
 /**
  * Organisation-wide access to DCIM/IPAM (not per base): every signed-in user can read; writes need `editor` or
- * `admin`. The role is assigned in SPA (the `roles` claim and the federation API, see auth/spa) and stored in
- * `nb_roles`; Inventory DB only enforces it.
+ * `admin`. The role is assigned in Keystone (the `roles` claim and the federation API, see auth/spa) and stored in
+ * `nb_roles`; Ledger only enforces it.
  */
 import type { FastifyRequest } from 'fastify';
 import type { User } from '../../../shared/src/index.js';
@@ -25,7 +25,7 @@ export function requireNetboxRole(req: FastifyRequest, min: NetboxRole): { user:
   return { user, role };
 }
 
-/** Roles of the users (read-only: assigned in SPA). */
+/** Roles of the users (read-only: assigned in Keystone). */
 export function listRoles() {
   return getDb()
     .prepare("SELECT u.id user_id, u.email, u.name, u.username, COALESCE(r.role, 'viewer') role, u.disabled = 1 disabled FROM nc_users u LEFT JOIN nb_roles r ON r.user_id = u.id ORDER BY u.email")

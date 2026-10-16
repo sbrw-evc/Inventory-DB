@@ -4,7 +4,7 @@ import { AnimatePresence, motion, type Transition } from 'motion/react';
 import { setLang, useLang, useT, type Lang } from '../../i18n';
 import { originOf, setTheme, useTheme } from '../../lib/theme';
 
-/** The spring Umbrella uses for pills, chevrons and dialogs. */
+/** The spring Beacon uses for pills, chevrons and dialogs. */
 export const spring: Transition = { type: 'spring', stiffness: 420, damping: 30 };
 
 export function Brand({ subtitle, compact }: { subtitle?: string; compact?: boolean }) {
@@ -13,7 +13,7 @@ export function Brand({ subtitle, compact }: { subtitle?: string; compact?: bool
       <img src="/logo.svg" alt="" width={32} height={32} />
       {!compact && (
         <span>
-          <span className="brand-name">Inventory DB</span>
+          <span className="brand-name">Ledger</span>
           {subtitle && <span className="brand-sub">{subtitle}</span>}
         </span>
       )}
@@ -21,7 +21,7 @@ export function Brand({ subtitle, compact }: { subtitle?: string; compact?: bool
   );
 }
 
-/** Segmented control with a sliding pill (Umbrella ui.tsx Segmented). */
+/** Segmented control with a sliding pill (Beacon ui.tsx Segmented). */
 export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void; label: string }) {
   const group = useId();
   return (
@@ -57,7 +57,7 @@ export function ThemeToggle() {
   );
 }
 
-/** Language (EN / RU) and theme switches of the sign-in and public pages (Umbrella Preferences). */
+/** Language (EN / RU) and theme switches of the sign-in and public pages (Beacon Preferences). */
 export function Preferences() {
   const t = useT();
   const lang = useLang();

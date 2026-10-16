@@ -1,5 +1,5 @@
 /**
- * The last warnings and errors of the server, shown on the system status page (Umbrella's log buffer).
+ * The last warnings and errors of the server, shown on the system status page (Beacon's log buffer).
  * Kept in memory only: they describe this process since it started.
  */
 export type LogLevel = 'warn' | 'error';

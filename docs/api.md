@@ -3,7 +3,7 @@
 All endpoints are under `/api/v1`, JSON in and out. Errors: `{ error, message, details? }` with HTTP status
 400/401/403/404/409/500. Types referenced below live in `shared/src/types.ts`.
 
-Auth: `Authorization: Bearer <jwt>` (or `xc-auth: <jwt>`) — the session started after sign-in with SPA ([spa.md](spa.md)) — or `xc-token: <api token>`.
+Auth: `Authorization: Bearer <jwt>` (or `xc-auth: <jwt>`) — the session started after sign-in with Keystone ([keystone.md](keystone.md)) — or `xc-token: <api token>`.
 Roles per base: owner > editor > commenter > viewer. "min role" is the minimum required.
 
 Owners in brackets are the module that implements the endpoint.
@@ -15,7 +15,7 @@ Owners in brackets are the module that implements the endpoint.
 | GET | /auth/spa | (public) | `{connected, issuer?, application?}` |
 
 Sign-in itself is a browser flow outside `/api/v1`: `GET /api/auth/spa/start?return=…`, `GET /api/auth/spa/callback`,
-`GET /api/auth/spa/logout` ([spa.md](spa.md)). There is no sign-up and no password API.
+`GET /api/auth/spa/logout` ([keystone.md](keystone.md)). There is no sign-up and no password API.
 
 ## Meta [data engine]
 | Method | Path | Min role | Body / query | Returns |
@@ -107,7 +107,7 @@ Data notes:
 |---|---|---|---|
 | GET/POST | /bases/:baseId/members | viewer / owner | invite by `{email, role}` (user must exist) |
 | PATCH/DELETE | /bases/:baseId/members/:userId | owner | `{role}`; the last owner can't be removed/demoted |
-| GET/POST | /tokens | user | create returns the token once; each has `suspended` (and `suspendedAt`): suspended while SPA has the owner disabled, working again when SPA enables them ([spa.md](spa.md#users)) |
+| GET/POST | /tokens | user | create returns the token once; each has `suspended` (and `suspendedAt`): suspended while Keystone has the owner disabled, working again when Keystone enables them ([keystone.md](keystone.md#users)) |
 | DELETE | /tokens/:tokenId | user | |
 | POST | /views/:viewId/share | editor | `{password?: string \| null}` → `{shareUuid}` |
 | DELETE | /views/:viewId/share | editor | disables sharing |
@@ -149,7 +149,7 @@ NocoDB endpoints used: `GET /api/v2/meta/workspaces`, `/meta/workspaces/{id}/bas
 `/tables/{tableId}/links/{linkFieldId}/records/{recordId}`.
 
 ## Integrations [integrations]
-Details and the Umbrella-side setup: [integrations.md](integrations.md).
+Details and the Beacon-side setup: [integrations.md](integrations.md).
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | /integrations | user | the caller's integrations |

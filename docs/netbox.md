@@ -1,9 +1,9 @@
 # DCIM / IPAM (NetBox core)
 
-Inventory DB includes the core of NetBox: data-centre infrastructure (DCIM: sites, racks, devices, interfaces,
+Ledger includes the core of NetBox: data-centre infrastructure (DCIM: sites, racks, devices, interfaces,
 front/rear ports, cables, power), IP address management (IPAM), circuits and virtualization.
 The REST API follows NetBox's URL layout, object shapes and filter syntax, so NetBox clients, scripts and the
-Umbrella CMDB integration can use it with few or no changes.
+Beacon CMDB integration can use it with few or no changes.
 
 - Server code: `server/src/netbox/` (models in `models/*.ts`, generic engine in `engine.ts`, filters in `query.ts`,
   CIDR toolkit in `cidr.ts`, IPAM/DCIM helpers in `ipam.ts`/`dcim.ts`, cables and paths in `cabling.ts`, power
@@ -340,12 +340,12 @@ sw-01,C9300-48P,access-switch,hq,R101,40,front,active,core
 
 ```ts
 import { netboxEvents } from './netbox/events.js';
-netboxEvents.on('object.updated', ({ objectType, id, data }) => { /* sync to Umbrella CMDB */ });
+netboxEvents.on('object.updated', ({ objectType, id, data }) => { /* sync to Beacon CMDB */ });
 ```
 
-## Umbrella integration contract
+## Beacon integration contract
 
-The Umbrella monitoring integration reads devices, interfaces, IP addresses, sites, racks and cables from this API.
+The Beacon integration reads devices, interfaces, IP addresses, sites, racks and cables from this API.
 These shapes are stable:
 
 - Lists: `GET /api/v1/dcim/{sites,racks,devices,interfaces,cables}/`, `GET /api/v1/ipam/ip-addresses/` with
@@ -386,10 +386,10 @@ Accepted response shapes (any of):
 `status` is one of `ok | info | warning | error | critical` (shown with the design's chip colours); the chip links to
 `incident_url` when present. Any error (e.g. `404` when the integration isn't installed) hides the column/chip.
 
-**Traffic in the UI.** With an active Umbrella Flow integration the device and interface lists get a "Traffic" column,
-device, interface and circuit pages a traffic card (and chips), and prefix pages the addresses Flow saw
+**Traffic in the UI.** With an active Current integration the device and interface lists get a "Traffic" column,
+device, interface and circuit pages a traffic card (and chips), and prefix pages the addresses Current saw
 (`web/src/netbox/flow.tsx`, via `GET /api/v1/integrations/flow/status` and `/flow/prefix-addresses`). Any error hides
-them, as for monitoring; see [integrations.md](integrations.md#umbrella-flow).
+them, as for monitoring; see [integrations.md](integrations.md#current).
 
 ## Web UI
 

@@ -107,7 +107,7 @@ export interface MonitoringStatus {
 }
 
 /**
- * Normalises the Umbrella integration status response. Accepts `{results: {id: status}}`, `{results: [{id|object_id, ...}]}`,
+ * Normalises the Beacon integration status response. Accepts `{results: {id: status}}`, `{results: [{id|object_id, ...}]}`,
  * a bare map or a bare list.
  */
 export function normalizeMonitoring(data: unknown): Map<number, MonitoringStatus> {
@@ -207,7 +207,7 @@ export function formatBytes(bytes: number | null | undefined, lang: 'en' | 'ru' 
   return `${v.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US', { maximumFractionDigits: i === 0 ? 0 : 1 })} ${units[i]}`;
 }
 
-/** Utilisation (0..1, from Flow) as a whole percentage for UtilBar; null when the speed is unknown. */
+/** Utilisation (0..1, from Current) as a whole percentage for UtilBar; null when the speed is unknown. */
 export const utilPct = (u: number | null | undefined): number | null => (u == null || !Number.isFinite(u) ? null : Math.round(Math.max(0, u) * 100));
 
 /**

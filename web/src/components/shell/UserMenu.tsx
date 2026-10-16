@@ -14,7 +14,7 @@ export function initialsOf(name: string) {
   return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
-/** Initials on a colour picked from the name, like Umbrella's Avatar without a photo. */
+/** Initials on a colour picked from the name, like Beacon's Avatar without a photo. */
 export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -25,7 +25,7 @@ export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   );
 }
 
-/** The user menu of the top bar (Umbrella UserMenu): account, language and theme accordions, sign out. */
+/** The user menu of the top bar (Beacon UserMenu): account, language and theme accordions, sign out. */
 export function UserMenu({ compact }: { compact?: boolean }) {
   const t = useT();
   const { user, account, signOut } = useAuth();

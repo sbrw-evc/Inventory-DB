@@ -1,6 +1,6 @@
 /**
  * PostgreSQL settings page: the current connection, live statistics (pg_stat_*), a check of another database and
- * moving all data to it (Umbrella's "Move to another database").
+ * moving all data to it (Beacon's "Move to another database").
  */
 import pg from 'pg';
 import { type DB, configureDatabase, connectDb, getDb, openDb, q, setDb } from '../db/index.js';
@@ -150,7 +150,7 @@ export function targetUrl(t: PostgresTarget) {
   return postgresUrl(t, t.password);
 }
 
-/** Connects to another database and reports whether Inventory DB can move there. */
+/** Connects to another database and reports whether Ledger can move there. */
 export async function probePostgres(t: PostgresTarget) {
   const client = new pg.Client({ connectionString: targetUrl(t), connectionTimeoutMillis: 10_000, statement_timeout: 10_000 });
   try {
@@ -213,7 +213,7 @@ export function copyDatabase(source: DB, target: DB, opts: { overwrite: boolean 
   try {
     dst('SET LOCAL check_function_bodies = false');
     const hasState = dst("SELECT to_regclass('nc_migrations') IS NOT NULL x")[0].x;
-    if (hasState && !opts.overwrite) throw new HttpError(409, 'POSTGRES_HAS_STATE', 'The database already holds Inventory DB data');
+    if (hasState && !opts.overwrite) throw new HttpError(409, 'POSTGRES_HAS_STATE', 'The database already holds Ledger data');
     for (const t of tables) dst(`DROP TABLE IF EXISTS ${q(t.relname)} CASCADE`);
     for (const f of functions) dst(`DROP FUNCTION IF EXISTS ${q(f.proname)} CASCADE`);
     for (const f of functions) dst(unqualify(f.def).replace(/^CREATE OR REPLACE FUNCTION\s+("[^"]+"|[^\s.(]+)\./, 'CREATE OR REPLACE FUNCTION '));
@@ -292,7 +292,7 @@ export function copyDatabase(source: DB, target: DB, opts: { overwrite: boolean 
 export async function migratePostgres(t: PostgresTarget, overwrite: boolean, userEmail?: string) {
   const url = targetUrl(t);
   const source = getDb();
-  if (sameTarget(source, url, t.schema)) throw new HttpError(409, 'POSTGRES_SAME_DATABASE', 'This is the database Inventory DB already uses');
+  if (sameTarget(source, url, t.schema)) throw new HttpError(409, 'POSTGRES_SAME_DATABASE', 'This is the database Ledger already uses');
   const probe = await probePostgres(t);
   if (!probe.ok || !probe.probe) throw new HttpError(400, 'POSTGRES_UNREACHABLE', probe.error ?? 'The database does not answer');
   if (!probe.probe.can_create && !probe.probe.has_state) throw new HttpError(400, 'POSTGRES_NO_CREATE', 'The user may not create tables in that database');
@@ -312,7 +312,7 @@ export async function migratePostgres(t: PostgresTarget, overwrite: boolean, use
     const next = openDb(url, { schema: t.schema });
     setDb(next);
     source.close();
-    logEvent('warn', 'Inventory DB moved to another PostgreSQL database', { to: where(connection), by: userEmail, tables: copied.tables, rows: copied.rows });
+    logEvent('warn', 'Ledger moved to another PostgreSQL database', { to: where(connection), by: userEmail, tables: copied.tables, rows: copied.rows });
     return { where: where(connection), ...copied };
   } catch (e) {
     target?.close();

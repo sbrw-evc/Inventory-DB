@@ -1,7 +1,7 @@
 import type { Column, SelectOption } from '@shared';
 
 /**
- * Chip palette from the Umbrella legend (fill / border): info, ok, warning, error, critical, neutral, purple.
+ * Chip palette from the Beacon legend (fill / border): info, ok, warning, error, critical, neutral, purple.
  * Select options store the fill colour; the border is derived from it.
  */
 export const CHIP_PALETTE: Array<{ name: string; bg: string; border: string }> = [
@@ -52,7 +52,7 @@ export function textOn(bg: string): string {
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#222222' : '#ffffff';
 }
 
-/** Theme tones the palette colours are drawn in: soft fill and strong text, as Umbrella's pills. */
+/** Theme tones the palette colours are drawn in: soft fill and strong text, as Beacon's pills. */
 const TONES: Record<string, [string, string]> = {
   info: ['var(--info-soft)', 'var(--info)'],
   ok: ['var(--ok-soft)', 'var(--ok)'],

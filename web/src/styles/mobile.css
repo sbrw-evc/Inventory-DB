@@ -4,12 +4,12 @@
 .side-tree { padding-left: 6px; }
 .sb-more.sb-new-inline { display: inline-flex; background: transparent; }
 
-/* The title of a page is already in the phone top bar (as in Umbrella's mobile.css). */
+/* The title of a page is already in the phone top bar (as in Beacon's mobile.css). */
 .m-shell .page-head h1,
 .m-shell .nb-list-title { display: none; }
 .sb-more.sb-new-inline:hover { background: var(--surface); }
 
-/* ---------- Phone shell (Umbrella mobile.css) ---------- */
+/* ---------- Phone shell (Beacon mobile.css) ---------- */
 .m-shell {
   --m-safe-b: env(safe-area-inset-bottom, 0px);
   display: grid;
@@ -67,7 +67,7 @@
 .m-tab-pill { position: absolute; top: 2px; left: 50%; width: 56px; height: 30px; margin-left: -28px; border-radius: 999px; background: var(--accent-soft); }
 .m-tab-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 30px; border-radius: 999px; }
 .m-tab-label { position: relative; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-/* Bottom sheet, "More" and the note for a page made for a computer (Umbrella mobile.css). */
+/* Bottom sheet, "More" and the note for a page made for a computer (Beacon mobile.css). */
 .m-sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -307,7 +307,7 @@
 .m-more-group { margin: 8px 12px 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .m-shell .user-dropdown { position: fixed; top: 60px; right: 8px; }
 
-/* ---------- Catalog lists on the phone (as Umbrella's tables on the phone) ---------- */
+/* ---------- Catalog lists on the phone (as Beacon's tables on the phone) ---------- */
 /* Search and "Filters · n" stay; the filters open in a bottom sheet, one per line. */
 .m-shell .nb-toolbar { padding: 10px 12px; }
 .m-shell .nb-toolbar .nb-search { flex: 1 1 100%; }
@@ -346,7 +346,7 @@
   font-weight: 600;
 }
 
-/* Status counters scroll sideways in one row (Umbrella's .ci-tiles on the phone). */
+/* Status counters scroll sideways in one row (Beacon's .ci-tiles on the phone). */
 .m-shell .nb-counters {
   display: flex;
   gap: 8px;

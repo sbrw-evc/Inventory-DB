@@ -10,11 +10,11 @@ import { takeSignedOut, useAuth } from '../lib/auth';
 /** Same-site paths only, like the server's return check. */
 const safePath = (p: string | null | undefined) => (p && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\') ? p : '/');
 
-const SPA_REPO = 'https://github.com/sbrw-evc/SPA-Single-point-of-authorization-';
+const SPA_REPO = 'https://github.com/sbrw-evc/keystone';
 
 /**
- * Sign-in: Inventory DB keeps no passwords — people sign in with SPA (Single Point of Authorization). Without a session
- * the page goes to SPA by itself, unless the person has just signed out or SPA sent back an error.
+ * Sign-in: Ledger keeps no passwords — people sign in with Keystone. Without a session
+ * the page goes to Keystone by itself, unless the person has just signed out or Keystone sent back an error.
  */
 export function AuthPage() {
   const { token, adoptSession } = useAuth();
@@ -26,7 +26,7 @@ export function AuthPage() {
   const [stay] = useState(() => takeSignedOut() || new URLSearchParams(location.search).has('signed_out'));
   const from = safePath(ssoReturn ?? (location.state as { from?: string } | null)?.from ?? '/');
 
-  // SPA's answer: /signin#sso_token=…&return=… or /signin?sso_error=…
+  // Keystone's answer: /signin#sso_token=…&return=… or /signin?sso_error=…
   const [hash] = useState(() => new URLSearchParams(window.location.hash.slice(1)));
   const [ssoError] = useState(() => new URLSearchParams(location.search).get('sso_error'));
   useEffect(() => {
@@ -61,7 +61,7 @@ export function AuthPage() {
         </div>
         {body}
       </motion.div>
-      <p className="hint">Inventory DB</p>
+      <p className="hint">Ledger</p>
     </div>
   );
 
@@ -77,7 +77,7 @@ export function AuthPage() {
       <div className="stack" style={{ gap: 16 }}>
         {head}
         <div className="notice notice-error" role="alert">
-          <b>{t('Inventory DB did not answer. Try again later.')}</b>
+          <b>{t('Ledger did not answer. Try again later.')}</b>
         </div>
         <button type="button" className="btn btn-block" onClick={() => window.location.reload()}>
           {t('Try again')}
@@ -90,7 +90,7 @@ export function AuthPage() {
       <div className="stack" style={{ gap: 16 }}>
         {head}
         <p className="muted auth-redirect" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden /> {status ? t('Opening SPA…') : t('Loading…')}
+          <LoaderCircle className="spin" size={16} aria-hidden /> {status ? t('Opening Keystone…') : t('Loading…')}
         </p>
       </div>,
     );
@@ -101,21 +101,21 @@ export function AuthPage() {
         {head}
         <div className="notice notice-warning" role="alert">
           <ShieldAlert size={16} aria-hidden />
-          <b>{t('This application is not connected to SPA')}</b>
+          <b>{t('This application is not connected to Keystone')}</b>
         </div>
         <div className="auth-help">
-          <p>{t('Sign-in and access to Inventory DB are managed in SPA (Single Point of Authorization). To connect:')}</p>
+          <p>{t('Sign-in and access to Ledger are managed in Keystone. To connect:')}</p>
           <ol>
-            <li>{t('In SPA, open Applications → Connect an application, choose the type Inventory DB and enter the address of Inventory DB.')}</li>
-            <li>{t('Give the Inventory DB roles (Administrator, Editor, Viewer) to people or groups.')}</li>
+            <li>{t('In Keystone, open Applications → Connect an application, choose the type Ledger and enter the address of Ledger.')}</li>
+            <li>{t('Give the Ledger roles (Administrator, Editor, Viewer) to people or groups.')}</li>
             <li>
-              {t('Copy the connection key (spa1.…) and give it to Inventory DB in the environment variable')} <code>SPA_CONNECTION_KEY</code>{' '}
+              {t('Copy the connection key (spa1.…) and give it to Ledger in the environment variable')} <code>SPA_CONNECTION_KEY</code>{' '}
               {t('(or the file named by SPA_CONNECTION_KEY_FILE, or the secret spa / connection_key in OpenBao), then restart it.')}
             </li>
           </ol>
           <p>
             <a href={`${SPA_REPO}/blob/main/docs/protocol.md`} target="_blank" rel="noreferrer">
-              {t('How applications connect to SPA')}
+              {t('How applications connect to Keystone')}
             </a>
           </p>
         </div>
@@ -133,10 +133,10 @@ export function AuthPage() {
       {stay && !error && <p className="muted">{t('You have signed out.')}</p>}
       <a className="btn btn-primary btn-block" href={spaUrls.start(from, error || stay ? { prompt: 'login' } : {})}>
         <LogIn size={16} aria-hidden />
-        {t('Sign in with SPA')}
+        {t('Sign in with Keystone')}
       </a>
       <p className="hint auth-hint">
-        {t('Passwords, passkeys and directory sign-in are handled by SPA.')}
+        {t('Passwords, passkeys and directory sign-in are handled by Keystone.')}
       </p>
     </div>,
   );

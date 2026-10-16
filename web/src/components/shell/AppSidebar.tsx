@@ -14,7 +14,7 @@ const COMPACT = '(max-width: 860px)';
 const openKey = (group: string) => `inventorydb.sidebar.${group}`;
 const COLLAPSED_KEY = 'inventorydb.sidebar.collapsed';
 const WIDTH_KEY = 'inventorydb.sidebar.width';
-/** The width of the expanded sidebar the user can drag between these bounds (Umbrella values). */
+/** The width of the expanded sidebar the user can drag between these bounds (Beacon values). */
 export const SIDEBAR_WIDTH = { min: 232, max: 440, initial: 280 };
 const WIDTH_STEP = 16;
 
@@ -238,7 +238,7 @@ function GroupAccordion({ group, first, path, onNavigate }: { group: NavGroup; f
 }
 
 /**
- * The application sidebar (Umbrella Sidebar): groups as accordions, the active page marked by a
+ * The application sidebar (Beacon Sidebar): groups as accordions, the active page marked by a
  * sliding pill; collapsed, it is a rail of page icons with tooltips.
  */
 export function AppSidebar({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {

@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import type { State } from './api';
 import './settings.css';
 
-/** Rounded card with a title row (Umbrella ProfileCard / status card); a form when `onSubmit` is given. */
+/** Rounded card with a title row (Beacon ProfileCard / status card); a form when `onSubmit` is given. */
 export function Card({
   title,
   badge,
@@ -44,7 +44,7 @@ export function Card({
   );
 }
 
-/** Label / value rows; empty values are left out (Umbrella Rows). */
+/** Label / value rows; empty values are left out (Beacon Rows). */
 export function Rows({ rows, align = 'start' }: { rows: [ReactNode, ReactNode][]; align?: 'start' | 'end' }) {
   const shown = rows.filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== false);
   if (!shown.length) return null;

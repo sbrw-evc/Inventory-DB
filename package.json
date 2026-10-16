@@ -1,5 +1,5 @@
 {
-  "name": "inventory-db",
+  "name": "ledger",
   "private": true,
   "version": "0.1.0",
   "description": "NocoDB-style spreadsheet database for inventory management",

@@ -21,7 +21,7 @@ function StatusCard({ title, state, label, wide, children }: { title: string; st
 
 const yesNo = (v: boolean) => (v ? t('Yes') : t('No'));
 
-/** One page with the state of every part of Inventory DB (Umbrella's system status page). */
+/** One page with the state of every part of Ledger (Beacon's system status page). */
 export function StatusPage() {
   const status = useResource(settingsApi.status);
   const locale = getLang();
@@ -30,7 +30,7 @@ export function StatusPage() {
   const head = (
     <PageHead
       title={t('System status')}
-      subtitle={t('The state of Inventory DB and the services it depends on.')}
+      subtitle={t('The state of Ledger and the services it depends on.')}
       actions={
         <Button onClick={status.reload} busy={status.busy}>
           {!status.busy && <RefreshCw size={16} />}
@@ -126,7 +126,7 @@ export function StatusPage() {
           />
           {pg.error && <Banner kind="error" title={pg.error} />}
         </StatusCard>
-        <StatusCard title="SPA" state={spaState} label={!spa.connected ? t('Not connected') : undefined}>
+        <StatusCard title="Keystone" state={spaState} label={!spa.connected ? t('Not connected') : undefined}>
           {spa.connected ? (
             <Rows
               align="end"
@@ -138,7 +138,7 @@ export function StatusPage() {
               ]}
             />
           ) : (
-            <p className="muted">{t('This application is not connected to SPA')}</p>
+            <p className="muted">{t('This application is not connected to Keystone')}</p>
           )}
           {spa.error && <Banner kind="error" title={spa.error} />}
         </StatusCard>

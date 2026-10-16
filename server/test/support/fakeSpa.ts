@@ -1,7 +1,7 @@
 /**
- * A stand-in SPA for the tests: an OpenID Connect issuer (discovery, authorize → code, token with PKCE, RS256 JWKS,
+ * A stand-in Keystone for the tests: an OpenID Connect issuer (discovery, authorize → code, token with PKCE, RS256 JWKS,
  * user info, sign-out) and the federation API (`/api/spa/v1/{config,users,roles}` with a Bearer token and ETags),
- * as SPA's docs/protocol.md describes them.
+ * as Keystone's docs/protocol.md describes them.
  */
 import type { FastifyInstance } from 'fastify';
 import Fastify from 'fastify';
@@ -25,7 +25,7 @@ export interface FakeSpa {
   clientId: string;
   clientSecret: string;
   token: string;
-  /** The connection key `spa1.…` SPA shows once. */
+  /** The connection key `spa1.…` Keystone shows once. */
   key(): string;
   users: FakeSpaUser[];
   /** The person who signs in at the authorize endpoint. */
@@ -162,7 +162,7 @@ export async function startFakeSpa(opts: { clientId?: string } = {}): Promise<Fa
   app.get(
     '/api/spa/v1/config',
     federation(() => ({
-      application: { id: spa.clientId, name: 'Inventory DB', type: 'inventory-db' },
+      application: { id: spa.clientId, name: 'Ledger', type: 'ledger' },
       roles: [
         { id: 'admin', name: 'Administrator' },
         { id: 'editor', name: 'Editor' },

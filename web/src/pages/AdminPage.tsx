@@ -86,7 +86,7 @@ function Tokens() {
               <td className="muted">{relativeTime(tok.createdAt)}</td>
               <td>
                 {tok.suspended ? (
-                  <span className="pill pill-warn" title={t('Suspended while SPA has this person disabled or without a role here; it works again when SPA enables them.')}>
+                  <span className="pill pill-warn" title={t('Suspended while Keystone has this person disabled or without a role here; it works again when Keystone enables them.')}>
                     {t('Suspended')}
                   </span>
                 ) : (
@@ -124,7 +124,7 @@ function DataTools() {
   const [dialog, setDialog] = useState<'import' | 'migrate' | null>(null);
   return (
     <section className="settings-section">
-      <PageHead title={t('Data import & migration')} subtitle={t('Bring spreadsheets and NocoDB bases into Inventory DB.')} />
+      <PageHead title={t('Data import & migration')} subtitle={t('Bring spreadsheets and NocoDB bases into Ledger.')} />
       <div className="quick-actions">
         <button className="quick-card" onClick={() => setDialog('import')}>
           <Icon name="upload" size={20} />

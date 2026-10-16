@@ -1,5 +1,5 @@
 /**
- * OpenID Connect relying party used to sign in with SPA: discovery, authorization code flow with PKCE (S256) and ID
+ * OpenID Connect relying party used to sign in with Keystone: discovery, authorization code flow with PKCE (S256) and ID
  * token verification against the issuer's JWKS (RS256, `iss`, `aud`, `exp`, `nonce`).
  */
 import { createHash, randomBytes } from 'node:crypto';

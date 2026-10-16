@@ -81,11 +81,11 @@ const enc = encodeURIComponent;
 
 export const authApi = {
   me: () => http.get<{ user: User; account?: Account }>('/auth/me'),
-  /** Whether Inventory DB is connected to SPA (the sign-in page). */
+  /** Whether Ledger is connected to Keystone (the sign-in page). */
   spa: () => http.get<SpaStatus>('/auth/spa', { anonymous: true }),
 };
 
-/** Sign-in goes through SPA: these are browser navigations, not API calls. */
+/** Sign-in goes through Keystone: these are browser navigations, not API calls. */
 export const spaUrls = {
   start: (returnTo: string, opts: { prompt?: 'login' } = {}) =>
     `/api/auth/spa/start?return=${encodeURIComponent(returnTo)}${opts.prompt ? `&prompt=${opts.prompt}` : ''}`,
@@ -98,7 +98,7 @@ export interface SpaStatus {
   application?: string | null;
 }
 
-/** The signed-in user's role (from SPA) and where they manage their password and passkeys (SPA's profile). */
+/** The signed-in user's role (from Keystone) and where they manage their password and passkeys (Keystone's profile). */
 export interface Account {
   source: string;
   username?: string | null;

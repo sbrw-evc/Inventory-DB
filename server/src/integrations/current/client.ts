@@ -1,6 +1,6 @@
 /**
- * Server-side calls from Inventory DB to Umbrella Flow (contract §2.1). The browser never sees the Flow token: the UI
- * calls the proxy endpoints in routes/integrations.ts, which call Flow with the token from the secret store.
+ * Server-side calls from Ledger to Current (contract §2.1). The browser never sees the Current token: the UI
+ * calls the proxy endpoints in routes/integrations.ts, which call Current with the token from the secret store.
  */
 import type { Integration } from '../../../../shared/src/index.js';
 import { HttpError } from '../../errors.js';
@@ -8,7 +8,7 @@ import { getFlowToken } from '../store.js';
 
 /** Successful answers are reused for this long (per integration and query). */
 export const FLOW_CACHE_TTL_MS = 60_000;
-/** Failures are remembered briefly so a Flow outage doesn't turn every page view into a slow request. */
+/** Failures are remembered briefly so a Current outage doesn't turn every page view into a slow request. */
 const FLOW_ERROR_TTL_MS = 15_000;
 const timeouts = { requestMs: 5_000 };
 
@@ -25,7 +25,7 @@ export function clearFlowCache() {
   cache.clear();
 }
 
-/** Errors the proxy endpoints pass on: 404 when Flow doesn't know the thing, 502 for everything else. */
+/** Errors the proxy endpoints pass on: 404 when Current doesn't know the thing, 502 for everything else. */
 export class FlowError extends HttpError {
   constructor(status: 404 | 502, message: string) {
     super(status, status === 404 ? 'NOT_FOUND' : 'BAD_GATEWAY', message);
@@ -34,7 +34,7 @@ export class FlowError extends HttpError {
 
 async function fetchJson(integration: Integration, path: string): Promise<unknown> {
   const token = await getFlowToken(integration.id);
-  if (!token) throw new FlowError(502, 'No Flow API token is stored for the integration');
+  if (!token) throw new FlowError(502, 'No Current API token is stored for the integration');
   let res: Response;
   try {
     res = await fetch(`${integration.flowUrl}${path}`, {
@@ -44,14 +44,14 @@ async function fetchJson(integration: Integration, path: string): Promise<unknow
     });
   } catch (err) {
     const timeout = (err as Error).name === 'TimeoutError';
-    throw new FlowError(502, timeout ? 'Umbrella Flow did not answer in time' : 'Umbrella Flow is unreachable');
+    throw new FlowError(502, timeout ? 'Current did not answer in time' : 'Current is unreachable');
   }
-  if (res.status === 404) throw new FlowError(404, 'Not found in Umbrella Flow');
-  if (!res.ok) throw new FlowError(502, `Umbrella Flow answered ${res.status}`);
+  if (res.status === 404) throw new FlowError(404, 'Not found in Current');
+  if (!res.ok) throw new FlowError(502, `Current answered ${res.status}`);
   try {
     return await res.json();
   } catch {
-    throw new FlowError(502, 'Umbrella Flow sent an invalid response');
+    throw new FlowError(502, 'Current sent an invalid response');
   }
 }
 

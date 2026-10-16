@@ -8,7 +8,7 @@ import { t } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { useMobile } from '../lib/useMobile';
 
-/** The page area fades in when the section changes (Umbrella's page transition). */
+/** The page area fades in when the section changes (Beacon's page transition). */
 function PageOutlet() {
   const { pathname } = useLocation();
   const key = pathname.split('/').slice(0, 3).join('/');
@@ -19,7 +19,7 @@ function PageOutlet() {
   );
 }
 
-/** Signed-in shell, as in Umbrella: top bar, grouped sidebar and a rounded page block. */
+/** Signed-in shell, as in Beacon: top bar, grouped sidebar and a rounded page block. */
 export function AppLayout() {
   const { token, loading } = useAuth();
   const location = useLocation();

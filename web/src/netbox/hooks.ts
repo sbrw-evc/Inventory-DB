@@ -68,7 +68,7 @@ export function useCustomFields(objectType: string | undefined) {
 }
 
 /**
- * Monitoring status from the Umbrella integration. Returns `null` when the integration isn't installed (404) or
+ * Monitoring status from the Beacon integration. Returns `null` when the integration isn't installed (404) or
  * fails, so callers hide the column.
  */
 export function useMonitoring(objectType: string, ids: number[]): Map<number, MonitoringStatus> | null {
@@ -98,8 +98,8 @@ export function useInterval(cb: () => void, ms: number, on: boolean) {
 }
 
 /**
- * Traffic from the Umbrella Flow integration (server-side proxy, contract §2.1). Returns `null` when no Flow
- * integration is active or Flow fails, so callers hide the column, chip or card.
+ * Traffic from the Current integration (server-side proxy, contract §2.1). Returns `null` when no Current
+ * integration is active or Current fails, so callers hide the column, chip or card.
  */
 export function useFlowTraffic(objectType: 'dcim.device' | 'dcim.interface' | 'circuits.circuit', ids: number[]): Map<number, FlowTraffic> | null {
   const key = [...new Set(ids)].sort((a, b) => a - b).join(',');

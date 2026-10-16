@@ -43,7 +43,7 @@ function When({ iso, never }: { iso?: string | null; never: string }) {
   return <span title={formatDate(iso, true)}>{relativeTime(iso)}</span>;
 }
 
-/** Health of the link with Umbrella: inactive, never synced, stale (no feed read for 1 hour) or ok. */
+/** Health of the link with Beacon: inactive, never synced, stale (no feed read for 1 hour) or ok. */
 function syncState(i: Integration): { cls: string; label: string } {
   if (!i.active) return { cls: "", label: t("Inactive") };
   if (i.kind === "flow") {
@@ -54,7 +54,7 @@ function syncState(i: Integration): { cls: string; label: string } {
       : { cls: "error", label: t("Last delivery failed") };
   }
   if (!i.lastFeedAt && !i.lastAlertAt)
-    return { cls: "info", label: t("Waiting for Umbrella") };
+    return { cls: "info", label: t("Waiting for Beacon") };
   const age = i.lastFeedAt
     ? Date.now() - new Date(i.lastFeedAt).getTime()
     : Infinity;
@@ -85,7 +85,7 @@ function IntegrationForm({
 }) {
   const isFlow = kind === "flow";
   const [v, setV] = useState<FormValue>({
-    title: initial?.title ?? (isFlow ? "Umbrella Flow" : "Umbrella"),
+    title: initial?.title ?? (isFlow ? "Current" : "Beacon"),
     umbrellaUrl: initial?.umbrellaUrl ?? "",
     inventoryUrl: initial?.inventoryUrl ?? "",
     flowUrl: initial?.flowUrl ?? "",
@@ -131,7 +131,7 @@ function IntegrationForm({
     if (!/^https?:\/\/\S+$/i.test(v.flowUrl.trim()))
       return setError(t("URLs must start with http:// or https://"));
     if (!initial && !v.flowToken.trim())
-      return setError(t("The Flow API token is required"));
+      return setError(t("The Current API token is required"));
     setBusy(true);
     setError(null);
     const body = {
@@ -161,8 +161,8 @@ function IntegrationForm({
         initial
           ? t("Edit integration")
           : isFlow
-            ? t("Connect Umbrella Flow")
-            : t("Connect Umbrella")
+            ? t("Connect Current")
+            : t("Connect Beacon")
       }
       onClose={onClose}
       width={520}
@@ -191,14 +191,14 @@ function IntegrationForm({
         />
         {isFlow ? (
           <>
-            <label className="field-label">{t("Umbrella Flow URL")}</label>
+            <label className="field-label">{t("Current URL")}</label>
             <input
               className="input"
               placeholder="https://flow.corp"
               value={v.flowUrl}
               onChange={(e) => set("flowUrl", e.target.value)}
             />
-            <label className="field-label">{t("Flow API token")}</label>
+            <label className="field-label">{t("Current API token")}</label>
             <input
               className="input mono"
               type="password"
@@ -213,13 +213,13 @@ function IntegrationForm({
             />
             <div className="muted small">
               {t(
-                "A Flow token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.",
+                "A Current token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.",
               )}
             </div>
           </>
         ) : (
           <>
-            <label className="field-label">{t("Umbrella URL")}</label>
+            <label className="field-label">{t("Beacon URL")}</label>
             <input
               className="input"
               placeholder="https://umbrella.corp"
@@ -227,10 +227,10 @@ function IntegrationForm({
               onChange={(e) => set("umbrellaUrl", e.target.value)}
             />
             <div className="muted small">
-              {t("Used to build links back to Umbrella (optional).")}
+              {t("Used to build links back to Beacon (optional).")}
             </div>
             <label className="field-label">
-              {t("Inventory DB public URL")}
+              {t("Ledger public URL")}
             </label>
             <input
               className="input"
@@ -240,7 +240,7 @@ function IntegrationForm({
             />
             <div className="muted small">
               {t(
-                "Used for record links in the CMDB feed. Defaults to the address Umbrella calls.",
+                "Used for record links in the CMDB feed. Defaults to the address Beacon calls.",
               )}
             </div>
           </>
@@ -286,10 +286,10 @@ function IntegrationCard({
       title: t("Issue a new signing secret?"),
       message: isFlow
         ? t(
-            "Paste the new secret into Flow within 24 hours; until then change notifications carry signatures with both secrets.",
+            "Paste the new secret into Current within 24 hours; until then change notifications carry signatures with both secrets.",
           )
         : t(
-            "Umbrella must be updated with the new secret; until then its alert deliveries are rejected.",
+            "Beacon must be updated with the new secret; until then its alert deliveries are rejected.",
           ),
       confirmLabel: t("Rotate secret"),
       danger: true,
@@ -306,10 +306,10 @@ function IntegrationCard({
       title: t("Delete integration “{name}”?", { name: i.title }),
       message: isFlow
         ? t(
-            "Traffic from Flow disappears from DCIM pages and Flow is no longer notified of changes. The stored Flow token is deleted.",
+            "Traffic from Current disappears from DCIM pages and Current is no longer notified of changes. The stored Current token is deleted.",
           )
         : t(
-            "Umbrella will no longer be able to read the feed or send alerts. Stored alert states are deleted.",
+            "Beacon will no longer be able to read the feed or send alerts. Stored alert states are deleted.",
           ),
       confirmLabel: t("Delete"),
       danger: true,
@@ -394,7 +394,7 @@ function IntegrationCard({
               <CopyField value={feed} />
               <div className="muted small">
                 {t(
-                  "Umbrella pulls this every 15 minutes with an API token of a read-only user in the",
+                  "Beacon pulls this every 15 minutes with an API token of a read-only user in the",
                 )}{" "}
                 <code>xc-token</code> {t("header, paging by")}{" "}
                 <code>offset</code> {t("until")} <code>next_offset</code>{" "}
@@ -422,7 +422,7 @@ function IntegrationCard({
             </dd>
             {i.umbrellaUrl && (
               <>
-                <dt>{t("Umbrella")}</dt>
+                <dt>{t("Beacon")}</dt>
                 <dd>
                   <a
                     href={i.umbrellaUrl}
@@ -503,7 +503,7 @@ function IntegrationCard({
   );
 }
 
-/** Kind `flow`: change notifications to Flow, the signing secret and the stored token. */
+/** Kind `flow`: change notifications to Current, the signing secret and the stored token. */
 function FlowDetails({
   integration: i,
   secret,
@@ -547,13 +547,13 @@ function FlowDetails({
           <b>{t("Copy the signing secret now — it won’t be shown again.")}</b>
           <CopyField value={secret} />
           <div className="muted small">
-            {t("Store it in Flow (OpenBao) as the Inventory DB hook secret.")}
+            {t("Store it in Current (OpenBao) as the Ledger hook secret.")}
           </div>
         </div>
       )}
 
       <dl className="integration-details">
-        <dt>{t("Umbrella Flow")}</dt>
+        <dt>{t("Current")}</dt>
         <dd>
           {i.flowUrl && (
             <a href={i.flowUrl} target="_blank" rel="noreferrer noopener">
@@ -562,7 +562,7 @@ function FlowDetails({
           )}
           <div className="muted small">
             {t(
-              "DCIM pages show traffic from Flow: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.",
+              "DCIM pages show traffic from Current: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.",
             )}
           </div>
         </dd>
@@ -586,7 +586,7 @@ function FlowDetails({
             <Icon name="refresh" size={13} /> {t("Rotate secret")}
           </button>
         </dd>
-        <dt>{t("Flow API token")}</dt>
+        <dt>{t("Current API token")}</dt>
         <dd>
           {i.flowTokenSet ? (
             <span className="muted">
@@ -599,7 +599,7 @@ function FlowDetails({
         <dt>{t("Interface matching")}</dt>
         <dd className="muted small">
           {t(
-            "Fill the custom field snmp_index of interfaces with their ifIndex so Flow matches flow records to them.",
+            "Fill the custom field snmp_index of interfaces with their ifIndex so Current matches flow records to them.",
           )}
         </dd>
       </dl>
@@ -607,12 +607,12 @@ function FlowDetails({
   );
 }
 
-/** Integrations section: connect Inventory DB with Umbrella monitoring and Umbrella Flow (docs/integrations.md). */
+/** Integrations section: connect Ledger with Beacon and Current (docs/integrations.md). */
 export function IntegrationsPage() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: KEY, queryFn: integrationsApi.list });
   const [creating, setCreating] = useState<IntegrationKind | null>(null);
-  // Umbrella Flow is installation-wide: only DCIM/IPAM admins connect and manage it.
+  // Current is installation-wide: only DCIM/IPAM admins connect and manage it.
   const isAdmin = useMe().data?.is_admin ?? false;
   // Secrets are shown once, right after creation or rotation; kept only in memory.
   const [secrets, setSecrets] = useState<Record<string, string>>({});
@@ -622,20 +622,20 @@ export function IntegrationsPage() {
       <PageHead
         title={t("Integrations")}
         subtitle={t(
-          "Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Umbrella Flow shows traffic on devices, interfaces, circuits and prefixes.",
+          "Beacon reads sites, racks and devices from Ledger as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Current shows traffic on devices, interfaces, circuits and prefixes.",
         )}
         actions={
           <>
             {isAdmin && (
               <button className="btn" onClick={() => setCreating("flow")}>
-                <Icon name="plus" size={15} /> {t("Connect Umbrella Flow")}
+                <Icon name="plus" size={15} /> {t("Connect Current")}
               </button>
             )}
             <button
               className="btn btn-primary"
               onClick={() => setCreating("umbrella")}
             >
-              <Icon name="plus" size={15} /> {t("Connect Umbrella")}
+              <Icon name="plus" size={15} /> {t("Connect Beacon")}
             </button>
           </>
         }
@@ -652,7 +652,7 @@ export function IntegrationsPage() {
           <h3>{t("No integrations yet")}</h3>
           <p className="muted">
             {t(
-              "Connect Umbrella to share the inventory with monitoring and see alert states on devices.",
+              "Connect Beacon to share the inventory with monitoring and see alert states on devices.",
             )}
           </p>
         </div>

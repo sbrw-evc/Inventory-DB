@@ -11,9 +11,9 @@ declare module 'fastify' {
 }
 
 /**
- * Resolves the caller from `Authorization: Bearer <jwt>`, `xc-auth: <jwt>` (the session started after the SPA
- * callback) or `xc-token: <api token>`. Users disabled by SPA lose both: revoked sessions stay revoked, API tokens are suspended
- * until SPA enables the person again.
+ * Resolves the caller from `Authorization: Bearer <jwt>`, `xc-auth: <jwt>` (the session started after the Keystone
+ * callback) or `xc-token: <api token>`. Users disabled by Keystone lose both: revoked sessions stay revoked, API tokens are suspended
+ * until Keystone enables the person again.
  * Routes then call `requireUser(req)` / `requireBaseRole(...)`.
  */
 export async function authPlugin(app: FastifyInstance) {

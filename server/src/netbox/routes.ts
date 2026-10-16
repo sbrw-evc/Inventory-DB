@@ -233,10 +233,10 @@ export async function registerNetboxRoutes(app: FastifyInstance) {
     requireNetboxRole(req, 'admin');
     return { results: listRoles() };
   });
-  // Roles are assigned in SPA.
+  // Roles are assigned in Keystone.
   const managedInSpa = async (req: Req) => {
     requireNetboxRole(req, 'admin');
-    throw new HttpError(409, 'MANAGED_IN_SPA', 'Roles are assigned in SPA');
+    throw new HttpError(409, 'MANAGED_IN_SPA', 'Roles are assigned in Keystone');
   };
   app.post('/api/v1/netbox/roles', managedInSpa);
   app.put('/api/v1/netbox/roles/:userId', managedInSpa);

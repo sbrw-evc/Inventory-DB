@@ -54,7 +54,7 @@ const toIntegration = (r: IntegrationRow): Integration => {
 const getRow = (id: string) =>
   getDb().prepare('SELECT * FROM nc_integrations WHERE id = ?').get(id) as IntegrationRow | undefined;
 
-/** The user's own integrations; Flow integrations (all of them) only for DCIM/IPAM admins (`withFlow`). */
+/** The user's own integrations; Current integrations (all of them) only for DCIM/IPAM admins (`withFlow`). */
 export function listIntegrations(userId: string, withFlow = false): Integration[] {
   const rows = getDb()
     .prepare("SELECT * FROM nc_integrations WHERE CASE WHEN kind = 'flow' THEN ? ELSE created_by = ? END ORDER BY created_at")
@@ -69,7 +69,7 @@ export function getIntegration(id: string): Integration {
 }
 
 /**
- * Integrations are managed by the user who created them, Flow integrations (installation-wide) by every DCIM/IPAM
+ * Integrations are managed by the user who created them, Current integrations (installation-wide) by every DCIM/IPAM
  * admin (`isAdmin`); others get 404 so ids don't leak.
  */
 export function getOwnedIntegration(id: string, userId: string, isAdmin = false): Integration {
@@ -82,11 +82,11 @@ export function getOwnedIntegration(id: string, userId: string, isAdmin = false)
 /** Where an integration's signing secret is kept in the secret store (OpenBao). */
 export const secretPath = (id: string) => `integrations/${id}`;
 const SECRET_KEY = 'signing_secret';
-/** Kind `flow`: the API token Inventory DB calls Flow with, next to the signing secret. */
+/** Kind `flow`: the API token Ledger calls Current with, next to the signing secret. */
 const FLOW_TOKEN_KEY = 'flow_token';
 /** Kind `flow`: the signing secret before the last rotation, still used for a grace period. */
 const PREVIOUS_SECRET_KEY = 'previous_signing_secret';
-/** How long Flow hooks keep carrying the old signature after a rotation (contract: two signatures during rotation). */
+/** How long Current hooks keep carrying the old signature after a rotation (contract: two signatures during rotation). */
 export const ROTATION_GRACE_MS = 24 * 60 * 60 * 1000;
 
 /** Active `flow` integrations, oldest first (the first one answers the traffic proxy endpoints). */
@@ -123,7 +123,7 @@ export async function createIntegration(userId: string, input: IntegrationInput)
   return { integration: toIntegration(row), secret };
 }
 
-/** Remembers when Umbrella last pulled the full CMDB feed / last delivered alerts (shown on the admin page). */
+/** Remembers when Beacon last pulled the full CMDB feed / last delivered alerts (shown on the admin page). */
 export function recordActivity(id: string, patch: IntegrationActivity): void {
   const row = getRow(id);
   if (!row) return;
@@ -163,7 +163,7 @@ export async function rotateSecret(id: string): Promise<string> {
   if (!row) throw notFound('Integration');
   const secret = newSecret();
   if (row.kind === 'flow') {
-    // Flow keeps accepting the old secret until its admin pastes the new one: sign with both for a while.
+    // Current keeps accepting the old secret until its admin pastes the new one: sign with both for a while.
     const previous = await getSecret(id).catch(() => null);
     await setSecret(secretPath(id), { [SECRET_KEY]: secret, [PREVIOUS_SECRET_KEY]: previous });
     const config = { ...json<IntegrationConfig>(row.config, {}), previousSecretUntil: new Date(Date.now() + ROTATION_GRACE_MS).toISOString() };
@@ -175,7 +175,7 @@ export async function rotateSecret(id: string): Promise<string> {
   return secret;
 }
 
-/** Secrets Flow hooks are signed with: the current one, plus the previous one during the rotation grace period. */
+/** Secrets Current hooks are signed with: the current one, plus the previous one during the rotation grace period. */
 export async function signingSecrets(id: string): Promise<string[]> {
   const row = getRow(id);
   if (!row) throw notFound('Integration');
@@ -188,7 +188,7 @@ export async function signingSecrets(id: string): Promise<string[]> {
   return secrets;
 }
 
-/** The Flow API token of a `flow` integration (null when none is stored). */
+/** The Current API token of a `flow` integration (null when none is stored). */
 export async function getFlowToken(id: string): Promise<string | null> {
   return readSecret(secretPath(id), FLOW_TOKEN_KEY);
 }

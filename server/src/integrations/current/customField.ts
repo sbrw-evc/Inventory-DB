@@ -7,7 +7,7 @@ import { ensureNetboxSchema } from '../../netbox/schema.js';
 export const SNMP_INDEX_FIELD = 'snmp_index';
 
 /**
- * Flow matches interfaces to its flow exporters' ifIndex through the `snmp_index` custom field (contract §2.3).
+ * Current matches interfaces to its flow exporters' ifIndex through the `snmp_index` custom field (contract §2.3).
  * Created when a `flow` integration is created, unless a custom field of that name exists already.
  * Returns true when it was created.
  */
@@ -22,7 +22,7 @@ export function ensureSnmpIndexField(userId: string): boolean {
       label: 'SNMP index',
       type: 'integer',
       object_types: ['dcim.interface'],
-      description: 'ifIndex of the interface, used by Umbrella Flow to match flow records',
+      description: 'ifIndex of the interface, used by Current to match flow records',
       validation_minimum: 0,
     }),
   )();

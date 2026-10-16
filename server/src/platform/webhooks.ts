@@ -135,7 +135,7 @@ export async function deliver(hook: Webhook, event: WebhookEvent, payload: unkno
     await assertPublicUrl(hook.url);
     const res = await fetch(hook.url, {
       method: hook.method || 'POST',
-      headers: { 'content-type': 'application/json', 'user-agent': 'Inventory-DB-Webhook/1.0', ...hook.headers },
+      headers: { 'content-type': 'application/json', 'user-agent': 'Ledger-Webhook/1.0', ...hook.headers },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
       redirect: 'manual',

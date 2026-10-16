@@ -67,7 +67,7 @@ describe('secret store', () => {
     expect(getDb().prepare('SELECT COUNT(*) n FROM nc_secrets').get()).toEqual({ n: 0 });
     expect(bao.store.get('inventory')!.get('test/local')).toEqual({ a: '1' });
 
-    const { integration, secret } = await api('POST', '/integrations', { kind: 'umbrella', title: 'Umbrella' }, 201);
+    const { integration, secret } = await api('POST', '/integrations', { kind: 'umbrella', title: 'Beacon' }, 201);
     expect(bao.store.get('inventory')!.get(`integrations/${integration.id}`)).toEqual({ signing_secret: secret });
     const rotated = await api('POST', `/integrations/${integration.id}/rotate-secret`);
     expect(bao.store.get('inventory')!.get(`integrations/${integration.id}`)).toEqual({ signing_secret: rotated.secret });

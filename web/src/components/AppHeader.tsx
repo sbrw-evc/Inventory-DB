@@ -29,7 +29,7 @@ export function GlobalSearch() {
   const ref = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  // "/" focuses the search from anywhere outside a text field, as in the Umbrella top bar tools.
+  // "/" focuses the search from anywhere outside a text field, as in the Beacon top bar tools.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -113,7 +113,7 @@ export function GlobalSearch() {
   );
 }
 
-/** Top bar of the signed-in shell (Umbrella TopBar): menu toggle, brand, search, base role, user menu. */
+/** Top bar of the signed-in shell (Beacon TopBar): menu toggle, brand, search, base role, user menu. */
 export function TopBar({ sidebar }: { sidebar?: { collapsed: boolean; toggle: () => void } }) {
   const bases = useBases();
   const location = useLocation();
@@ -128,7 +128,7 @@ export function TopBar({ sidebar }: { sidebar?: { collapsed: boolean; toggle: ()
             {sidebar.collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         )}
-        <Link to="/" className="brand-link" aria-label="Inventory DB">
+        <Link to="/" className="brand-link" aria-label="Ledger">
           <Brand />
         </Link>
       </div>

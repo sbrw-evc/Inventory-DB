@@ -1,6 +1,6 @@
 /**
- * Traffic from Umbrella Flow on DCIM/IPAM pages (docs/integrations.md, "Umbrella Flow"). Everything here renders
- * nothing when no Flow integration is active or Flow fails, like the Umbrella monitoring chips.
+ * Traffic from Current on DCIM/IPAM pages (docs/integrations.md, "Current"). Everything here renders
+ * nothing when no Current integration is active or Current fails, like the Beacon chips.
  */
 import type { FlowPrefixAddressesResponse, FlowTraffic } from '@shared';
 import { useState } from 'react';
@@ -104,7 +104,7 @@ function CommitRows({ traffic }: { traffic: FlowTraffic }) {
   );
 }
 
-/** Card with rates, utilisation, the 24 h sparkline and a link to Flow, for device / interface / circuit pages. */
+/** Card with rates, utilisation, the 24 h sparkline and a link to Current, for device / interface / circuit pages. */
 export function FlowTrafficCard({ objectType, id, commit = false }: { objectType: 'dcim.device' | 'dcim.interface' | 'circuits.circuit'; id: number; commit?: boolean }) {
   const traffic = useFlowTraffic(objectType, [id]);
   if (!traffic) return null;
@@ -165,7 +165,7 @@ export function CommitChip({ id }: { id: number }) {
 }
 
 /**
- * Prefix page: addresses Flow saw inside the prefix. Rows that are not in IPAM get a "Create IP address" action that
+ * Prefix page: addresses Current saw inside the prefix. Rows that are not in IPAM get a "Create IP address" action that
  * opens the usual IPAM create form with the address filled in.
  */
 export function PrefixFlowAddresses({
@@ -246,7 +246,7 @@ export function PrefixFlowAddresses({
                               onCreate({
                                 address: `${r.address}/${plen}`,
                                 status: 'active',
-                                description: 'Discovered by Umbrella Flow',
+                                description: 'Discovered by Current',
                                 ...(vrf ? { vrf: vrf.id } : {}),
                               })
                             }

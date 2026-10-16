@@ -1,8 +1,13 @@
+# Ledger (formerly Inventory DB). The compose project and the app service are "ledger"; the database, its user,
+# the OpenBao mount and the volumes keep their old names so that an existing installation keeps its data.
+name: ledger
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
+      # The database and its user keep the names from before the rename (existing data).
       POSTGRES_DB: inventory
       POSTGRES_USER: inventory
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
@@ -15,7 +20,7 @@ services:
       timeout: 5s
       retries: 20
 
-  # Secret store: every Inventory DB secret (directory passwords, integration keys, the session signing key) lives here.
+  # Secret store: every Ledger secret (directory passwords, integration keys, the session signing key) lives here.
   openbao:
     image: ${OPENBAO_IMAGE:-openbao/openbao:2.7.1}
     restart: unless-stopped
@@ -27,7 +32,7 @@ services:
       # The OpenBao UI and API; only on this host unless OPENBAO_BIND says otherwise.
       - "${OPENBAO_BIND:-127.0.0.1}:${OPENBAO_PORT:-8200}:8200"
 
-  # Initialises OpenBao once, unseals it (also after restarts) and hands Inventory DB its AppRole credentials.
+  # Initialises OpenBao once, unseals it (also after restarts) and hands Ledger its AppRole credentials.
   openbao-init:
     image: ${OPENBAO_IMAGE:-openbao/openbao:2.7.1}
     restart: unless-stopped
@@ -49,9 +54,9 @@ services:
       start_period: 5s
     depends_on: [openbao]
 
-  inventory-db:
+  ledger:
     build: .
-    image: inventory-db:latest
+    image: ledger:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -62,7 +67,7 @@ services:
       - "${INVENTORY_PORT:-8080}:8080"
     environment:
       DATABASE_URL: postgres://inventory:${POSTGRES_PASSWORD}@postgres:5432/inventory
-      # Sign-in with SPA (docs/spa.md): the connection key, or leave empty and keep it in OpenBao at spa / connection_key.
+      # Sign-in with Keystone (docs/keystone.md): the connection key, or leave empty and keep it in OpenBao at spa / connection_key.
       SPA_CONNECTION_KEY: ${SPA_CONNECTION_KEY:-}
       SPA_PUBLIC_URL: ${SPA_PUBLIC_URL:-}
       # Optional: without it the session signing key is generated and kept in OpenBao.
@@ -78,8 +83,14 @@ services:
       - inventory-data:/data
       - openbao-approle:/run/openbao:ro
 
+# The volumes keep the names they got when the compose project was "inventory-db" (<project>_<volume>), so the
+# data of an existing installation is found again. If your checkout directory had another name, see `docker volume ls`.
 volumes:
   postgres-data:
+    name: inventory-db_postgres-data
   inventory-data:
+    name: inventory-db_inventory-data
   openbao-data:
+    name: inventory-db_openbao-data
   openbao-approle:
+    name: inventory-db_openbao-approle

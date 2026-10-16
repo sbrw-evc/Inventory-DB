@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { animate } from 'motion/react';
 
 /**
- * Light / dark theme, as in the Umbrella app: `data-theme` on <html>, kept per browser, switched
+ * Light / dark theme, as in the Beacon app: `data-theme` on <html>, kept per browser, switched
  * with a circular reveal from the control that was clicked (View Transitions when available).
  */
 export type Theme = 'light' | 'dark';

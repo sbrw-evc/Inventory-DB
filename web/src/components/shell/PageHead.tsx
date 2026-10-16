@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-/** Page title with a muted subtitle and optional actions on the right (Umbrella PageHead). */
+/** Page title with a muted subtitle and optional actions on the right (Beacon PageHead). */
 export function PageHead({ title, subtitle, actions, icon }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="page-head">

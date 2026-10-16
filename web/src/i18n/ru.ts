@@ -521,7 +521,7 @@ export const ru: Record<string, string> = {
   'Circuits': 'Каналы связи',
   'Virtualization': 'Виртуализация',
   'Spreadsheet bases of your inventory, the DCIM and IPAM catalog and the integrations that feed them.': 'Табличные базы инвентаря, каталог DCIM и IPAM и интеграции, которые их наполняют.',
-  'Bring spreadsheets and NocoDB bases into Inventory DB.': 'Перенос таблиц и баз NocoDB в Inventory DB.',
+  'Bring spreadsheets and NocoDB bases into Ledger.': 'Перенос таблиц и баз NocoDB в Ledger.',
   'All sections': 'Все разделы',
   'Home': 'На главную',
   'Open anyway': 'Всё равно открыть',

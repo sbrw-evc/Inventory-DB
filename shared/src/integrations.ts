@@ -1,14 +1,14 @@
 /**
- * Integrations with other systems: Umbrella monitoring (github.com/sbrw-evc/Umbrella-Monitoring) and Umbrella Flow
+ * Integrations with other systems: Beacon (github.com/sbrw-evc/beacon) and Current
  * (traffic analytics; contract in the Network repo's docs/integrations.md §2).
  */
 export type IntegrationKind = 'umbrella' | 'flow';
 
-/** Result of the last change notification sent to Umbrella Flow. */
+/** Result of the last change notification sent to Current. */
 export interface FlowDelivery {
   at: string;
   ok: boolean;
-  /** HTTP status Flow answered with (absent on network errors / timeouts). */
+  /** HTTP status Current answered with (absent on network errors / timeouts). */
   httpStatus?: number | null;
   error?: string | null;
   /** Events in the batch and attempts it took. */
@@ -21,20 +21,20 @@ export interface Integration {
   kind: IntegrationKind;
   title: string;
   active: boolean;
-  /** Umbrella web UI, used to build links back to it (optional). */
+  /** Beacon web UI, used to build links back to it (optional). */
   umbrellaUrl?: string | null;
-  /** Public URL of this Inventory DB, used for record links in the CMDB feed. Defaults to the request host. */
+  /** Public URL of this Ledger, used for record links in the CMDB feed. Defaults to the request host. */
   inventoryUrl?: string | null;
-  /** When Umbrella last read the whole CMDB feed, and how many CIs it had. */
+  /** When Beacon last read the whole CMDB feed, and how many CIs it had. */
   lastFeedAt?: string | null;
   lastFeedCount?: number | null;
-  /** When Umbrella last delivered a correctly signed alert batch. */
+  /** When Beacon last delivered a correctly signed alert batch. */
   lastAlertAt?: string | null;
-  /** Umbrella Flow base URL (kind `flow`). */
+  /** Current base URL (kind `flow`). */
   flowUrl?: string | null;
-  /** Whether a Flow API token is stored (the token itself never leaves the server). */
+  /** Whether a Current API token is stored (the token itself never leaves the server). */
   flowTokenSet?: boolean;
-  /** Last change notification sent to Flow (kind `flow`). */
+  /** Last change notification sent to Current (kind `flow`). */
   lastDelivery?: FlowDelivery | null;
   createdBy: string;
   createdAt: string;
@@ -46,15 +46,15 @@ export interface IntegrationInput {
   active?: boolean;
   umbrellaUrl?: string | null;
   inventoryUrl?: string | null;
-  /** Kind `flow`: Flow base URL and API token (stored in the secret store, write-only). */
+  /** Kind `flow`: Current base URL and API token (stored in the secret store, write-only). */
   flowUrl?: string | null;
   flowToken?: string;
 }
 
-/** Object types Umbrella Flow reports traffic for. */
+/** Object types Current reports traffic for. */
 export type FlowObjectType = 'dcim.device' | 'dcim.interface' | 'circuits.circuit';
 
-/** Traffic of one object as Flow reports it (`GET …/inventory-db/status`). */
+/** Traffic of one object as Current reports it (`GET …/inventory-db/status`). */
 export interface FlowTraffic {
   in_bps: number | null;
   out_bps: number | null;
@@ -79,7 +79,7 @@ export interface FlowPrefixAddress {
   bytes: number;
   flows: number;
   last_seen: string | null;
-  /** In Inventory DB's IPAM (checked locally, so it is current even when Flow's snapshot lags). */
+  /** In Ledger's IPAM (checked locally, so it is current even when Current's snapshot lags). */
   in_ipam: boolean;
   /** Id of the matching IPAM address, when there is one. */
   ip_address_id?: number | null;
@@ -90,9 +90,9 @@ export interface FlowPrefixAddressesResponse {
   results: FlowPrefixAddress[];
 }
 
-/** Umbrella severity levels (PagerDuty's four). */
+/** Beacon severity levels (PagerDuty's four). */
 export type MonitoringSeverity = 'critical' | 'error' | 'warning' | 'info';
-/** Umbrella alert lifecycle. */
+/** Beacon alert lifecycle. */
 export type MonitoringAlertStatus = 'open' | 'acknowledged' | 'resolved' | 'closed';
 /** Rolled-up status of an inventory object: worst severity of its active alerts, or `ok`. */
 export type MonitoringState = MonitoringSeverity | 'ok';
@@ -100,9 +100,9 @@ export type MonitoringState = MonitoringSeverity | 'ok';
 /** Object types the CMDB feed exports and alerts can attach to. */
 export type InventoryObjectType = 'dcim.site' | 'dcim.rack' | 'dcim.device';
 
-/** Configuration item in the shape Umbrella's CMDB Discovery builds its map from. */
+/** Configuration item in the shape Beacon's CMDB Discovery builds its map from. */
 export interface UmbrellaCi {
-  /** Stable reference, e.g. `inventory-db:dcim.device:12`. Umbrella stores it in the CI's source_refs. */
+  /** Stable reference, e.g. `inventory-db:dcim.device:12`. Beacon stores it in the CI's source_refs. */
   source_ref: string;
   type: 'site' | 'rack' | 'device';
   name: string;
@@ -128,7 +128,7 @@ export interface UmbrellaCiFeed {
   items: UmbrellaCi[];
 }
 
-/** Body Umbrella POSTs to `/integrations/:id/umbrella/alerts` (signed, see docs/integrations.md). */
+/** Body Beacon POSTs to `/integrations/:id/umbrella/alerts` (signed, see docs/integrations.md). */
 export interface UmbrellaAlertEvent {
   alert_id: string;
   status: MonitoringAlertStatus;
@@ -137,7 +137,7 @@ export interface UmbrellaAlertEvent {
   signal?: string;
   ci: { source_refs?: string[]; name?: string; identities?: { hostname?: string; fqdn?: string; ip?: string | string[] } };
   links?: { incident?: string; grafana?: string };
-  /** When the alert last changed in Umbrella; older updates than the stored one are ignored. */
+  /** When the alert last changed in Beacon; older updates than the stored one are ignored. */
   updated_at?: string;
 }
 

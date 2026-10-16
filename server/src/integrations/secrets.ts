@@ -25,7 +25,7 @@ export function decryptSecret(stored: string): string {
   return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
 }
 
-/** `v1=<hex HMAC-SHA256 of "<timestamp>.<raw body>">`, the scheme Umbrella's HTTP block signs with. */
+/** `v1=<hex HMAC-SHA256 of "<timestamp>.<raw body>">`, the scheme Beacon's HTTP block signs with. */
 export function sign(secret: string, timestamp: string, rawBody: string): string {
   return `v1=${createHmac('sha256', secret).update(`${timestamp}.${rawBody}`).digest('hex')}`;
 }

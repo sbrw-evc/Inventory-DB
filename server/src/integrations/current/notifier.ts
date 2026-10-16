@@ -1,5 +1,5 @@
 /**
- * Change notifications to Umbrella Flow (contract §2.2): every committed DCIM / IPAM / circuits change is queued per
+ * Change notifications to Current (contract §2.2): every committed DCIM / IPAM / circuits change is queued per
  * active `flow` integration; the queue is sent as one signed POST at most once per `intervalMs` (5 s), so bursts
  * (bulk edits, CSV imports) coalesce into a single request. Failed deliveries are retried with backoff; the result of
  * the last delivery is shown on the Integrations page.

@@ -1,14 +1,14 @@
 # Design guidelines
 
-Inventory DB looks and behaves like the Umbrella monitoring web app: the `app/web` package on the
-`dev` branch of github.com/sbrw-evc/umbrella-monitoring (React + Vite, lucide icons, `motion`,
+Ledger looks and behaves like the Beacon web app: the `app/web` package on the
+`dev` branch of github.com/sbrw-evc/beacon (formerly umbrella-monitoring; React + Vite, lucide icons, `motion`,
 OverlayScrollbars). The two apps should read as one product family: same shell, same tokens, same
 controls, same light and dark themes, same phone layout. Reference screenshots of both apps are kept
 next to each other in `nocodb-plan/screenshots/` (`umbrella/`, `inventory/`, `compare-*.png`).
 
 ## Shell
 - **Chrome**: the window background is `--chrome`. The top bar sits on it with no bar of its own:
-  the side toggle (PanelLeftClose/PanelLeftOpen), the brand (red rounded logo tile + "Inventory DB"),
+  the side toggle (PanelLeftClose/PanelLeftOpen), the brand (red rounded logo tile + "Ledger"),
   then on the right the global search (pill field, `/` focuses it), the role pill of the current
   base and the user menu.
 - **Page block**: the page sits in a rounded panel (`.app-main`, radius 12px, 1px `--border`,
@@ -93,7 +93,7 @@ feature code (`--primary`, `--text-muted`, `--row-hover`, `--info-bg`, …) are 
 | `--font` / `--font-size` | system-ui / 14px | same | all text |
 
 Select-option colours in the spreadsheet map to these tones (info, ok, warning, error → orange,
-critical → error, neutral, purple), so data colours match Umbrella's badges in both themes.
+critical → error, neutral, purple), so data colours match Beacon's badges in both themes.
 Status mapping for DCIM/IPAM objects: active → ok, planned → info, staged/reserved → warn,
 failed/deprecated → error, offline/decommissioning → neutral.
 
@@ -102,16 +102,16 @@ English and Russian. The language is kept in `localStorage` (`lang`), switched o
 or in the user menu, and the app re-renders in place. English strings are the keys
 (`web/src/i18n/ru.ts`, `ruFeatures.ts`; NetBox pages use `netbox/i18n.ts`).
 
-## Deliberate differences from Umbrella
+## Deliberate differences from Beacon
 - The top bar holds a global search of bases, tables and views instead of incident lights and the
-  notification centre (Inventory DB has no incidents).
-- The logo is Umbrella's red tile with a database glyph instead of the umbrella.
+  notification centre (Ledger has no incidents).
+- The logo is Beacon's red tile with a database glyph instead of the umbrella.
 - NetBox sections have sub-headings inside their sidebar group (Organization, Racks, Devices…)
   because they have many pages; NetBox list pages are wider (1400px).
-- The spreadsheet grid uses 13.5px text and tighter rows than Umbrella's tables.
+- The spreadsheet grid uses 13.5px text and tighter rows than Beacon's tables.
 - Selects are styled native `<select>` elements rather than Headless UI listboxes.
 
-## Application guidelines (from Umbrella's architecture docs)
+## Application guidelines (from Beacon's architecture docs)
 - The web UI stores no data or secrets; everything goes through the REST API with the user's token.
 - Sections and actions the role can't use are hidden, but permissions are always enforced by the API.
 - REST API under `/api/v1`, described by OpenAPI; filters of list pages live in the URL so links
@@ -119,4 +119,4 @@ or in the user menu, and the app re-renders in place. English strings are the ke
 - Every change is written to the audit log before the response.
 - Service health at `/api/v1/health`, metrics in OpenMetrics format at `/metrics`.
 - No paid proprietary components; open-source dependencies only.
-- UI language: English and Russian (Umbrella's UI language), switchable in the user menu.
+- UI language: English and Russian (Beacon's UI language), switchable in the user menu.

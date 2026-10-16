@@ -33,16 +33,18 @@ export function SettingsPage() {
         <Route index element={<Navigate to="status" replace />} />
         <Route path="status" element={<StatusPage />} />
         <Route
-          path="spa"
+          path="keystone"
           element={
-            <Section title="SPA" subtitle={t('Sign-in and access are managed in SPA (Single Point of Authorization).')}>
+            <Section title="Keystone" subtitle={t('Sign-in and access are managed in Keystone.')}>
               <SpaPage />
             </Section>
           }
         />
-        <Route path="identity" element={<Navigate to="../spa" replace />} />
-        <Route path="directory" element={<Navigate to="../spa" replace />} />
-        <Route path="password-policy" element={<Navigate to="../spa" replace />} />
+        {/* Older addresses of this page; /settings/spa is the one from before SPA was renamed to Keystone. */}
+        <Route path="spa" element={<Navigate to="../keystone" replace />} />
+        <Route path="identity" element={<Navigate to="../keystone" replace />} />
+        <Route path="directory" element={<Navigate to="../keystone" replace />} />
+        <Route path="password-policy" element={<Navigate to="../keystone" replace />} />
         <Route
           path="postgresql"
           element={
@@ -54,7 +56,7 @@ export function SettingsPage() {
         <Route
           path="openbao"
           element={
-            <Section title="OpenBao" subtitle={t('Where Inventory DB keeps its secrets.')}>
+            <Section title="OpenBao" subtitle={t('Where Ledger keeps its secrets.')}>
               <OpenBaoPage />
             </Section>
           }

@@ -1,7 +1,7 @@
 #!/bin/sh
-# Brings the bundled OpenBao up for Inventory DB: initialises it once (5 unseal keys, threshold 3, kept with the
+# Brings the bundled OpenBao up for Ledger: initialises it once (5 unseal keys, threshold 3, kept with the
 # root token in $STATE_DIR/init.txt), unseals it, enables the KV v2 mount and AppRole, and writes the AppRole
-# role_id / secret_id that Inventory DB signs in with. Then keeps watching and unseals OpenBao after a restart.
+# role_id / secret_id that Ledger signs in with. Then keeps watching and unseals OpenBao after a restart.
 set -eu
 
 : "${BAO_ADDR:=http://openbao:8200}"
@@ -73,7 +73,7 @@ mv "$APPROLE_DIR/role_id.tmp" "$APPROLE_DIR/role_id"
 if [ ! -s "$APPROLE_DIR/secret_id" ] || ! bao write -f auth/approle/role/inventory-db/secret-id/lookup secret_id="$(cat "$APPROLE_DIR/secret_id")" >/dev/null 2>&1; then
   bao write -f -field=secret_id auth/approle/role/inventory-db/secret-id > "$APPROLE_DIR/secret_id.tmp"
   mv "$APPROLE_DIR/secret_id.tmp" "$APPROLE_DIR/secret_id"
-  log "new AppRole secret_id for Inventory DB"
+  log "new AppRole secret_id for Ledger"
 fi
 chmod 0644 "$APPROLE_DIR/role_id" "$APPROLE_DIR/secret_id" 2>/dev/null || true
 

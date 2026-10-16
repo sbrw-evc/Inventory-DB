@@ -79,7 +79,7 @@ const sameBao = (a: OpenBaoConnection, b: OpenBaoConnection) =>
 /** Copies every secret into `target`, saves the connection and makes it the secret store. */
 export async function migrateOpenBao(target: OpenBaoConnection, overwrite: boolean, userEmail?: string) {
   const current = openBaoClient();
-  if (current && sameBao(current.conn, target)) throw new HttpError(409, 'OPENBAO_SAME', 'This is the OpenBao Inventory DB already uses');
+  if (current && sameBao(current.conn, target)) throw new HttpError(409, 'OPENBAO_SAME', 'This is the OpenBao Ledger already uses');
   const probe = await probeOpenBao(target);
   if (!probe.ok) throw new HttpError(400, 'OPENBAO_UNREACHABLE', probe.error ?? 'OpenBao does not answer');
   if (probe.secrets > 0 && !overwrite) throw new HttpError(409, 'OPENBAO_NOT_EMPTY', 'The target mount already holds secrets');

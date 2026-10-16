@@ -1,6 +1,6 @@
 /**
  * Minimal OpenBao (Vault-compatible) client: token or AppRole sign-in, token renewal and the KV v2 secrets engine.
- * Inventory DB keeps every secret it owns under one KV v2 mount (default `inventory`).
+ * Ledger keeps every secret it owns under one KV v2 mount (default `inventory`).
  */
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';

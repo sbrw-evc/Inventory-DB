@@ -2,15 +2,15 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { clearFlowCache, setFlowTimeout } from '../src/integrations/flow/client.js';
-import { configureFlowNotifier, resetFlowNotifier } from '../src/integrations/flow/notifier.js';
+import { clearFlowCache, setFlowTimeout } from '../src/integrations/current/client.js';
+import { configureFlowNotifier, resetFlowNotifier } from '../src/integrations/current/notifier.js';
 import { verifySignature } from '../src/integrations/secrets.js';
 import { getSecret, useLocalSecrets, useOpenBao } from '../src/system/secrets.js';
 import { startFakeOpenBao, type FakeOpenBao } from './fake-openbao.js';
 import { createTestApp, grantRole, signInUser } from './helpers.js';
 import { makeApi } from './netbox-fixtures.js';
 
-/** A stand-in Umbrella Flow: records every request; answers are set per test. */
+/** A stand-in Current: records every request; answers are set per test. */
 interface Recorded {
   method: string;
   url: string;
@@ -92,7 +92,7 @@ async function createFlow(app: FastifyInstance, headers: Record<string, string>,
     method: 'POST',
     url: '/api/v1/integrations',
     headers,
-    payload: { kind: 'flow', title: 'Flow prod', flowUrl: `${flow.url}/`, flowToken: 'flow_token-123', ...extra },
+    payload: { kind: 'flow', title: 'Current prod', flowUrl: `${flow.url}/`, flowToken: 'flow_token-123', ...extra },
   });
   return res;
 }
@@ -153,7 +153,7 @@ describe('flow integration: management', () => {
     expect((await createFlow(app, owner.headers, { flowUrl: 'ftp://x' })).statusCode).toBe(400);
   });
 
-  it('lets every DCIM/IPAM admin, and only admins, see and manage Flow integrations', async () => {
+  it('lets every DCIM/IPAM admin, and only admins, see and manage Current integrations', async () => {
     const { app, owner, api } = await setup();
     const created = (await createFlow(app, owner.headers)).json().integration;
     const umbrella = (
@@ -161,7 +161,7 @@ describe('flow integration: management', () => {
         method: 'POST',
         url: '/api/v1/integrations',
         headers: owner.headers,
-        payload: { kind: 'umbrella', title: 'Umbrella prod', inventoryUrl: 'https://inv.example' },
+        payload: { kind: 'umbrella', title: 'Beacon prod', inventoryUrl: 'https://inv.example' },
       })
     ).json().integration;
     const other = await signInUser(app);
@@ -174,7 +174,7 @@ describe('flow integration: management', () => {
     expect(await list(other.headers)).toEqual([]);
     expect((await patch(other.headers, created.id)).statusCode).toBe(404);
 
-    // Made admin: sees and manages the Flow integration, not someone else's Umbrella one.
+    // Made admin: sees and manages the Current integration, not someone else's Beacon one.
     grantRole(other.userId, 'admin');
     expect(await list(other.headers)).toEqual([created.id]);
     expect((await patch(other.headers, created.id)).json()).toMatchObject({ title: 'Renamed' });
@@ -182,7 +182,7 @@ describe('flow integration: management', () => {
     const rotated = await app.inject({ method: 'POST', url: `/api/v1/integrations/${created.id}/rotate-secret`, headers: other.headers });
     expect(rotated.json().secret).toMatch(/^whsec_/);
 
-    // The creator, no longer admin, loses access to the Flow integration but keeps their own Umbrella one.
+    // The creator, no longer admin, loses access to the Current integration but keeps their own Beacon one.
     grantRole(owner.userId, 'editor');
     expect(await list(owner.headers)).toEqual([umbrella.id]);
     expect((await patch(owner.headers, created.id)).statusCode).toBe(404);
@@ -190,7 +190,7 @@ describe('flow integration: management', () => {
     expect(removed.statusCode).toBe(200);
   });
 
-  it('stores the Flow token in OpenBao when it is configured', async () => {
+  it('stores the Current token in OpenBao when it is configured', async () => {
     const bao: FakeOpenBao = await startFakeOpenBao();
     try {
       await useOpenBao({ addr: bao.url, mount: 'inventory', auth: 'token', token: bao.token });
@@ -212,7 +212,7 @@ describe('flow integration: traffic proxy', () => {
     expect(flow.requests).toHaveLength(0);
   });
 
-  it('calls Flow with the token, returns only the asked ids and caches for a minute', async () => {
+  it('calls Current with the token, returns only the asked ids and caches for a minute', async () => {
     const { app, owner } = await setup();
     await createFlow(app, owner.headers);
     const viewer = await signInUser(app);
@@ -230,7 +230,7 @@ describe('flow integration: traffic proxy', () => {
     expect((await app.inject({ method: 'GET', url: '/api/v1/integrations/flow/status?object_type=dcim.site&ids=1', headers: viewer.headers })).statusCode).toBe(400);
   });
 
-  it('maps Flow failures to 502 and Flow 404 to 404, and ignores inactive integrations', async () => {
+  it('maps Current failures to 502 and Current 404 to 404, and ignores inactive integrations', async () => {
     const { app, owner } = await setup();
     const { integration } = (await createFlow(app, owner.headers)).json();
     flow.handler = () => ({ status: 500, body: { error: 'boom' } });
@@ -247,7 +247,7 @@ describe('flow integration: traffic proxy', () => {
     expect((await get('4')).statusCode).toBe(404);
   });
 
-  it('lists the addresses Flow saw in a prefix and marks those in IPAM', async () => {
+  it('lists the addresses Current saw in a prefix and marks those in IPAM', async () => {
     const { app, owner, api } = await setup();
     await createFlow(app, owner.headers);
     const ip = await api.post('/ipam/ip-addresses', { address: '10.0.0.7/24' });

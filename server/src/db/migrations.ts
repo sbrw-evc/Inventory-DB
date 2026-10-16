@@ -148,7 +148,7 @@ export const migrations: string[] = [
     created_at TEXT NOT NULL
   );
   `,
-  // Integrations (Umbrella monitoring): connection settings and alert state pushed by Umbrella.
+  // Integrations (Beacon): connection settings and alert state pushed by Beacon.
   `
   CREATE TABLE nc_integrations (
     id TEXT PRIMARY KEY,
@@ -261,7 +261,7 @@ export const migrations: string[] = [
   );
   `,
   // Umbrella Identity (docs/identity-federation.md): password history, passkeys, and accounts of Google, Apple,
-  // OpenID Connect and Umbrella single sign-in (sources 'google', 'apple', 'oidc', 'umbrella').
+  // OpenID Connect and Beacon single sign-in (sources 'google', 'apple', 'oidc', 'umbrella').
   `
   CREATE TABLE nc_password_history (
     user_id TEXT NOT NULL REFERENCES nc_users(id) ON DELETE CASCADE,
@@ -283,16 +283,16 @@ export const migrations: string[] = [
     transports TEXT NOT NULL DEFAULT '[]',
     backup_eligible INTEGER NOT NULL DEFAULT 0,
     backup_state INTEGER NOT NULL DEFAULT 0,
-    -- set for passkeys synchronized from Umbrella Monitoring
+    -- set for passkeys synchronized from Beacon
     hub_id TEXT,
     created_at TEXT NOT NULL,
     last_used_at TEXT
   );
   CREATE INDEX nc_passkeys_user ON nc_passkeys (user_id);
   `,
-  // SPA (docs/spa.md): sign-in, passwords, the password policy, passkeys, directories and sign-in providers moved to
-  // SPA. Users keep their IDs (base memberships, ownership and audit hold) and are bound to SPA's user ID (source
-  // 'spa', external_id) on their first SPA sign-in or synchronization; e-mail is no longer unique.
+  // Keystone (docs/keystone.md): sign-in, passwords, the password policy, passkeys, directories and sign-in providers moved to
+  // Keystone. Users keep their IDs (base memberships, ownership and audit hold) and are bound to Keystone's user ID (source
+  // 'spa', external_id) on their first Keystone sign-in or synchronization; e-mail is no longer unique.
   `
   DROP TABLE IF EXISTS nc_password_history;
   DROP TABLE IF EXISTS nc_passkeys;
@@ -300,7 +300,7 @@ export const migrations: string[] = [
     DROP COLUMN IF EXISTS password_hash,
     DROP COLUMN IF EXISTS password_changed_at,
     DROP COLUMN IF EXISTS admin_granted_by,
-    -- sessions issued before this moment no longer count (set when SPA disables the person)
+    -- sessions issued before this moment no longer count (set when Keystone disables the person)
     ADD COLUMN sessions_revoked_at TEXT;
   DROP INDEX IF EXISTS nc_users_email;
   CREATE INDEX nc_users_email ON nc_users (lower(email));
@@ -309,8 +309,8 @@ export const migrations: string[] = [
     ('directory.ldap', 'directory.entra', 'password_policy', 'identity.umbrella', 'identity.providers', 'identity.passkeys', 'identity.public_url');
   DELETE FROM nc_secrets WHERE path IN ('directory/ldap', 'directory/entra', 'identity/umbrella') OR path LIKE 'identity/providers/%';
   `,
-  // SPA: API tokens of a person SPA disables (or who loses the role) are suspended, not deleted; they work again when
-  // SPA enables the person.
+  // Keystone: API tokens of a person Keystone disables (or who loses the role) are suspended, not deleted; they work again when
+  // Keystone enables the person.
   `
   ALTER TABLE nc_api_tokens ADD COLUMN suspended_at TEXT;
   `,

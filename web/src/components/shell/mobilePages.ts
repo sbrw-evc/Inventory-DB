@@ -1,7 +1,7 @@
 import { navGroups, owns, type NavGroup, type NavPage } from './nav';
 
 /**
- * The phone layout's pages (Umbrella's mobilePages): finding a device, its rack, its addresses and
+ * The phone layout's pages (Beacon's mobilePages): finding a device, its rack, its addresses and
  * circuits works on the phone. Integrations, imports, administration and system settings are made
  * for a computer: the phone shows a note and opens them only on request.
  */

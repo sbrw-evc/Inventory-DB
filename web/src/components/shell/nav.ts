@@ -40,7 +40,7 @@ import {
 import { NAV } from '../../netbox/nav';
 
 /**
- * The application menu, grouped like Umbrella's sidebar: each group is an accordion of pages.
+ * The application menu, grouped like Beacon's sidebar: each group is an accordion of pages.
  * The DCIM and IPAM groups follow netbox/nav.ts (NAV), so object types added there appear here.
  */
 export type NavPage = { id: string; to: string; label: string; icon: LucideIcon; /** labels resolved by the NetBox dictionary */ netbox?: boolean; sub?: string };
@@ -122,14 +122,14 @@ function nbGroup(id: Section, title: string, icon: LucideIcon, extra: NavPage[] 
   return pages.length ? [{ id, title, icon, pages }] : [];
 }
 
-/** System settings (Umbrella's Settings group), for DCIM/IPAM administrators only. */
+/** System settings (Beacon's Settings group), for DCIM/IPAM administrators only. */
 const SETTINGS: NavGroup = {
   id: 'settings',
   title: 'Settings',
   icon: SlidersHorizontal,
   pages: [
     { id: 'settings/status', to: '/settings/status', label: 'System status', icon: Activity },
-    { id: 'settings/spa', to: '/settings/spa', label: 'SPA', icon: ShieldCheck },
+    { id: 'settings/keystone', to: '/settings/keystone', label: 'Keystone', icon: ShieldCheck },
     { id: 'settings/postgresql', to: '/settings/postgresql', label: 'PostgreSQL', icon: Database },
     { id: 'settings/openbao', to: '/settings/openbao', label: 'OpenBao', icon: Vault },
   ],

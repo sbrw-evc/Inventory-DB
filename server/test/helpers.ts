@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { randomBytes } from 'node:crypto';
 import { issueJwt } from '../src/auth/service.js';
-import { upsertSpaUser } from '../src/auth/spa/users.js';
+import { upsertSpaUser } from '../src/auth/keystone/users.js';
 import { type DB, getDb, openDb, setDb } from '../src/db/index.js';
 import type { NetboxRole } from '../src/netbox/access.js';
 import { TEST_DATABASE_URL, TEST_SCHEMA_PREFIX } from './db-env.js';
@@ -20,8 +20,8 @@ export async function createTestApp(): Promise<FastifyInstance> {
 
 let n = 0;
 /**
- * A person SPA lets in: creates the user record the way the SPA synchronization does (bound to an SPA user ID) and
- * starts an Inventory DB session for it. The DCIM/IPAM role is the one SPA would give: `role`, else admin for the
+ * A person Keystone lets in: creates the user record the way the Keystone synchronization does (bound to a Keystone user ID) and
+ * starts an Ledger session for it. The DCIM/IPAM role is the one Keystone would give: `role`, else admin for the
  * first user of the database and viewer for the others.
  */
 export async function signInUser(_app: FastifyInstance, email = `user${++n}@example.com`, role?: NetboxRole) {
@@ -37,7 +37,7 @@ export async function signInUser(_app: FastifyInstance, email = `user${++n}@exam
   return { userId: user.id, headers: { authorization: `Bearer ${await issueJwt(user)}` } };
 }
 
-/** Sets the DCIM/IPAM role of a user as an SPA synchronization would. */
+/** Sets the DCIM/IPAM role of a user as a Keystone synchronization would. */
 export function grantRole(userId: string, role: NetboxRole) {
   getDb().prepare('INSERT INTO nb_roles (user_id, role) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET role = excluded.role').run(userId, role);
 }

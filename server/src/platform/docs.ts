@@ -10,7 +10,7 @@ export async function registerDocs(app: FastifyInstance) {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'Inventory DB API',
+        title: 'Ledger API',
         description: 'NocoDB-style REST API. Authenticate with `Authorization: Bearer <jwt>` or `xc-token: <api token>`.',
         version: '1.0.0',
       },

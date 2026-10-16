@@ -1,4 +1,4 @@
-/* DCIM/IPAM pages in the Umbrella look: page head, tiles, a toolbar card, a table card and a side
+/* DCIM/IPAM pages in the Beacon look: page head, tiles, a toolbar card, a table card and a side
    panel card. Colours come from the theme tokens of styles/app.css (light and dark); the --nb-*
    names are kept as aliases for inline styles in the pages. */
 .nb {
@@ -82,7 +82,7 @@
   margin-top: 4px;
 }
 
-/* Toolbar card (Umbrella .svc-toolbar) */
+/* Toolbar card (Beacon .svc-toolbar) */
 .nb-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -134,7 +134,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
 }
 
-/* Buttons and inputs (Umbrella controls) */
+/* Buttons and inputs (Beacon controls) */
 .nb-btn {
   display: inline-flex;
   align-items: center;
@@ -278,7 +278,7 @@
   background: var(--chip-on-bg);
 }
 
-/* Counter tiles (Umbrella .ci-tile) */
+/* Counter tiles (Beacon .ci-tile) */
 .nb-counters {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -339,7 +339,7 @@
   border-radius: var(--radius);
 }
 
-/* Table card (Umbrella .cn-table) */
+/* Table card (Beacon .cn-table) */
 .nb-table-wrap {
   overflow-x: auto;
   background: var(--surface);
@@ -425,7 +425,7 @@
   gap: 8px;
 }
 
-/* Chips (Umbrella pills: soft fill, coloured text) */
+/* Chips (Beacon pills: soft fill, coloured text) */
 .nb-chip {
   display: inline-flex;
   align-items: center;
@@ -604,7 +604,7 @@
   border-top: 1px solid var(--border);
 }
 
-/* Key/value details (Umbrella .rows) */
+/* Key/value details (Beacon .rows) */
 .nb-kv {
   display: grid;
   grid-template-columns: minmax(120px, 38%) 1fr;
@@ -813,7 +813,7 @@
   }
 }
 
-/* Umbrella Flow traffic (flow.tsx): in = accent, out = purple, bars use the utilisation tones. */
+/* Current traffic (flow.tsx): in = accent, out = purple, bars use the utilisation tones. */
 .nb-traffic {
   display: inline-grid;
   gap: 3px;

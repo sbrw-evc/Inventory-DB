@@ -13,9 +13,9 @@ import { getUser, issueJwt } from '../auth/service.js';
 import { HttpError, notFound, unauthorized } from '../errors.js';
 import { getDb } from '../db/index.js';
 import { authHeaders, dcimClientFor } from '../integrations/dcim.js';
-import { clearFlowCache, FlowError, flowGet } from '../integrations/flow/client.js';
-import { ensureSnmpIndexField } from '../integrations/flow/customField.js';
-import { startFlowNotifier } from '../integrations/flow/notifier.js';
+import { clearFlowCache, FlowError, flowGet } from '../integrations/current/client.js';
+import { ensureSnmpIndexField } from '../integrations/current/customField.js';
+import { startFlowNotifier } from '../integrations/current/notifier.js';
 import { getNetboxRole, requireNetboxRole } from '../netbox/access.js';
 import { cidrToString, hexKey, parseCidr, parseIp } from '../netbox/cidr.js';
 import { verifySignature } from '../integrations/secrets.js';
@@ -39,8 +39,8 @@ import {
   monitoringStatus,
   recordAlert,
   type IdentityIndex,
-} from '../integrations/umbrella/alerts.js';
-import { buildCis } from '../integrations/umbrella/ci.js';
+} from '../integrations/beacon/alerts.js';
+import { buildCis } from '../integrations/beacon/ci.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -133,7 +133,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     const user = requireUser(req);
     const input = createSchema.parse(req.body);
     if (input.kind === 'flow') {
-      // A Flow integration changes what every user sees on DCIM pages and makes the server call Flow: admins only
+      // A Current integration changes what every user sees on DCIM pages and makes the server call Current: admins only
       // (every DCIM/IPAM admin manages it, see getOwnedIntegration).
       requireNetboxRole(req, 'admin');
     }
@@ -165,8 +165,8 @@ export async function integrationRoutes(app: FastifyInstance) {
   app.get('/api/v1/integrations/:id/umbrella/unmatched', async (req) => listUnmatched(owned(req).id));
 
   /**
-   * CMDB feed for Umbrella's inventory connector: a full snapshot of sites, racks and devices as CIs.
-   * Umbrella's CMDB Discovery diffs consecutive snapshots itself, so no change cursor is needed.
+   * CMDB feed for Beacon's inventory connector: a full snapshot of sites, racks and devices as CIs.
+   * Beacon's CMDB Discovery diffs consecutive snapshots itself, so no change cursor is needed.
    */
   app.get('/api/v1/integrations/:id/umbrella/ci', async (req): Promise<UmbrellaCiFeed> => {
     requireUser(req);
@@ -191,7 +191,7 @@ export async function integrationRoutes(app: FastifyInstance) {
     };
   });
 
-  /** Alert state changes from Umbrella, signed with the integration secret (no user token). */
+  /** Alert state changes from Beacon, signed with the integration secret (no user token). */
   app.post('/api/v1/integrations/:id/umbrella/alerts', async (req, reply) => {
     const { id } = req.params as { id: string };
     let integration;
@@ -245,9 +245,9 @@ export async function integrationRoutes(app: FastifyInstance) {
   });
 
   /**
-   * Traffic of DCIM objects from Umbrella Flow (contract §2.1), for the Traffic columns, chips and sparklines.
-   * Any signed-in user with DCIM/IPAM read access may call it; Inventory DB calls Flow with the integration's token.
-   * 404 when no Flow integration is active (the UI then hides the traffic), 502 when Flow fails.
+   * Traffic of DCIM objects from Current (contract §2.1), for the Traffic columns, chips and sparklines.
+   * Any signed-in user with DCIM/IPAM read access may call it; Ledger calls Current with the integration's token.
+   * 404 when no Current integration is active (the UI then hides the traffic), 502 when Current fails.
    */
   app.get('/api/v1/integrations/flow/status', async (req): Promise<FlowStatusResponse> => {
     requireNetboxRole(req, 'viewer');
@@ -259,14 +259,14 @@ export async function integrationRoutes(app: FastifyInstance) {
       ids: [...q.ids].sort((a, b) => a - b).join(','),
       window: q.window,
     });
-    if (!res || typeof res !== 'object' || typeof res.results !== 'object' || !res.results) throw new FlowError(502, 'Umbrella Flow sent an invalid response');
+    if (!res || typeof res !== 'object' || typeof res.results !== 'object' || !res.results) throw new FlowError(502, 'Current sent an invalid response');
     // Only the ids asked for (the cached answer may be shared by an equal query).
     const results: FlowStatusResponse['results'] = {};
     for (const id of q.ids) if (res.results[id]) results[id] = res.results[id];
     return { window: res.window ?? q.window ?? '24h', results };
   });
 
-  /** Addresses Flow saw inside a prefix, with whether each one is in IPAM (checked here, so it is current). */
+  /** Addresses Current saw inside a prefix, with whether each one is in IPAM (checked here, so it is current). */
   app.get('/api/v1/integrations/flow/prefix-addresses', async (req): Promise<FlowPrefixAddressesResponse> => {
     requireNetboxRole(req, 'viewer');
     const q = z
@@ -283,7 +283,7 @@ export async function integrationRoutes(app: FastifyInstance) {
       vrf: q.vrf,
       window: q.window,
     });
-    if (!res || !Array.isArray(res.results)) throw new FlowError(502, 'Umbrella Flow sent an invalid response');
+    if (!res || !Array.isArray(res.results)) throw new FlowError(502, 'Current sent an invalid response');
     return { prefix, results: markInIpam(res.results as FlowPrefixAddress[], q.vrf) };
   });
 
@@ -295,10 +295,10 @@ export async function integrationRoutes(app: FastifyInstance) {
   });
 }
 
-/** The Flow integration that answers traffic queries: the oldest active one. */
+/** The Current integration that answers traffic queries: the oldest active one. */
 function activeFlow(): Integration {
   const [integration] = activeFlowIntegrations();
-  if (!integration) throw notFound('Flow integration');
+  if (!integration) throw notFound('Current integration');
   return integration;
 }
 

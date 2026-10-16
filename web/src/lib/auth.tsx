@@ -8,18 +8,18 @@ import { qk } from '../api/hooks';
 interface AuthState {
   token: string | null;
   user: User | null;
-  /** Role (from SPA), admin flag and SPA's account page; null until /auth/me answers. */
+  /** Role (from Keystone), admin flag and Keystone's account page; null until /auth/me answers. */
   account: Account | null;
   loading: boolean;
-  /** Use the session Inventory DB started after the SPA callback. */
+  /** Use the session Ledger started after the Keystone callback. */
   adoptSession: (token: string) => void;
-  /** Ends the session here, then SPA's (which returns to Inventory DB's address). */
+  /** Ends the session here, then Keystone's (which returns to Ledger's address). */
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
-// After signing out, the sign-in page must not send the person straight back to SPA.
+// After signing out, the sign-in page must not send the person straight back to Keystone.
 const SIGNED_OUT = 'idb_signed_out';
 function markSignedOut() {
   try {

@@ -1,4 +1,4 @@
-# Inventory DB: NocoDB-style feature plan
+# Ledger: NocoDB-style feature plan
 
 Status: approved by default, implementation in progress on branch `claude/project-thread-d8pw1i`.
 
@@ -44,7 +44,7 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 6. **UI**: sidebar of bases/tables/views, grid with inline editing and keyboard navigation, expanded
    record drawer with comments and history, toolbar (fields, filter, sort, group, search), undo/redo of cell edits.
    Heavy views (calendar, timeline, map, form builder) and secondary pages load on demand.
-7. **Auth & roles**: sign-in with SPA ([spa.md](spa.md)) and an own session (JWT), base members with roles owner / editor /
+7. **Auth & roles**: sign-in with Keystone ([keystone.md](keystone.md)) and an own session (JWT), base members with roles owner / editor /
    commenter / viewer enforced on every route, API tokens (`xc-token` header like NocoDB).
    Field-level permissions: per field and role, hidden or read-only (owners always full), enforced by the API.
 8. **REST API**: `/api/v1/...` meta + data endpoints, OpenAPI JSON + Swagger UI at `/api/docs`.
@@ -65,12 +65,12 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
     prefixes (hierarchy, utilisation, next available prefix/IP), IP addresses, IP ranges, VLAN groups and VLANs,
     tags, custom fields, change log, and CSV bulk import. UI pages for lists, detail panels, rack elevation,
     prefix tree, and cable trace.
-15. **Design**: UI follows Umbrella's design language and application guidelines (`docs/design.md`):
+15. **Design**: UI follows Beacon's design language and application guidelines (`docs/design.md`):
     navy header, toolbar/filter rows, status chips, right-side detail panel, English/Russian UI,
     `/metrics` endpoint.
 16. **Inventory template**: one-click base with Products, Suppliers, Warehouses, Stock movements,
     linked together with rollups (on-hand quantity) and formulas (stock value, low-stock flag).
-17. **Umbrella integration**: CMDB feed and signed alert webhook (`docs/integrations.md`), device status chips, and an
+17. **Beacon integration**: CMDB feed and signed alert webhook (`docs/integrations.md`), device status chips, and an
     Integrations admin page (create/edit/delete, feed and webhook URLs, secret rotation, last sync, unmatched alerts).
 
 ### Deferred (and why)
@@ -79,8 +79,8 @@ Source: nocodb.com/docs/product-docs index plus NocoDB's public feature set.
 - External data sources (Postgres/MySQL connections) and snapshots: the app uses its own PostgreSQL database.
 - Workflows, scripts, dashboards, interfaces, extensions, AI, docs, sync integrations, MCP server.
 - RichText, Barcode/QRCode, User, Duration, Button field types.
-- Backend language: Umbrella's guidelines prefer Go; this app stays on Node/TypeScript. The database is
-  PostgreSQL, as in Umbrella (SQLite was dropped in October 2026).
+- Backend language: Beacon's guidelines prefer Go; this app stays on Node/TypeScript. The database is
+  PostgreSQL, as in Beacon (SQLite was dropped in October 2026).
 - NetBox extras: circuits, power, virtualization, wireless, VPN, journaling, config contexts, scripts/reports.
 - Real-time collaboration (multi-cursor/websocket updates).
 

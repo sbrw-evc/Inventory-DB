@@ -277,7 +277,7 @@ export interface ApiToken {
   /** Only returned once, on creation */
   token?: string;
   createdAt: string;
-  /** Suspended while SPA disables the owner (or the owner has no role in Inventory DB); works again when SPA enables them. */
+  /** Suspended while Keystone disables the owner (or the owner has no role in Ledger); works again when Keystone enables them. */
   suspended?: boolean;
   suspendedAt?: string;
 }

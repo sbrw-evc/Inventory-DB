@@ -28,10 +28,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Umbrella Flow UI', () => {
-  it('hides the traffic card when there is no Flow integration or Flow fails', async () => {
+describe('Current UI', () => {
+  it('hides the traffic card when there is no Current integration or Current fails', async () => {
     for (const status of [404, 502]) {
-      vi.stubGlobal('fetch', respond(status, { error: 'NOT_FOUND', message: 'Flow integration not found' }));
+      vi.stubGlobal('fetch', respond(status, { error: 'NOT_FOUND', message: 'Current integration not found' }));
       const el = await render(<FlowTrafficCard objectType="dcim.device" id={1} />);
       expect(el.textContent).toBe('');
       act(() => root?.unmount());
@@ -39,7 +39,7 @@ describe('Umbrella Flow UI', () => {
     }
   });
 
-  it('shows rates, the sparkline, commit and the link to Flow', async () => {
+  it('shows rates, the sparkline, commit and the link to Current', async () => {
     const fetch = respond(200, {
       window: '24h',
       results: {
@@ -65,7 +65,7 @@ describe('Umbrella Flow UI', () => {
     expect(el.textContent).toContain('Over commit');
     expect(el.querySelectorAll('polyline')).toHaveLength(2);
     expect(el.textContent).toContain('Peak: 2 b/s');
-    expect(el.querySelector('a[href="https://flow.corp/visualize?q=x"]')?.textContent).toContain('Open in Flow');
+    expect(el.querySelector('a[href="https://flow.corp/visualize?q=x"]')?.textContent).toContain('Open in Current');
   });
 
   it('shows no made-up peak when the window has no traffic', async () => {
@@ -101,10 +101,10 @@ describe('Umbrella Flow UI', () => {
     const onCreate = vi.fn();
     const prefix = { id: 1, url: '', display: '10.0.0.0/24', prefix: '10.0.0.0/24', vrf: { id: 2, url: '', display: 'blue' } };
     const el = await render(<PrefixFlowAddresses prefix={prefix} canWrite onCreate={onCreate} version={1} />);
-    expect(el.textContent).toContain('Active addresses (Flow) (2)');
+    expect(el.textContent).toContain('Active addresses (Current) (2)');
     const buttons = [...el.querySelectorAll('button')].filter((b) => b.textContent?.includes('Create IP address'));
     expect(buttons).toHaveLength(1);
     act(() => buttons[0].click());
-    expect(onCreate).toHaveBeenCalledWith({ address: '10.0.0.8/24', status: 'active', description: 'Discovered by Umbrella Flow', vrf: 2 });
+    expect(onCreate).toHaveBeenCalledWith({ address: '10.0.0.8/24', status: 'active', description: 'Discovered by Current', vrf: 2 });
   });
 });

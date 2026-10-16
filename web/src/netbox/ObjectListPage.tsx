@@ -178,7 +178,7 @@ export function ObjectListPage({ app }: { app: string }) {
   const [live, setLive] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<string | null>(null);
-  // On the phone the filters open in a bottom sheet (Umbrella's filters sheet).
+  // On the phone the filters open in a bottom sheet (Beacon's filters sheet).
   const mobile = useMobile();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const sel = routeId ?? sp.get('_sel');
@@ -205,7 +205,7 @@ export function ObjectListPage({ app }: { app: string }) {
   const rows = list.data?.results ?? [];
   const monitoring = useMonitoring('dcim.device', model?.object_type === 'dcim.device' ? rows.map((r) => r.id) : []);
   const trafficType = model?.object_type === 'dcim.device' || model?.object_type === 'dcim.interface' ? model.object_type : null;
-  // Hidden (null) unless a Flow integration is active and answers.
+  // Hidden (null) unless a Current integration is active and answers.
   const traffic = useFlowTraffic((trafficType ?? 'dcim.device') as 'dcim.device', trafficType ? rows.map((r) => r.id) : []);
   const columns = cfg.columns.filter((c) => (c !== 'monitoring' || monitoring) && (c !== 'traffic' || traffic));
 

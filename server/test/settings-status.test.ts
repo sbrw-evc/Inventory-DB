@@ -12,7 +12,7 @@ beforeAll(async () => {
 });
 
 describe('system status', () => {
-  it('reports the app, PostgreSQL, secrets, the SPA connection and counts', async () => {
+  it('reports the app, PostgreSQL, secrets, the Keystone connection and counts', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/v1/system/status', headers: admin });
     expect(res.statusCode).toBe(200);
     const s = res.json();

@@ -17,7 +17,7 @@ type Tab = { to: string; label: string; icon: LucideIcon; active: (p: string) =>
 
 const OBJECTS = ['/dcim', '/tenancy', '/circuits', '/virtualization'];
 
-// The tab bar: the bases, search, the DCIM and IPAM catalogs, then "More" (as Umbrella's tab bar).
+// The tab bar: the bases, search, the DCIM and IPAM catalogs, then "More" (as Beacon's tab bar).
 const TABS: Tab[] = [
   { to: '/', label: 'Bases', icon: LayoutGrid, active: basesOwn },
   { to: '/dcim/search', label: 'Search', icon: Search, active: (p) => p.startsWith('/dcim/search') },
@@ -33,11 +33,11 @@ function useTitle(groups: NavGroup[]) {
   if (baseId) return bases.data?.find((b) => b.id === baseId)?.title ?? t('Bases');
   if (pathname === '/') return t('Bases');
   const page = pageOf(groups, pathname);
-  return page ? pageLabel(page, t) : 'Inventory DB';
+  return page ? pageLabel(page, t) : 'Ledger';
 }
 
 /**
- * The phone shell (Umbrella's MobileFrame): a top bar with the page title, the page, and a tab bar
+ * The phone shell (Beacon's MobileFrame): a top bar with the page title, the page, and a tab bar
  * at the bottom; "More" opens every other section in a bottom sheet, with the sections made for a
  * computer apart. Those pages show a note on the phone and open only on request.
  */
@@ -52,7 +52,7 @@ export function MobileFrame({ children }: { children: ReactNode }) {
   return (
     <div className="m-shell">
       <header className="m-top">
-        <Link to="/" className="m-top-brand" aria-label="Inventory DB">
+        <Link to="/" className="m-top-brand" aria-label="Ledger">
           <img src="/logo.svg" alt="" width={28} height={28} />
         </Link>
         <h1 className="m-top-title">{title}</h1>
@@ -81,7 +81,7 @@ export function MobileFrame({ children }: { children: ReactNode }) {
   );
 }
 
-/** PhonePage keeps the pages made for a computer behind a note (Umbrella's Pages). */
+/** PhonePage keeps the pages made for a computer behind a note (Beacon's Pages). */
 function PhonePage({ groups, children }: { groups: NavGroup[]; children: ReactNode }) {
   const t = useT();
   const { pathname } = useLocation();
@@ -104,7 +104,7 @@ function TabInner({ icon: Icon, label, active }: { icon: LucideIcon; label: stri
 }
 
 /**
- * MoreSheet (Umbrella's): the objects looked up most as tiles, then every catalog section by group,
+ * MoreSheet (Beacon's): the objects looked up most as tiles, then every catalog section by group,
  * then the sections better opened on a computer.
  */
 function MoreSheet({ open, onClose, groups }: { open: boolean; onClose: () => void; groups: NavGroup[] }) {

@@ -1,23 +1,23 @@
 /**
- * Local user records synchronised from SPA. A user is bound to SPA's `sub` (`source = 'spa'`, `external_id = sub`);
- * a record from before SPA (local, LDAP, Entra ID, Umbrella…) is matched once by user name only — never by e-mail,
+ * Local user records synchronised from Keystone. A user is bound to Keystone's `sub` (`source = 'spa'`, `external_id = sub`);
+ * a record from before Keystone (local, LDAP, Entra ID, Beacon…) is matched once by user name only — never by e-mail,
  * which is not verified as unique across sources — and bound, so its ID, base memberships, ownership and audit
- * history stay. The DCIM/IPAM role comes from SPA's `roles`.
+ * history stay. The DCIM/IPAM role comes from Keystone's `roles`.
  */
 import type { User } from '../../../../shared/src/index.js';
 import { getDb, newId, now } from '../../db/index.js';
 import { NETBOX_ROLES, type NetboxRole } from '../../netbox/access.js';
 
-/** The DCIM/IPAM role catalogue published to SPA. */
+/** The DCIM/IPAM role catalogue published to Keystone. */
 export const ROLE_CATALOGUE: { id: NetboxRole; name: string; description: string }[] = [
-  { id: 'admin', name: 'Administrator', description: 'Everything in DCIM/IPAM, integrations and the settings of Inventory DB' },
+  { id: 'admin', name: 'Administrator', description: 'Everything in DCIM/IPAM, integrations and the settings of Ledger' },
   { id: 'editor', name: 'Editor', description: 'Creates and changes DCIM/IPAM objects' },
   { id: 'viewer', name: 'Viewer', description: 'Reads DCIM/IPAM; bases are shared by their owners' },
 ];
 export const DEFAULT_ROLE: NetboxRole = 'viewer';
 const RANK: Record<NetboxRole, number> = { viewer: 1, editor: 2, admin: 3 };
 
-/** The highest DCIM/IPAM role among SPA's role IDs, or null when none of them is ours. */
+/** The highest DCIM/IPAM role among Keystone's role IDs, or null when none of them is ours. */
 export function roleFrom(roles: string[]): NetboxRole | null {
   let best: NetboxRole | null = null;
   for (const r of roles) if (NETBOX_ROLES.includes(r as NetboxRole) && (!best || RANK[r as NetboxRole] > RANK[best])) best = r as NetboxRole;
@@ -44,8 +44,8 @@ interface Row {
 const COLS = 'id, email, name, created_at, disabled';
 
 /**
- * Ends every session of a user (disabled or gone in SPA) and suspends their API tokens: the tokens are kept, refused
- * while the owner is disabled, and work again when SPA enables the person ({@link resumeTokens}).
+ * Ends every session of a user (disabled or gone in Keystone) and suspends their API tokens: the tokens are kept, refused
+ * while the owner is disabled, and work again when Keystone enables the person ({@link resumeTokens}).
  */
 export function revokeAccess(userId: string) {
   const db = getDb();
@@ -54,7 +54,7 @@ export function revokeAccess(userId: string) {
   db.prepare('UPDATE nc_api_tokens SET suspended_at = ? WHERE user_id = ? AND suspended_at IS NULL').run(at, userId);
 }
 
-/** The API tokens of a user SPA enabled again work again. */
+/** The API tokens of a user Keystone enabled again work again. */
 function resumeTokens(userId: string) {
   getDb().prepare('UPDATE nc_api_tokens SET suspended_at = NULL WHERE user_id = ? AND suspended_at IS NOT NULL').run(userId);
 }
@@ -65,8 +65,8 @@ function disable(userId: string) {
 }
 
 /**
- * A record from before SPA, matched once by user name (case-insensitive) — as SPA's protocol and the other Umbrella
- * applications do. E-mail is never used: it is not verified as unique across the sources SPA reads.
+ * A record from before Keystone, matched once by user name (case-insensitive) — as Keystone's protocol and the other Beacon
+ * applications do. E-mail is never used: it is not verified as unique across the sources Keystone reads.
  */
 function legacyMatch(p: SpaPerson): Row | undefined {
   if (!p.username) return undefined;
@@ -114,7 +114,7 @@ export function upsertSpaUser(p: SpaPerson): { user: User; created: boolean; mat
   })();
 }
 
-/** Disables every enabled user that is not bound to one of `keep` (gone from SPA, or a record from before SPA). */
+/** Disables every enabled user that is not bound to one of `keep` (gone from Keystone, or a record from before Keystone). */
 export function disableOthers(keep: string[]): number {
   const db = getDb();
   const set = new Set(keep);
@@ -134,7 +134,7 @@ export function touchSignIn(userId: string) {
   getDb().prepare('UPDATE nc_users SET last_sign_in_at = ? WHERE id = ?').run(now(), userId);
 }
 
-/** Users for the settings page (read-only: they are managed in SPA). */
+/** Users for the settings page (read-only: they are managed in Keystone). */
 export function listUsers() {
   return getDb()
     .prepare(

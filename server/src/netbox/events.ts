@@ -16,6 +16,6 @@ export interface NetboxEvents {
   'object.deleted': [NetboxEventPayload];
 }
 
-/** Emitted after a DCIM/IPAM write commits. Integrations (Umbrella CMDB sync) and webhooks subscribe here. */
+/** Emitted after a DCIM/IPAM write commits. Integrations (Beacon CMDB sync) and webhooks subscribe here. */
 export const netboxEvents = new EventEmitter<NetboxEvents>();
 netboxEvents.setMaxListeners(50);

@@ -1,17 +1,17 @@
 /**
- * Sign-in with SPA (docs/spa.md): OpenID Connect authorization code flow with PKCE S256, nonce and a signed,
- * single-use state; the verifier waits in an HttpOnly cookie bound to the state. After the callback Inventory DB
- * starts its own session (a JWT). Sign-out ends it and goes to SPA's sign-out.
+ * Sign-in with Keystone (docs/keystone.md): OpenID Connect authorization code flow with PKCE S256, nonce and a signed,
+ * single-use state; the verifier waits in an HttpOnly cookie bound to the state. After the callback Ledger
+ * starts its own session (a JWT). Sign-out ends it and goes to Keystone's sign-out.
  */
 import { createHash } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { requireUser } from '../auth/plugin.js';
 import { accountInfo, issueJwt, signValue, verifyValue } from '../auth/service.js';
-import { SPA_CALLBACK, loadKey, oidcClient, publicBase } from '../auth/spa/connection.js';
-import { authUrl, exchange, newRequest, strings, verify } from '../auth/spa/oidc.js';
-import { fetchConfig, spaState } from '../auth/spa/sync.js';
-import { roleFrom, touchSignIn, upsertSpaUser } from '../auth/spa/users.js';
+import { SPA_CALLBACK, loadKey, oidcClient, publicBase } from '../auth/keystone/connection.js';
+import { authUrl, exchange, newRequest, strings, verify } from '../auth/keystone/oidc.js';
+import { fetchConfig, spaState } from '../auth/keystone/sync.js';
+import { roleFrom, touchSignIn, upsertSpaUser } from '../auth/keystone/users.js';
 import { getNetboxRole } from '../netbox/access.js';
 import { logEvent } from '../system/logbuf.js';
 
@@ -59,7 +59,7 @@ interface State {
 
 const signInPage = (reply: FastifyReply, message: string) => reply.redirect(`/signin?sso_error=${encodeURIComponent(message)}`);
 
-const NOT_CONNECTED = 'This application is not connected to SPA';
+const NOT_CONNECTED = 'This application is not connected to Keystone';
 
 export async function authRoutes(app: FastifyInstance) {
   // ---- what the sign-in page needs (public)
@@ -88,7 +88,7 @@ export async function authRoutes(app: FastifyInstance) {
     };
   });
 
-  // ---- 1. off to SPA
+  // ---- 1. off to Keystone
   app.get('/api/auth/spa/start', async (req, reply) => {
     const q = req.query as { return?: string; login_hint?: string; idp_hint?: string; prompt?: string };
     const { key } = await loadKey();
@@ -105,19 +105,19 @@ export async function authRoutes(app: FastifyInstance) {
       setCookie(req, reply, r.verifier, STATE_TTL_S);
       return reply.redirect(url);
     } catch (e) {
-      logEvent('error', 'SPA sign-in could not start', { error: (e as Error).message });
-      return signInPage(reply, 'SPA did not answer. Try again later.');
+      logEvent('error', 'Keystone sign-in could not start', { error: (e as Error).message });
+      return signInPage(reply, 'Keystone did not answer. Try again later.');
     }
   });
 
-  // ---- 3. back from SPA
+  // ---- 3. back from Keystone
   app.get(SPA_CALLBACK, async (req, reply) => {
     const q = z.record(z.string()).catch({}).parse(req.query) as Record<string, string | undefined>;
     const verifier = cookie(req);
     setCookie(req, reply, '', 0);
     if (q.error) {
-      logEvent('warn', 'SPA refused the sign-in', { error: q.error, description: q.error_description });
-      return signInPage(reply, q.error === 'access_denied' ? 'You have no access to Inventory DB. Ask an SPA administrator for a role.' : 'SPA refused the sign-in or it was cancelled.');
+      logEvent('warn', 'Keystone refused the sign-in', { error: q.error, description: q.error_description });
+      return signInPage(reply, q.error === 'access_denied' ? 'You have no access to Ledger. Ask a Keystone administrator for a role.' : 'Keystone refused the sign-in or it was cancelled.');
     }
     const { key } = await loadKey();
     const base = publicBase(req);
@@ -131,8 +131,8 @@ export async function authRoutes(app: FastifyInstance) {
       const cl = await verify(client, t.id_token, state.n);
       const role = roleFrom(strings(cl.roles));
       if (!role) {
-        logEvent('warn', 'SPA sign-in without a role in Inventory DB', { sub: cl.sub });
-        return signInPage(reply, 'You have no access to Inventory DB. Ask an SPA administrator for a role.');
+        logEvent('warn', 'Keystone sign-in without a role in Ledger', { sub: cl.sub });
+        return signInPage(reply, 'You have no access to Ledger. Ask a Keystone administrator for a role.');
       }
       const { user } = upsertSpaUser({
         sub: String(cl.sub),
@@ -143,15 +143,15 @@ export async function authRoutes(app: FastifyInstance) {
         disabled: false,
       });
       touchSignIn(user.id);
-      logEvent('warn', 'Signed in with SPA', { user: user.email || String(cl.preferred_username ?? ''), role, amr: strings(cl.amr).join(' ') });
+      logEvent('warn', 'Signed in with Keystone', { user: user.email || String(cl.preferred_username ?? ''), role, amr: strings(cl.amr).join(' ') });
       return reply.redirect(`/signin#sso_token=${encodeURIComponent(await issueJwt(user))}&return=${encodeURIComponent(safeReturn(state.r))}`);
     } catch (e) {
-      logEvent('warn', 'SPA sign-in rejected', { error: (e as Error).message });
-      return signInPage(reply, 'SPA sign-in could not be completed. Try again.');
+      logEvent('warn', 'Keystone sign-in rejected', { error: (e as Error).message });
+      return signInPage(reply, 'Keystone sign-in could not be completed. Try again.');
     }
   });
 
-  // ---- sign-out: the browser drops its session and comes here; SPA ends its own and returns to our address.
+  // ---- sign-out: the browser drops its session and comes here; Keystone ends its own and returns to our address.
   app.get('/api/auth/spa/logout', async (req, reply) => {
     const { key } = await loadKey();
     const base = publicBase(req);

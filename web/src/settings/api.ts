@@ -4,7 +4,7 @@ export type State = 'ok' | 'warn' | 'error' | 'off';
 export type SecretBackend = 'openbao' | 'local';
 export type IdbRole = 'admin' | 'editor' | 'viewer';
 
-// ---- SPA (sign-in and access) ----
+// ---- Keystone (sign-in and access) ----
 export interface SpaView {
   connected: boolean;
   key_source: 'environment' | 'file' | 'secret_store' | null;
@@ -38,7 +38,7 @@ export interface SpaUserRow {
   last_sign_in_at: string | null;
   created_at: string;
   role: IdbRole;
-  /** API tokens of the user, and how many of them are suspended (the user is disabled in SPA). */
+  /** API tokens of the user, and how many of them are suspended (the user is disabled in Keystone). */
   api_tokens: number;
   suspended_tokens: number;
 }

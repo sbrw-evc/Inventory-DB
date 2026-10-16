@@ -2,7 +2,7 @@ import { Monitor, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useT } from '../../i18n';
 
-// Umbrella's DesktopOnly (app/web/src/app/mobile/DesktopOnly.tsx).
+// Beacon's DesktopOnly (app/web/src/app/mobile/DesktopOnly.tsx).
 
 const KEY = 'inventory.mobile.forced';
 

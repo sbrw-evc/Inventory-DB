@@ -45,24 +45,24 @@ export const ruFeatures: Record<string, string> = {
   'Owners always see and edit every field. Hidden fields are left out of records, exports and shared views for that role.':
     'Владельцы всегда видят и изменяют все поля. Скрытые поля не попадают в записи, экспорт и общие представления для этой роли.',
   // integrations
-  'Connect Umbrella': 'Подключить Umbrella',
-  'Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status.':
-    'Мониторинг Umbrella получает площадки, стойки и устройства из Inventory DB как конфигурационные единицы своей карты CMDB и возвращает состояние алертов, чтобы у устройств был виден статус мониторинга.',
+  'Connect Beacon': 'Подключить Beacon',
+  'Beacon reads sites, racks and devices from Ledger as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status.':
+    'Мониторинг Beacon получает площадки, стойки и устройства из Ledger как конфигурационные единицы своей карты CMDB и возвращает состояние алертов, чтобы у устройств был виден статус мониторинга.',
   'No integrations yet': 'Интеграций пока нет',
-  'Connect Umbrella to share the inventory with monitoring and see alert states on devices.':
-    'Подключите Umbrella, чтобы передавать инвентарь в мониторинг и видеть состояние алертов на устройствах.',
+  'Connect Beacon to share the inventory with monitoring and see alert states on devices.':
+    'Подключите Beacon, чтобы передавать инвентарь в мониторинг и видеть состояние алертов на устройствах.',
   'Edit integration': 'Изменить интеграцию',
   'Create integration': 'Создать интеграцию',
   'Name is required': 'Укажите название',
   'URLs must start with http:// or https://': 'Адреса должны начинаться с http:// или https://',
-  Umbrella: 'Umbrella',
-  'Umbrella URL': 'Адрес Umbrella',
-  'Used to build links back to Umbrella (optional).': 'Для ссылок обратно в Umbrella (необязательно).',
-  'Inventory DB public URL': 'Публичный адрес Inventory DB',
-  'Used for record links in the CMDB feed. Defaults to the address Umbrella calls.':
-    'Для ссылок на записи в фиде CMDB. По умолчанию — адрес, по которому обращается Umbrella.',
+  Beacon: 'Beacon',
+  'Beacon URL': 'Адрес Beacon',
+  'Used to build links back to Beacon (optional).': 'Для ссылок обратно в Beacon (необязательно).',
+  'Ledger public URL': 'Публичный адрес Ledger',
+  'Used for record links in the CMDB feed. Defaults to the address Beacon calls.':
+    'Для ссылок на записи в фиде CMDB. По умолчанию — адрес, по которому обращается Beacon.',
   Inactive: 'Отключена',
-  'Waiting for Umbrella': 'Ожидание Umbrella',
+  'Waiting for Beacon': 'Ожидание Beacon',
   'Feed not read recently': 'Фид давно не читался',
   Connected: 'Подключена',
   Activate: 'Включить',
@@ -73,8 +73,8 @@ export const ruFeatures: Record<string, string> = {
   '{n} configuration items': 'Конфигурационных единиц: {n}',
   'Copy the signing secret now — it won’t be shown again.': 'Скопируйте секрет подписи сейчас — он больше не будет показан.',
   'CMDB feed (Inventory connector)': 'Фид CMDB (Inventory connector)',
-  'Umbrella pulls this every 15 minutes with an API token of a read-only user in the':
-    'Umbrella запрашивает его каждые 15 минут с API-токеном пользователя только для чтения в заголовке',
+  'Beacon pulls this every 15 minutes with an API token of a read-only user in the':
+    'Beacon запрашивает его каждые 15 минут с API-токеном пользователя только для чтения в заголовке',
   'header, paging by': ', постранично по',
   until: 'пока',
   'is null.': 'не станет null.',
@@ -84,44 +84,44 @@ export const ruFeatures: Record<string, string> = {
   'Signing secret': 'Секрет подписи',
   'Rotate secret': 'Сменить секрет',
   'Issue a new signing secret?': 'Выпустить новый секрет подписи?',
-  'Umbrella must be updated with the new secret; until then its alert deliveries are rejected.':
-    'В Umbrella нужно указать новый секрет; до этого алерты от неё будут отклоняться.',
+  'Beacon must be updated with the new secret; until then its alert deliveries are rejected.':
+    'В Beacon нужно указать новый секрет; до этого алерты от него будут отклоняться.',
   'Delete integration “{name}”?': 'Удалить интеграцию «{name}»?',
-  'Umbrella will no longer be able to read the feed or send alerts. Stored alert states are deleted.':
-    'Umbrella больше не сможет читать фид и отправлять алерты. Сохранённые состояния алертов будут удалены.',
+  'Beacon will no longer be able to read the feed or send alerts. Stored alert states are deleted.':
+    'Beacon больше не сможет читать фид и отправлять алерты. Сохранённые состояния алертов будут удалены.',
   'Unmatched alerts': 'Несопоставленные алерты',
   'Every alert matched a device.': 'Все алерты сопоставлены с устройствами.',
   Alert: 'Алерт',
   'Configuration item': 'Конфигурационная единица',
   Received: 'Получен',
-  // Umbrella Flow integration
+  // Current integration
   'No changes sent yet': 'Изменения ещё не отправлялись',
   'Last delivery failed': 'Последняя отправка не удалась',
-  'The Flow API token is required': 'Укажите API-токен Flow',
-  'Connect Umbrella Flow': 'Подключить Umbrella Flow',
-  'Umbrella Flow URL': 'Адрес Umbrella Flow',
-  'Flow API token': 'API-токен Flow',
+  'The Current API token is required': 'Укажите API-токен Current',
+  'Connect Current': 'Подключить Current',
+  'Current URL': 'Адрес Current',
+  'Current API token': 'API-токен Current',
   'Stored — leave empty to keep it': 'Сохранён — оставьте пустым, чтобы не менять',
-  'A Flow token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.':
-    'Токен Flow с правом integrations.inventory:read. Хранится в хранилище секретов (OpenBao) и никогда не передаётся в браузер.',
-  'Paste the new secret into Flow within 24 hours; until then change notifications carry signatures with both secrets.':
-    'Укажите новый секрет во Flow в течение 24 часов; до этого уведомления об изменениях подписываются обоими секретами.',
-  'Traffic from Flow disappears from DCIM pages and Flow is no longer notified of changes. The stored Flow token is deleted.':
-    'Трафик из Flow пропадёт со страниц DCIM, а Flow перестанет получать уведомления об изменениях. Сохранённый токен Flow будет удалён.',
+  'A Current token with integrations.inventory:read. It is kept in the secret store (OpenBao) and never sent to browsers.':
+    'Токен Current с правом integrations.inventory:read. Хранится в хранилище секретов (OpenBao) и никогда не передаётся в браузер.',
+  'Paste the new secret into Current within 24 hours; until then change notifications carry signatures with both secrets.':
+    'Укажите новый секрет в Current в течение 24 часов; до этого уведомления об изменениях подписываются обоими секретами.',
+  'Traffic from Current disappears from DCIM pages and Current is no longer notified of changes. The stored Current token is deleted.':
+    'Трафик из Current пропадёт со страниц DCIM, а Current перестанет получать уведомления об изменениях. Сохранённый токен Current будет удалён.',
   'Last change notification': 'Последнее уведомление об изменениях',
   'Delivered: {n} changes': 'Доставлено изменений: {n}',
   'Failed after {n} attempts: {error}': 'Не доставлено после попыток: {n}; {error}',
-  'Store it in Flow (OpenBao) as the Inventory DB hook secret.': 'Сохраните его во Flow (OpenBao) как секрет хука Inventory DB.',
-  'Umbrella Flow': 'Umbrella Flow',
-  'DCIM pages show traffic from Flow: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.':
-    'Страницы DCIM показывают трафик из Flow: устройства, интерфейсы, каналы (95-й перцентиль относительно коммита) и активные адреса префиксов.',
+  'Store it in Current (OpenBao) as the Ledger hook secret.': 'Сохраните его в Current (OpenBao) как секрет хука Ledger.',
+  'Current': 'Current',
+  'DCIM pages show traffic from Current: devices, interfaces, circuits (95th percentile against the commit) and active addresses of prefixes.':
+    'Страницы DCIM показывают трафик из Current: устройства, интерфейсы, каналы (95-й перцентиль относительно коммита) и активные адреса префиксов.',
   'Change notifications': 'Уведомления об изменениях',
   'Every DCIM, IPAM and circuits change is sent here, at most once every 5 seconds, signed with the secret:':
     'Каждое изменение DCIM, IPAM и каналов отправляется сюда не чаще раза в 5 секунд, с подписью секретом:',
   'Stored in the secret store; never sent to browsers.': 'Хранится в хранилище секретов; в браузер не передаётся.',
   'Interface matching': 'Сопоставление интерфейсов',
-  'Fill the custom field snmp_index of interfaces with their ifIndex so Flow matches flow records to them.':
-    'Заполните у интерфейсов пользовательское поле snmp_index значением ifIndex, чтобы Flow сопоставлял с ними записи потоков.',
-  'Umbrella monitoring reads sites, racks and devices from Inventory DB as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Umbrella Flow shows traffic on devices, interfaces, circuits and prefixes.':
-    'Мониторинг Umbrella получает площадки, стойки и устройства из Inventory DB как конфигурационные единицы своей карты CMDB и возвращает состояние алертов, чтобы у устройств был виден статус мониторинга. Umbrella Flow показывает трафик устройств, интерфейсов, каналов и префиксов.',
+  'Fill the custom field snmp_index of interfaces with their ifIndex so Current matches flow records to them.':
+    'Заполните у интерфейсов пользовательское поле snmp_index значением ifIndex, чтобы Current сопоставлял с ними записи потоков.',
+  'Beacon reads sites, racks and devices from Ledger as configuration items of its CMDB map, and sends alert states back so devices show their monitoring status. Current shows traffic on devices, interfaces, circuits and prefixes.':
+    'Мониторинг Beacon получает площадки, стойки и устройства из Ledger как конфигурационные единицы своей карты CMDB и возвращает состояние алертов, чтобы у устройств был виден статус мониторинга. Current показывает трафик устройств, интерфейсов, каналов и префиксов.',
 };

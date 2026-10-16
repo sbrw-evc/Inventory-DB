@@ -1,5 +1,5 @@
 /**
- * SPA's federation API (`/api/spa/v1/{config,users,roles}`): every five minutes (one replica only) Inventory DB reads
+ * Keystone's federation API (`/api/spa/v1/{config,users,roles}`): every five minutes (one replica only) Ledger reads
  * the people who may use it and their roles and creates, updates and disables its user records; it publishes its
  * DCIM/IPAM role catalogue at start. The state shown on the settings page lives in the setting `spa.state`.
  */
@@ -75,8 +75,8 @@ async function call<T>(k: ConnectionKey, method: 'GET' | 'PUT', path: string, op
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (res.status === 304) return null;
-  if (res.status === 401) throw new SpaUnauthorized('SPA refused the connection key (it was replaced or the application was removed): issue a new key in SPA');
-  if (!res.ok) throw new Error(`SPA answered HTTP ${res.status} to ${method} ${path}`);
+  if (res.status === 401) throw new SpaUnauthorized('Keystone refused the connection key (it was replaced or the application was removed): issue a new key in Keystone');
+  if (!res.ok) throw new Error(`Keystone answered HTTP ${res.status} to ${method} ${path}`);
   const text = await res.text();
   return { data: (text ? JSON.parse(text) : {}) as T, etag: res.headers.get('etag') ?? '' };
 }
@@ -99,7 +99,7 @@ export async function publishRoles(k: ConnectionKey, s: SpaState) {
     s.roles_error = undefined;
   } catch (e) {
     s.roles_error = (e as Error).message;
-    logEvent('error', 'The role catalogue could not be published to SPA', { error: s.roles_error });
+    logEvent('error', 'The role catalogue could not be published to Keystone', { error: s.roles_error });
   }
 }
 
@@ -107,8 +107,8 @@ let published = '';
 let running: Promise<SpaState> | null = null;
 
 /**
- * Reads SPA's configuration and users and applies them: creates and updates records, sets roles, and disables (ending
- * the sessions and suspending the API tokens of) everyone SPA does not list as enabled with a role here; people
+ * Reads Keystone's configuration and users and applies them: creates and updates records, sets roles, and disables (ending
+ * the sessions and suspending the API tokens of) everyone Keystone does not list as enabled with a role here; people
  * enabled again get their suspended tokens back.
  */
 export function syncSpa(actor: string, opts: { force?: boolean } = {}): Promise<SpaState> {
@@ -118,12 +118,12 @@ export function syncSpa(actor: string, opts: { force?: boolean } = {}): Promise<
     const s = spaState(k);
     if (!k) {
       s.ok = false;
-      s.error = keyError ?? 'Inventory DB is not connected to SPA';
+      s.error = keyError ?? 'Ledger is not connected to Keystone';
       return s;
     }
     s.last_sync = new Date().toISOString();
     try {
-      // The catalogue once per process and key (and again when asked), so SPA administrators assign our roles.
+      // The catalogue once per process and key (and again when asked), so Keystone administrators assign our roles.
       const pubKey = `${k.issuer} ${k.client_id}`;
       if (published !== pubKey || opts.force) {
         await publishRoles(k, s);
@@ -147,7 +147,7 @@ export function syncSpa(actor: string, opts: { force?: boolean } = {}): Promise<
             counts.users++;
           }
         }
-        // Gone from SPA, disabled there, and records from before SPA that matched nobody.
+        // Gone from Keystone, disabled there, and records from before Keystone that matched nobody.
         counts.disabled += disableOthers(keep);
         s.counts = counts;
         s.users_etag = r.etag || undefined;
@@ -158,11 +158,11 @@ export function syncSpa(actor: string, opts: { force?: boolean } = {}): Promise<
     } catch (e) {
       s.ok = false;
       s.error = (e as Error).message;
-      logEvent('error', 'SPA synchronization failed', { by: actor, error: s.error });
+      logEvent('error', 'Keystone synchronization failed', { by: actor, error: s.error });
     }
     saveState(s);
     if (actor !== 'schedule' || !s.ok || s.counts.created || s.counts.disabled)
-      logEvent(s.ok ? 'warn' : 'error', 'Users synchronized from SPA', { by: actor, ok: s.ok, ...s.counts });
+      logEvent(s.ok ? 'warn' : 'error', 'Users synchronized from Keystone', { by: actor, ok: s.ok, ...s.counts });
     return s;
   })().finally(() => {
     running = null;
@@ -198,7 +198,7 @@ export function stopSpaSync() {
   timer = null;
 }
 
-/** Forget what was published (tests: a new key or a new fake SPA). */
+/** Forget what was published (tests: a new key or a new fake Keystone). */
 export function resetSpaSyncMemory() {
   published = '';
 }

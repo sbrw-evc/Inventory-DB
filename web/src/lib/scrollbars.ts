@@ -2,7 +2,7 @@ import { OverlayScrollbars, type PartialOptions } from 'overlayscrollbars';
 import 'overlayscrollbars/overlayscrollbars.css';
 
 // Replaces native scrollbars with OverlayScrollbars on scroll containers, so they look the same
-// in Chrome, Firefox and Safari (the Umbrella approach). Containers are found by their computed
+// in Chrome, Firefox and Safari (the Beacon approach). Containers are found by their computed
 // overflow; the element itself is the viewport, so React-owned children are never moved.
 // Virtualised and drag-heavy surfaces (the grid, kanban, calendar) keep the CSS-styled native
 // scrollbars from app.css, which look the same.

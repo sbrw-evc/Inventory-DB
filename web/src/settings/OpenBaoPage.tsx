@@ -30,7 +30,7 @@ export function baoRows(s: OpenBaoStatus, locale: string): [string, string | und
 function usageText(u: SecretUsage) {
   return {
     integration: t('Integration signing secret'),
-    spa: t('SPA connection key'),
+    spa: t('Keystone connection key'),
     postgres: t('PostgreSQL password'),
     jwt: t('Session signing key'),
     other: t('Other'),
@@ -75,7 +75,7 @@ function Current({ overview, onChanged }: { overview: OpenBaoOverview; onChanged
         </Button>
       }
     >
-      <p className="muted">{t('All Inventory DB secrets are kept in OpenBao: integration keys, the SPA connection key, the database password and the session signing key.')}</p>
+      <p className="muted">{t('All Ledger secrets are kept in OpenBao: integration keys, the Keystone connection key, the database password and the session signing key.')}</p>
       <Rows
         align="end"
         rows={[
@@ -315,7 +315,7 @@ function Migration({ overview, onMoved }: { overview: OpenBaoOverview; onMoved: 
   );
 }
 
-/** Secret store: current OpenBao, the stored secrets and moving to another OpenBao (Umbrella's OpenBao settings page). */
+/** Secret store: current OpenBao, the stored secrets and moving to another OpenBao (Beacon's OpenBao settings page). */
 export function OpenBaoPage() {
   const [epoch, setEpoch] = useState(0);
   const overview = useResource(settingsApi.openbao, epoch);

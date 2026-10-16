@@ -26,7 +26,7 @@ interface UserRow {
 
 const toUser = (r: UserRow): User => ({ id: r.id, email: r.email, name: r.name, createdAt: r.created_at });
 
-/** Disabled accounts (by SPA) lose their sessions and API tokens. */
+/** Disabled accounts (by Keystone) lose their sessions and API tokens. */
 export function isDisabled(userId: string): boolean {
   const row = getDb().prepare('SELECT disabled FROM nc_users WHERE id = ?').get(userId) as { disabled: number } | undefined;
   return !row || !!row.disabled;
@@ -40,7 +40,7 @@ export function sessionValid(userId: string, iat: number | undefined): boolean {
   return true;
 }
 
-/** How the account is known: SPA's user ID and user name. */
+/** How the account is known: Keystone's user ID and user name. */
 export function accountInfo(userId: string) {
   const row = getDb().prepare('SELECT source, external_id, username FROM nc_users WHERE id = ?').get(userId) as
     | { source: string; external_id: string | null; username: string | null }
@@ -54,7 +54,7 @@ export function getUser(id: string): User {
   return toUser(row);
 }
 
-/** For invitations to a base: an enabled user with this e-mail (or SPA user name). */
+/** For invitations to a base: an enabled user with this e-mail (or Keystone user name). */
 export function findUserByEmail(email: string): User | null {
   const row = getDb()
     .prepare('SELECT * FROM nc_users WHERE (lower(email) = lower(?) OR lower(username) = lower(?)) ORDER BY disabled, created_at LIMIT 1')
@@ -62,13 +62,13 @@ export function findUserByEmail(email: string): User | null {
   return row ? toUser(row) : null;
 }
 
-/** Hours a session lasts (SESSION_HOURS, 12 by default); SPA can end it sooner by disabling the person. */
+/** Hours a session lasts (SESSION_HOURS, 12 by default); Keystone can end it sooner by disabling the person. */
 const sessionHours = () => {
   const h = Number(process.env.SESSION_HOURS ?? 12);
   return Number.isFinite(h) && h > 0 ? h : 12;
 };
 
-/** Inventory DB's own session, started after the SPA callback. */
+/** Ledger's own session, started after the Keystone callback. */
 export async function issueJwt(user: User): Promise<string> {
   return new SignJWT({ email: user.email, typ: 'session' })
     .setProtectedHeader({ alg: 'HS256' })
@@ -81,7 +81,7 @@ export async function issueJwt(user: User): Promise<string> {
 export async function verifyJwt(token: string): Promise<{ sub: string; iat?: number } | null> {
   try {
     const { payload } = await jwtVerify(token, secret());
-    // Signed values (the SPA sign-in state) share the key but are not sessions.
+    // Signed values (the Keystone sign-in state) share the key but are not sessions.
     if (payload.typ !== 'session' || !payload.sub) return null;
     return { sub: payload.sub, iat: payload.iat };
   } catch {
@@ -89,7 +89,7 @@ export async function verifyJwt(token: string): Promise<{ sub: string; iat?: num
   }
 }
 
-/** Short-lived signed values (the SPA sign-in state). */
+/** Short-lived signed values (the Keystone sign-in state). */
 export async function signValue(payload: Record<string, unknown>, ttl: string): Promise<string> {
   return new SignJWT(payload).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime(ttl).sign(secret());
 }
@@ -113,7 +113,7 @@ export function createApiToken(userId: string, description: string) {
   return { id: row.id, description, token, createdAt: row.created_at };
 }
 
-/** The owner of an API token, or null when there is no such token or it is suspended (its owner is disabled in SPA). */
+/** The owner of an API token, or null when there is no such token or it is suspended (its owner is disabled in Keystone). */
 export function userIdForApiToken(token: string): string | null {
   const row = getDb()
     .prepare('SELECT t.user_id, t.suspended_at, u.disabled FROM nc_api_tokens t JOIN nc_users u ON u.id = t.user_id WHERE t.token_hash = ?')

@@ -1,12 +1,12 @@
 /**
- * Settings section (administrators only): system status, the SPA connection (sign-in and access are managed in SPA),
- * PostgreSQL and OpenBao. Mirrors Umbrella's /api/settings/* endpoints.
+ * Settings section (administrators only): system status, the Keystone connection (sign-in and access are managed in Keystone),
+ * PostgreSQL and OpenBao. Mirrors Beacon's /api/settings/* endpoints.
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { loadKey, SPA_CALLBACK, publicBase } from '../auth/spa/connection.js';
-import { spaState, syncSpa, type SpaState } from '../auth/spa/sync.js';
-import { listUsers, userCounts } from '../auth/spa/users.js';
+import { loadKey, SPA_CALLBACK, publicBase } from '../auth/keystone/connection.js';
+import { spaState, syncSpa, type SpaState } from '../auth/keystone/sync.js';
+import { listUsers, userCounts } from '../auth/keystone/users.js';
 import { HttpError, conflict } from '../errors.js';
 import { requireNetboxRole } from '../netbox/access.js';
 import { DEFAULT_MOUNT, PG_SSL_MODES, type OpenBaoConnection } from '../system/config.js';
@@ -56,7 +56,7 @@ const baoTarget = z
   }))
   .refine((c) => (c.auth === 'token' ? !!c.token : !!c.role_id && !!c.secret_id), 'Fill in the token, or the AppRole role_id and secret_id');
 
-/** The SPA connection for the settings page: issuer, application, last synchronization, counts and errors. */
+/** The Keystone connection for the settings page: issuer, application, last synchronization, counts and errors. */
 async function spaView(req: FastifyRequest) {
   const { key, source, error } = await loadKey();
   const base = publicBase(req);
@@ -91,7 +91,7 @@ export async function settingsRoutes(app: FastifyInstance) {
     return systemStatus();
   });
 
-  // ---- SPA (sign-in and access are managed there) ----
+  // ---- Keystone (sign-in and access are managed there) ----
   app.get('/api/v1/settings/spa', async (req) => {
     requireAdmin(req);
     return spaView(req);
@@ -100,7 +100,7 @@ export async function settingsRoutes(app: FastifyInstance) {
   app.post('/api/v1/settings/spa/sync', async (req) => {
     const user = requireAdmin(req);
     const { key } = await loadKey();
-    if (!key) throw new HttpError(409, 'SPA_NOT_CONNECTED', 'Inventory DB is not connected to SPA');
+    if (!key) throw new HttpError(409, 'SPA_NOT_CONNECTED', 'Ledger is not connected to Keystone');
     await syncSpa(user.email || user.id, { force: true });
     return spaView(req);
   });

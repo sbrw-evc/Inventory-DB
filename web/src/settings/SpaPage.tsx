@@ -4,7 +4,7 @@ import { formatDate } from '../lib/format';
 import { settingsApi, type SpaUserRow, type SpaView, type State } from './api';
 import { ActionResult, Banner, Button, Card, Pill, Rows, Table, useAction, useResource } from './ui';
 
-const SPA_PROTOCOL = 'https://github.com/sbrw-evc/SPA-Single-point-of-authorization-/blob/main/docs/protocol.md';
+const SPA_PROTOCOL = 'https://github.com/sbrw-evc/keystone/blob/HEAD/docs/protocol.md';
 
 const roleText = (r: string) => ({ admin: t('Administrator'), editor: t('Editor'), viewer: t('Viewer') })[r] ?? r;
 const keySourceText = (s: SpaView['key_source']) =>
@@ -19,7 +19,7 @@ function stateOf(v: SpaView): State {
   return v.ok ? 'ok' : 'error';
 }
 
-/** Settings → SPA: the connection (issuer, application, last synchronization, counts, errors) and the users from SPA. */
+/** Settings → Keystone: the connection (issuer, application, last synchronization, counts, errors) and the users from Keystone. */
 export function SpaPage() {
   const view = useResource(settingsApi.spa);
   const users = useResource(settingsApi.spaUsers);
@@ -42,16 +42,16 @@ export function SpaPage() {
     <div className="cards">
       <Card title={t('Connection')} badge={<Pill state={stateOf(v)} label={v.connected ? undefined : t('Not connected')} />} wide>
         <p className="muted">
-          {t('Sign-in and access are managed in SPA: passwords, passkeys, directories, sign-in providers and the roles of people in Inventory DB.')}{' '}
+          {t('Sign-in and access are managed in Keystone: passwords, passkeys, directories, sign-in providers and the roles of people in Ledger.')}{' '}
           <a href={SPA_PROTOCOL} target="_blank" rel="noreferrer">
-            {t('How applications connect to SPA')}
+            {t('How applications connect to Keystone')}
           </a>
         </p>
         {!v.connected && (
-          <Banner kind="error" title={t('This application is not connected to SPA')}>
+          <Banner kind="error" title={t('This application is not connected to Keystone')}>
             {v.key_error && <p>{t(v.key_error)}</p>}
             <p>
-              {t('Copy the connection key (spa1.…) and give it to Inventory DB in the environment variable')} <code>SPA_CONNECTION_KEY</code>{' '}
+              {t('Copy the connection key (spa1.…) and give it to Ledger in the environment variable')} <code>SPA_CONNECTION_KEY</code>{' '}
               {t('(or the file named by SPA_CONNECTION_KEY_FILE, or the secret spa / connection_key in OpenBao), then restart it.')}
             </p>
           </Banner>
@@ -75,7 +75,7 @@ export function SpaPage() {
             [t('Role catalogue published'), date(v.roles_published_at)],
           ]}
         />
-        {v.roles_error && <Banner kind="warn" title={t('The role catalogue could not be published to SPA')}>{v.roles_error}</Banner>}
+        {v.roles_error && <Banner kind="warn" title={t('The role catalogue could not be published to Keystone')}>{v.roles_error}</Banner>}
       </Card>
 
       <Card
@@ -91,7 +91,7 @@ export function SpaPage() {
         }
         wide
       >
-        <p className="muted">{t('Users and their roles are read from SPA every 5 minutes. People SPA disables or removes lose their sessions here, and their API tokens are suspended until SPA enables them again.')}</p>
+        <p className="muted">{t('Users and their roles are read from Keystone every 5 minutes. People Keystone disables or removes lose their sessions here, and their API tokens are suspended until Keystone enables them again.')}</p>
         <Rows
           rows={[
             [t('Last synchronization'), date(v.last_sync) ?? t('Not yet')],
@@ -109,7 +109,7 @@ export function SpaPage() {
         <ActionResult action={sync} />
       </Card>
 
-      <Card title={t('Users')} badge={<span className="muted">{t('Managed in SPA')}</span>} wide>
+      <Card title={t('Users')} badge={<span className="muted">{t('Managed in Keystone')}</span>} wide>
         {users.error && <Banner kind="error" title={users.error.message} />}
         {users.data && (
           <Table
@@ -121,7 +121,7 @@ export function SpaPage() {
                 u.username ?? '',
                 u.email,
                 roleText(u.role),
-                u.disabled ? <Pill key="s" state="off" label={t('Disabled')} /> : u.source === 'spa' ? <Pill key="s" state="ok" label={t('Active')} /> : <Pill key="s" state="warn" label={t('Not yet in SPA')} />,
+                u.disabled ? <Pill key="s" state="off" label={t('Disabled')} /> : u.source === 'spa' ? <Pill key="s" state="ok" label={t('Active')} /> : <Pill key="s" state="warn" label={t('Not yet in Keystone')} />,
                 tokensText(u),
                 date(u.last_sign_in_at) ?? '',
               ],

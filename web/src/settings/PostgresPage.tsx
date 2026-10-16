@@ -35,7 +35,7 @@ function CurrentConnection({ overview }: { overview: PostgresOverview }) {
         </Button>
       }
     >
-      <p className="muted">{t('The PostgreSQL database where Inventory DB keeps all its data.')}</p>
+      <p className="muted">{t('The PostgreSQL database where Ledger keeps all its data.')}</p>
       <Rows
         align="end"
         rows={[
@@ -273,7 +273,7 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
   return (
     <Card title={t('Move to another database')}>
       <p className="muted">
-        {t('Copy all Inventory DB data to another PostgreSQL database and switch to it. The current database is not changed.')}{' '}
+        {t('Copy all Ledger data to another PostgreSQL database and switch to it. The current database is not changed.')}{' '}
         {current.password_in === 'openbao' || current.source === 'environment' ? t('The new password is saved to OpenBao when it is configured.') : ''}
       </p>
       <div className="plain-fieldset">
@@ -309,10 +309,10 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
               {!usable && <p>{t('The user may not create tables in that database.')}</p>}
             </Banner>
             {probe.has_state && (
-              <Banner kind="warn" title={probe.saved_at ? t('The database already holds Inventory DB data (updated {at}).', { at: formatDate(probe.saved_at, true) }) : t('The database already holds Inventory DB data.')}>
+              <Banner kind="warn" title={probe.saved_at ? t('The database already holds Ledger data (updated {at}).', { at: formatDate(probe.saved_at, true) }) : t('The database already holds Ledger data.')}>
                 <div className="stack" style={{ gap: 8 }}>
                   <p>{t('Its tables will be replaced with the current data of this installation.')}</p>
-                  <Switch checked={overwrite} onChange={setOverwrite} label={t('Replace the Inventory DB data in that database')} />
+                  <Switch checked={overwrite} onChange={setOverwrite} label={t('Replace the Ledger data in that database')} />
                 </div>
               </Banner>
             )}
@@ -323,7 +323,7 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
           </Banner>
         ))}
       {done && (
-        <Banner kind="ok" title={t('Inventory DB now works with {where}', { where: done.where })}>
+        <Banner kind="ok" title={t('Ledger now works with {where}', { where: done.where })}>
           {t('{tables} tables and {rows} rows were copied. The previous database was not changed and can be removed when it is no longer needed.', { tables: done.tables, rows: done.rows })}
         </Banner>
       )}
@@ -345,7 +345,7 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
       </div>
       {confirming && (
         <Modal
-          title={t('Move Inventory DB to another database?')}
+          title={t('Move Ledger to another database?')}
           onClose={() => !action.busy && setConfirming(false)}
           footer={
             <>
@@ -361,10 +361,10 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
           <ol className="conn-list">
             <li>{t('All tables, records, settings and the change log are copied to {where}.', { where })}</li>
             <li>{t('The password of the new database is saved to OpenBao (or to the settings file when OpenBao is not configured).')}</li>
-            <li>{t('While the data is copied, Inventory DB does not answer requests.')}</li>
+            <li>{t('While the data is copied, Ledger does not answer requests.')}</li>
             <li>{t('The current database {current} is left as it is.', { current: current.where })}</li>
           </ol>
-          {probe?.has_state && <Banner kind="warn" title={t('The Inventory DB data already stored in the new database will be replaced.')} />}
+          {probe?.has_state && <Banner kind="warn" title={t('The Ledger data already stored in the new database will be replaced.')} />}
           {action.error && <Banner kind="error" title={action.error.message} />}
         </Modal>
       )}
@@ -372,7 +372,7 @@ function Migration({ current, onMoved }: { current: PostgresOverview; onMoved: (
   );
 }
 
-/** PostgreSQL connection, statistics and moving to another database (Umbrella's PostgreSQL settings page). */
+/** PostgreSQL connection, statistics and moving to another database (Beacon's PostgreSQL settings page). */
 export function PostgresPage() {
   const [epoch, setEpoch] = useState(0);
   const overview = useResource(settingsApi.postgres, epoch);

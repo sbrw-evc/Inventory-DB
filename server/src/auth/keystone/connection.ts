@@ -1,5 +1,5 @@
 /**
- * The connection to SPA (docs/spa.md, SPA's protocol.md): the connection key `spa1.<base64url(JSON)>` comes from the
+ * The connection to Keystone (docs/keystone.md, Keystone's protocol.md): the connection key `spa1.<base64url(JSON)>` comes from the
  * deployment — `SPA_CONNECTION_KEY`, the file named by `SPA_CONNECTION_KEY_FILE`, or the secret store (OpenBao) at
  * `spa`, key `connection_key`. Without it nobody can sign in.
  */
@@ -26,7 +26,7 @@ export class SpaKeyError extends Error {}
 
 export function parseKey(raw: string): ConnectionKey {
   const s = raw.trim();
-  const fail = () => new SpaKeyError('This is not an SPA connection key (spa1.…): copy it again from SPA → Applications');
+  const fail = () => new SpaKeyError('This is not a Keystone connection key (spa1.…): copy it again from Keystone → Applications');
   if (!s.startsWith(PREFIX)) throw fail();
   let k: ConnectionKey;
   try {
@@ -77,7 +77,7 @@ export async function loadKey(): Promise<LoadedKey> {
   }
 }
 
-/** The address of Inventory DB: SPA_PUBLIC_URL, else the address of the request. */
+/** The address of Ledger: SPA_PUBLIC_URL, else the address of the request. */
 export function publicBase(req: FastifyRequest): string {
   const set = process.env.SPA_PUBLIC_URL?.trim().replace(/\/+$/, '');
   if (set) return set;
