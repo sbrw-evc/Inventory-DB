@@ -141,7 +141,6 @@ export async function authRoutes(app: FastifyInstance) {
         name: String(cl.name ?? ''),
         role,
         disabled: false,
-        emailTrusted: cl.email_verified !== false,
       });
       touchSignIn(user.id);
       logEvent('warn', 'Signed in with SPA', { user: user.email || String(cl.preferred_username ?? ''), role, amr: strings(cl.amr).join(' ') });

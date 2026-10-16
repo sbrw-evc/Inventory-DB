@@ -188,27 +188,48 @@ describe('sign-in with SPA', () => {
     expect(getDb().prepare('SELECT COUNT(*) n FROM nc_users').get()).toMatchObject({ n: 0 });
   });
 
-  it('binds a record from before SPA once (by user name or e-mail) and keeps its ID and base memberships', async () => {
+  it('binds a record from before SPA once by user name (case-insensitive) and keeps its ID and base memberships', async () => {
     const db = getDb();
     const legacy = newId('usr');
-    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'ADA@example.com', 'Old Ada', ?, 'local', NULL)").run(legacy, now());
+    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'ada.old@corp.example.com', 'Old Ada', ?, 'local', 'ADA')").run(legacy, now());
     const base = newId('base');
     db.prepare("INSERT INTO nc_bases (id, title, created_at) VALUES (?, 'Old base', ?)").run(base, now());
     db.prepare("INSERT INTO nc_base_members (base_id, user_id, role) VALUES (?, ?, 'owner')").run(base, legacy);
 
     const m = (await me((await signIn()).token!)).json();
     expect(m.user.id).toBe(legacy);
-    expect(m.user.name).toBe('Ada');
+    expect(m.user).toMatchObject({ name: 'Ada', email: 'ada@example.com' });
     expect(db.prepare('SELECT source, external_id FROM nc_users WHERE id = ?').get(legacy)).toEqual({ source: 'spa', external_id: 'usr_admin' });
     const bases = await app.inject({ method: 'GET', url: '/api/v1/bases', headers: { authorization: `Bearer ${(await signIn()).token}` } });
     expect(bases.json().map((b: { id: string }) => b.id)).toContain(base);
 
-    // Then by sub only: a new e-mail in SPA does not move the binding, and another old record with that e-mail stays apart.
+    // Then by sub only: a new user name in SPA does not move the binding, and another old record with it stays apart.
     const other = newId('usr');
-    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source) VALUES (?, 'ada.new@example.com', 'Someone', ?, 'local')").run(other, now());
-    spa.users[0].email = 'ada.new@example.com';
-    expect((await me((await signIn()).token!)).json().user).toMatchObject({ id: legacy, email: 'ada.new@example.com' });
+    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'someone@example.com', 'Someone', ?, 'local', 'ada2')").run(other, now());
+    spa.users[0].username = 'ada2';
+    expect((await me((await signIn()).token!)).json().user).toMatchObject({ id: legacy });
+    expect(db.prepare('SELECT source, username FROM nc_users WHERE id = ?').get(legacy)).toEqual({ source: 'spa', username: 'ada2' });
     expect(db.prepare('SELECT source FROM nc_users WHERE id = ?').get(other)).toEqual({ source: 'local' });
+  });
+
+  it('never binds a record from before SPA by e-mail', async () => {
+    const db = getDb();
+    // Same e-mail, no user name; same e-mail, another user name: neither is bound, by sign-in or by synchronization.
+    const noName = newId('usr');
+    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'ADA@example.com', 'Old Ada', ?, 'local', NULL)").run(noName, now());
+    const otherName = newId('usr');
+    db.prepare("INSERT INTO nc_users (id, email, name, created_at, source, username) VALUES (?, 'bob@example.com', 'Old Bob', ?, 'ldap', 'robert')").run(otherName, now());
+
+    const m = (await me((await signIn()).token!)).json();
+    expect(m.user.id).not.toBe(noName);
+    expect(m.user.email).toBe('ada@example.com');
+    const s = await syncSpa('test');
+    expect(s.counts).toMatchObject({ matched: 0, created: 2 });
+    const bound = db.prepare("SELECT id FROM nc_users WHERE source = 'spa' AND external_id = 'usr_bob'").get() as { id: string };
+    expect(bound.id).not.toBe(otherName);
+    // The unmatched old records keep their source and are disabled by the synchronization.
+    expect(db.prepare('SELECT source, external_id, disabled FROM nc_users WHERE id = ?').get(noName)).toEqual({ source: 'local', external_id: null, disabled: 1 });
+    expect(db.prepare('SELECT source, external_id, disabled FROM nc_users WHERE id = ?').get(otherName)).toEqual({ source: 'ldap', external_id: null, disabled: 1 });
   });
 
   it('signs out through SPA', async () => {
@@ -271,26 +292,54 @@ describe('synchronization', () => {
     expect(u.usr_dan).toMatchObject({ role: 'editor', disabled: 0 });
   });
 
-  it('ends the sessions and API tokens of a person SPA disables', async () => {
+  it('ends the sessions and suspends the API tokens of a person SPA disables; the tokens work again when SPA enables them', async () => {
     spa.signedIn = 'usr_bob';
     const { token } = await signIn();
     const headers = { authorization: `Bearer ${token}` };
     const apiToken = (await app.inject({ method: 'POST', url: '/api/v1/tokens', headers, payload: { description: 'CI' } })).json().token;
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: { 'xc-token': apiToken } })).statusCode).toBe(200);
+    const viaToken = () => app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: { 'xc-token': apiToken } });
+    expect((await viaToken()).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/tokens', headers })).json()).toEqual([
+      expect.objectContaining({ description: 'CI', suspended: false }),
+    ]);
+    spa.signedIn = 'usr_admin';
+    const admin = { authorization: `Bearer ${(await signIn()).token}` };
+    const bobRow = async () =>
+      ((await app.inject({ method: 'GET', url: '/api/v1/settings/spa/users', headers: admin })).json() as { username: string }[]).find((u) => u.username === 'bob');
+    expect(await bobRow()).toMatchObject({ disabled: false, api_tokens: 1, suspended_tokens: 0 });
 
     spa.users[1].disabled = true;
     await syncSpa('test');
     expect((await me(token!)).statusCode).toBe(401);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: { 'xc-token': apiToken } })).statusCode).toBe(401);
+    expect((await viaToken()).statusCode).toBe(401);
+    // Kept and marked suspended, not deleted.
+    expect(getDb().prepare('SELECT description, suspended_at FROM nc_api_tokens').all()).toEqual([{ description: 'CI', suspended_at: expect.any(String) }]);
+    expect(await bobRow()).toMatchObject({ disabled: true, api_tokens: 1, suspended_tokens: 1 });
 
-    // Enabled again: a new sign-in works, the old session and token stay dead.
+    // Enabled again: the token works again; the old session stays dead, a new sign-in works and lists the token as active.
     spa.users[1].disabled = false;
     await syncSpa('test');
+    expect((await viaToken()).statusCode).toBe(200);
+    expect(await bobRow()).toMatchObject({ disabled: false, api_tokens: 1, suspended_tokens: 0 });
     await new Promise((r) => setTimeout(r, 1100));
+    spa.signedIn = 'usr_bob';
     const fresh = await signIn();
     expect((await me(fresh.token!)).statusCode).toBe(200);
     expect((await me(token!)).statusCode).toBe(401);
-    expect((await app.inject({ method: 'GET', url: '/api/v1/auth/me', headers: { 'xc-token': apiToken } })).statusCode).toBe(401);
+    const list = (await app.inject({ method: 'GET', url: '/api/v1/tokens', headers: { authorization: `Bearer ${fresh.token}` } })).json();
+    expect(list).toEqual([expect.objectContaining({ description: 'CI', suspended: false })]);
+    expect(list[0]).not.toHaveProperty('suspendedAt');
+
+    // Losing the role, or leaving the application, suspends them too; the role back (here: by signing in) resumes them.
+    spa.users[1].roles = ['operator'];
+    await syncSpa('test');
+    expect((await viaToken()).statusCode).toBe(401);
+    spa.users = spa.users.filter((u) => u.id !== 'usr_bob');
+    await syncSpa('test');
+    expect((await viaToken()).statusCode).toBe(401);
+    spa.users.push(person('usr_bob', 'bob', ['viewer']));
+    expect((await signIn()).token).toBeTruthy();
+    expect((await viaToken()).statusCode).toBe(200);
   });
 
   it('reports a replaced key (401) as an error and keeps the users', async () => {

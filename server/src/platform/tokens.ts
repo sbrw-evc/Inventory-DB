@@ -10,16 +10,17 @@ import { doc } from './docs.js';
 export async function tokenRoutes(app: FastifyInstance) {
   app.get('/api/v1/tokens', { schema: doc('API tokens', 'List your API tokens') }, async (req) => {
     const user = requireUser(req);
-    return getDb()
-      .prepare('SELECT id, description, created_at AS "createdAt" FROM nc_api_tokens WHERE user_id = ? ORDER BY created_at DESC')
-      .all(user.id) as ApiToken[];
+    const rows = getDb()
+      .prepare('SELECT id, description, created_at AS "createdAt", suspended_at AS "suspendedAt" FROM nc_api_tokens WHERE user_id = ? ORDER BY created_at DESC')
+      .all(user.id) as (Omit<ApiToken, 'suspended' | 'suspendedAt'> & { suspendedAt: string | null })[];
+    return rows.map(({ suspendedAt, ...t }): ApiToken => ({ ...t, suspended: !!suspendedAt, ...(suspendedAt ? { suspendedAt } : {}) }));
   });
 
   app.post('/api/v1/tokens', { schema: doc('API tokens', 'Create an API token (the token is returned only once)') }, async (req) => {
     const user = requireUser(req);
     const body = z.object({ description: z.string().trim().max(255).optional() }).parse(req.body ?? {});
     const token: ApiToken = createApiToken(user.id, body.description || 'API token');
-    return token;
+    return { ...token, suspended: false };
   });
 
   app.delete<{ Params: { tokenId: string } }>(

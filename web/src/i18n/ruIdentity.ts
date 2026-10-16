@@ -34,8 +34,12 @@ export const ruIdentity: Record<string, string> = {
   Synchronization: 'Синхронизация',
   'Synchronize now': 'Синхронизировать сейчас',
   Synchronized: 'Синхронизировано',
-  'Users and their roles are read from SPA every 5 minutes. People SPA disables or removes lose their sessions and API tokens here.':
-    'Пользователи и их роли читаются из SPA каждые 5 минут. Те, кого SPA отключает или удаляет, теряют здесь сессии и API-токены.',
+  'Users and their roles are read from SPA every 5 minutes. People SPA disables or removes lose their sessions here, and their API tokens are suspended until SPA enables them again.':
+    'Пользователи и их роли читаются из SPA каждые 5 минут. Те, кого SPA отключает или удаляет, теряют здесь сессии, а их API-токены приостанавливаются, пока SPA снова их не включит.',
+  Suspended: 'Приостановлен',
+  'Suspended while SPA has this person disabled or without a role here; it works again when SPA enables them.':
+    'Приостановлен, пока в SPA этот человек отключён или не имеет роли здесь; снова заработает, когда SPA его включит.',
+  '{n} (suspended: {s})': '{n} (приостановлено: {s})',
   'Last synchronization': 'Последняя синхронизация',
   'Last success': 'Последний успех',
   'Not yet': 'Ещё не было',

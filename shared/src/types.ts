@@ -277,6 +277,9 @@ export interface ApiToken {
   /** Only returned once, on creation */
   token?: string;
   createdAt: string;
+  /** Suspended while SPA disables the owner (or the owner has no role in Inventory DB); works again when SPA enables them. */
+  suspended?: boolean;
+  suspendedAt?: string;
 }
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed';

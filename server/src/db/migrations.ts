@@ -309,4 +309,9 @@ export const migrations: string[] = [
     ('directory.ldap', 'directory.entra', 'password_policy', 'identity.umbrella', 'identity.providers', 'identity.passkeys', 'identity.public_url');
   DELETE FROM nc_secrets WHERE path IN ('directory/ldap', 'directory/entra', 'identity/umbrella') OR path LIKE 'identity/providers/%';
   `,
+  // SPA: API tokens of a person SPA disables (or who loses the role) are suspended, not deleted; they work again when
+  // SPA enables the person.
+  `
+  ALTER TABLE nc_api_tokens ADD COLUMN suspended_at TEXT;
+  `,
 ];

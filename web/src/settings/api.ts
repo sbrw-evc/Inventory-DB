@@ -38,6 +38,9 @@ export interface SpaUserRow {
   last_sign_in_at: string | null;
   created_at: string;
   role: IdbRole;
+  /** API tokens of the user, and how many of them are suspended (the user is disabled in SPA). */
+  api_tokens: number;
+  suspended_tokens: number;
 }
 
 // ---- PostgreSQL ----

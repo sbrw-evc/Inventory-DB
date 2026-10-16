@@ -113,11 +113,13 @@ export function createApiToken(userId: string, description: string) {
   return { id: row.id, description, token, createdAt: row.created_at };
 }
 
+/** The owner of an API token, or null when there is no such token or it is suspended (its owner is disabled in SPA). */
 export function userIdForApiToken(token: string): string | null {
-  const row = getDb().prepare('SELECT user_id FROM nc_api_tokens WHERE token_hash = ?').get(hashToken(token)) as
-    | { user_id: string }
-    | undefined;
-  return row?.user_id ?? null;
+  const row = getDb()
+    .prepare('SELECT t.user_id, t.suspended_at, u.disabled FROM nc_api_tokens t JOIN nc_users u ON u.id = t.user_id WHERE t.token_hash = ?')
+    .get(hashToken(token)) as { user_id: string; suspended_at: string | null; disabled: number } | undefined;
+  if (!row || row.suspended_at || row.disabled) return null;
+  return row.user_id;
 }
 
 export function getBaseRole(baseId: string, userId: string): Role | null {

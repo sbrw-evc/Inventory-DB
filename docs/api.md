@@ -107,7 +107,7 @@ Data notes:
 |---|---|---|---|
 | GET/POST | /bases/:baseId/members | viewer / owner | invite by `{email, role}` (user must exist) |
 | PATCH/DELETE | /bases/:baseId/members/:userId | owner | `{role}`; the last owner can't be removed/demoted |
-| GET/POST | /tokens | user | create returns the token once |
+| GET/POST | /tokens | user | create returns the token once; each has `suspended` (and `suspendedAt`): suspended while SPA has the owner disabled, working again when SPA enables them ([spa.md](spa.md#users)) |
 | DELETE | /tokens/:tokenId | user | |
 | POST | /views/:viewId/share | editor | `{password?: string \| null}` → `{shareUuid}` |
 | DELETE | /views/:viewId/share | editor | disables sharing |

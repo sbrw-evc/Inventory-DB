@@ -1,7 +1,8 @@
 /**
  * Local user records synchronised from SPA. A user is bound to SPA's `sub` (`source = 'spa'`, `external_id = sub`);
- * a record from before SPA (local, LDAP, Entra ID, Umbrella…) is matched once by user name, then by e-mail, and
- * bound — so its ID, base memberships, ownership and audit history stay. The DCIM/IPAM role comes from SPA's `roles`.
+ * a record from before SPA (local, LDAP, Entra ID, Umbrella…) is matched once by user name only — never by e-mail,
+ * which is not verified as unique across sources — and bound, so its ID, base memberships, ownership and audit
+ * history stay. The DCIM/IPAM role comes from SPA's `roles`.
  */
 import type { User } from '../../../../shared/src/index.js';
 import { getDb, newId, now } from '../../db/index.js';
@@ -30,8 +31,6 @@ export interface SpaPerson {
   name: string;
   role: NetboxRole | null;
   disabled: boolean;
-  /** Whether the e-mail may be used to find a record from before SPA (false when SPA says it is unverified). */
-  emailTrusted?: boolean;
 }
 
 interface Row {
@@ -44,11 +43,20 @@ interface Row {
 
 const COLS = 'id, email, name, created_at, disabled';
 
-/** Ends every session and removes the API tokens of a user (disabled or gone in SPA). */
+/**
+ * Ends every session of a user (disabled or gone in SPA) and suspends their API tokens: the tokens are kept, refused
+ * while the owner is disabled, and work again when SPA enables the person ({@link resumeTokens}).
+ */
 export function revokeAccess(userId: string) {
   const db = getDb();
-  db.prepare('UPDATE nc_users SET sessions_revoked_at = ? WHERE id = ?').run(now(), userId);
-  db.prepare('DELETE FROM nc_api_tokens WHERE user_id = ?').run(userId);
+  const at = now();
+  db.prepare('UPDATE nc_users SET sessions_revoked_at = ? WHERE id = ?').run(at, userId);
+  db.prepare('UPDATE nc_api_tokens SET suspended_at = ? WHERE user_id = ? AND suspended_at IS NULL').run(at, userId);
+}
+
+/** The API tokens of a user SPA enabled again work again. */
+function resumeTokens(userId: string) {
+  getDb().prepare('UPDATE nc_api_tokens SET suspended_at = NULL WHERE user_id = ? AND suspended_at IS NOT NULL').run(userId);
 }
 
 function disable(userId: string) {
@@ -56,17 +64,16 @@ function disable(userId: string) {
   revokeAccess(userId);
 }
 
-/** A record from before SPA, matched once: by user name first, then by e-mail. */
+/**
+ * A record from before SPA, matched once by user name (case-insensitive) — as SPA's protocol and the other Umbrella
+ * applications do. E-mail is never used: it is not verified as unique across the sources SPA reads.
+ */
 function legacyMatch(p: SpaPerson): Row | undefined {
-  const db = getDb();
+  if (!p.username) return undefined;
   const unbound = "(source <> 'spa' OR external_id IS NULL)";
-  if (p.username) {
-    const r = db.prepare(`SELECT ${COLS} FROM nc_users WHERE ${unbound} AND lower(username) = lower(?) ORDER BY created_at LIMIT 1`).get(p.username) as Row | undefined;
-    if (r) return r;
-  }
-  if (p.email && p.emailTrusted !== false)
-    return db.prepare(`SELECT ${COLS} FROM nc_users WHERE ${unbound} AND lower(email) = lower(?) ORDER BY created_at LIMIT 1`).get(p.email) as Row | undefined;
-  return undefined;
+  return getDb()
+    .prepare(`SELECT ${COLS} FROM nc_users WHERE ${unbound} AND lower(username) = lower(?) ORDER BY created_at LIMIT 1`)
+    .get(p.username) as Row | undefined;
 }
 
 /** Creates or updates the record bound to `sub`; a disabled person (or one without a role here) is disabled. */
@@ -99,7 +106,10 @@ export function upsertSpaUser(p: SpaPerson): { user: User; created: boolean; mat
     db.prepare('UPDATE nc_users SET email = ?, name = ?, username = ?, disabled = ? WHERE id = ?').run(p.email, name, p.username || null, off ? 1 : 0, row.id);
     if (off) {
       if (!row.disabled || created || matched) revokeAccess(row.id);
-    } else db.prepare('INSERT INTO nb_roles (user_id, role) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET role = excluded.role').run(row.id, p.role);
+    } else {
+      db.prepare('INSERT INTO nb_roles (user_id, role) VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET role = excluded.role').run(row.id, p.role);
+      resumeTokens(row.id);
+    }
     return { user: { id: row.id, email: p.email, name, createdAt: row.created_at }, created, matched, disabled: off, turnedOff: off && !created && !row.disabled };
   })();
 }
@@ -128,7 +138,9 @@ export function touchSignIn(userId: string) {
 export function listUsers() {
   return getDb()
     .prepare(
-      `SELECT u.id, u.email, u.name, u.username, u.source, u.external_id, u.disabled, u.last_sign_in_at, u.created_at, COALESCE(r.role, 'viewer') AS role
+      `SELECT u.id, u.email, u.name, u.username, u.source, u.external_id, u.disabled, u.last_sign_in_at, u.created_at, COALESCE(r.role, 'viewer') AS role,
+              (SELECT COUNT(*) FROM nc_api_tokens t WHERE t.user_id = u.id) AS api_tokens,
+              (SELECT COUNT(*) FROM nc_api_tokens t WHERE t.user_id = u.id AND (t.suspended_at IS NOT NULL OR u.disabled = 1)) AS suspended_tokens
        FROM nc_users u LEFT JOIN nb_roles r ON r.user_id = u.id ORDER BY u.disabled, lower(u.name), u.email`,
     )
     .all() as {
@@ -142,6 +154,8 @@ export function listUsers() {
     last_sign_in_at: string | null;
     created_at: string;
     role: NetboxRole;
+    api_tokens: number | string;
+    suspended_tokens: number | string;
   }[];
 }
 

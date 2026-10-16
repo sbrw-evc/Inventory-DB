@@ -71,7 +71,7 @@ describe('api tokens', () => {
     expect(me.json().user.id).toBe(u.userId);
 
     const list = await app.inject({ method: 'GET', url: '/api/v1/tokens', headers: u.headers });
-    expect(list.json()).toEqual([{ id, description: 'CI', createdAt: expect.any(String) }]);
+    expect(list.json()).toEqual([{ id, description: 'CI', createdAt: expect.any(String), suspended: false }]);
 
     const other = await signInUser(app);
     const stolen = await app.inject({ method: 'DELETE', url: `/api/v1/tokens/${id}`, headers: other.headers });

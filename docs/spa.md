@@ -62,17 +62,25 @@ Every 5 minutes (one replica: the one holding a PostgreSQL advisory lock), at st
 - creates or updates the user bound to SPA's user ID (`source = 'spa'`, `external_id`), with user name, name, e-mail
   and the DCIM/IPAM role from `roles`;
 - disables users SPA marks disabled, users without a role of Inventory DB and users missing from the list — their
-  sessions end and their API tokens are revoked;
+  sessions end and their API tokens are **suspended** (kept, refused while the person is disabled; see below);
 - users from before SPA (local, LDAP, Entra ID, Umbrella accounts) keep their IDs, base memberships, ownership and
-  history: each is bound **once**, on the first synchronization or SPA sign-in, by user name and then by e-mail; from
-  then on only by `sub`. Old users no SPA user matched are disabled by the first successful synchronization.
+  history: each is bound **once**, on the first synchronization or SPA sign-in, by **user name only**
+  (case-insensitive), as SPA's protocol and Umbrella Flow and Umbrella Monitoring do; from then on only by `sub`.
+  E-mail is never used for binding — it is not verified as unique across the sources SPA reads — so an old record
+  without a user name, or whose user name differs from the one in SPA, is not bound: it is disabled by the first
+  successful synchronization, and the person gets a new record (base memberships are shared again by the owners).
 
 The first sign-in of a person the synchronization has not seen yet creates the user from the ID token. Users are
 read-only in Inventory DB (*Settings → SPA* lists them, "Managed in SPA"); `POST/PUT /api/v1/netbox/roles` answer
 409 `MANAGED_IN_SPA`.
 
-API tokens (`xc-token`) stay in Inventory DB for scripts and integrations; each belongs to a person from SPA and stops
-working when SPA disables that person.
+API tokens (`xc-token`) stay in Inventory DB for scripts and integrations; each belongs to a person from SPA. When SPA
+disables that person, takes away their role here or drops them from the list, their tokens are **suspended**, not
+deleted: requests with them answer 401 while the person is disabled, and the same tokens work again once SPA enables
+the person (with a role here) and the next synchronization or SPA sign-in sees it. Sessions are different: they stay
+ended, the person signs in again. `GET /api/v1/tokens` returns `suspended` (and `suspendedAt`) for each token, the
+*API tokens* page shows *Suspended*, and *Settings → SPA → Users* shows each user's tokens and how many are
+suspended. A token is deleted only when its owner deletes it.
 
 ## Settings → SPA
 

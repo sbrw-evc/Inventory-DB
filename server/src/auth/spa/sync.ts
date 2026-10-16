@@ -107,8 +107,9 @@ let published = '';
 let running: Promise<SpaState> | null = null;
 
 /**
- * Reads SPA's configuration and users and applies them: creates and updates records, sets roles, and disables (and
- * revokes the sessions and API tokens of) everyone SPA does not list as enabled with a role here.
+ * Reads SPA's configuration and users and applies them: creates and updates records, sets roles, and disables (ending
+ * the sessions and suspending the API tokens of) everyone SPA does not list as enabled with a role here; people
+ * enabled again get their suspended tokens back.
  */
 export function syncSpa(actor: string, opts: { force?: boolean } = {}): Promise<SpaState> {
   if (running) return running;

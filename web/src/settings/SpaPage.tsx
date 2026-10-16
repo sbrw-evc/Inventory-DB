@@ -1,7 +1,7 @@
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { getLang, t } from '../i18n';
 import { formatDate } from '../lib/format';
-import { settingsApi, type SpaView, type State } from './api';
+import { settingsApi, type SpaUserRow, type SpaView, type State } from './api';
 import { ActionResult, Banner, Button, Card, Pill, Rows, Table, useAction, useResource } from './ui';
 
 const SPA_PROTOCOL = 'https://github.com/sbrw-evc/SPA-Single-point-of-authorization-/blob/main/docs/protocol.md';
@@ -9,6 +9,9 @@ const SPA_PROTOCOL = 'https://github.com/sbrw-evc/SPA-Single-point-of-authorizat
 const roleText = (r: string) => ({ admin: t('Administrator'), editor: t('Editor'), viewer: t('Viewer') })[r] ?? r;
 const keySourceText = (s: SpaView['key_source']) =>
   s === 'environment' ? 'SPA_CONNECTION_KEY' : s === 'file' ? 'SPA_CONNECTION_KEY_FILE' : s === 'secret_store' ? t('Secret store (spa / connection_key)') : undefined;
+
+const tokensText = (u: SpaUserRow) =>
+  !u.api_tokens ? '' : u.suspended_tokens ? t('{n} (suspended: {s})', { n: u.api_tokens, s: u.suspended_tokens }) : String(u.api_tokens);
 
 function stateOf(v: SpaView): State {
   if (!v.connected) return 'error';
@@ -88,7 +91,7 @@ export function SpaPage() {
         }
         wide
       >
-        <p className="muted">{t('Users and their roles are read from SPA every 5 minutes. People SPA disables or removes lose their sessions and API tokens here.')}</p>
+        <p className="muted">{t('Users and their roles are read from SPA every 5 minutes. People SPA disables or removes lose their sessions here, and their API tokens are suspended until SPA enables them again.')}</p>
         <Rows
           rows={[
             [t('Last synchronization'), date(v.last_sync) ?? t('Not yet')],
@@ -110,7 +113,7 @@ export function SpaPage() {
         {users.error && <Banner kind="error" title={users.error.message} />}
         {users.data && (
           <Table
-            columns={[{ label: t('Name') }, { label: t('User name') }, { label: t('Email') }, { label: t('DCIM/IPAM role') }, { label: t('State') }, { label: t('Last sign-in') }]}
+            columns={[{ label: t('Name') }, { label: t('User name') }, { label: t('Email') }, { label: t('DCIM/IPAM role') }, { label: t('State') }, { label: t('API tokens') }, { label: t('Last sign-in') }]}
             rows={users.data.map((u) => ({
               key: u.id,
               cells: [
@@ -119,6 +122,7 @@ export function SpaPage() {
                 u.email,
                 roleText(u.role),
                 u.disabled ? <Pill key="s" state="off" label={t('Disabled')} /> : u.source === 'spa' ? <Pill key="s" state="ok" label={t('Active')} /> : <Pill key="s" state="warn" label={t('Not yet in SPA')} />,
+                tokensText(u),
                 date(u.last_sign_in_at) ?? '',
               ],
             }))}

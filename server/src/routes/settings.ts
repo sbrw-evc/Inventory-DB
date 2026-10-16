@@ -107,7 +107,7 @@ export async function settingsRoutes(app: FastifyInstance) {
 
   app.get('/api/v1/settings/spa/users', async (req) => {
     requireAdmin(req);
-    return listUsers().map((u) => ({ ...u, disabled: !!u.disabled }));
+    return listUsers().map((u) => ({ ...u, disabled: !!u.disabled, api_tokens: Number(u.api_tokens), suspended_tokens: Number(u.suspended_tokens) }));
   });
 
   // ---- PostgreSQL ----

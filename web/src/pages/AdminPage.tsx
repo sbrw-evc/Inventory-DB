@@ -73,6 +73,7 @@ function Tokens() {
           <tr>
             <th>{t('Description')}</th>
             <th>{t('Created')}</th>
+            <th>{t('State')}</th>
             <th />
           </tr>
         </thead>
@@ -83,6 +84,15 @@ function Tokens() {
                 <Icon name="key" size={13} /> {tok.description}
               </td>
               <td className="muted">{relativeTime(tok.createdAt)}</td>
+              <td>
+                {tok.suspended ? (
+                  <span className="pill pill-warn" title={t('Suspended while SPA has this person disabled or without a role here; it works again when SPA enables them.')}>
+                    {t('Suspended')}
+                  </span>
+                ) : (
+                  <span className="pill pill-ok">{t('Active')}</span>
+                )}
+              </td>
               <td className="actions-cell">
                 <button
                   className="icon-btn"
